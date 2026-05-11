@@ -28,6 +28,28 @@ After install, the plugin's commands appear under the `/web-modernize:` namespac
 
 The target stack you migrate **to** decides additional tooling (Node + npm for React/Vue/Svelte targets, .NET SDK for .NET targets, JDK for Spring Boot targets, etc.). The plugin uses your local toolchain; nothing is installed cloud-side.
 
+### Update to a newer version
+
+Claude Code caches plugin contents, so a `git pull` on this repo is not enough — users must explicitly refresh the marketplace and reinstall.
+
+```sh
+# 1. Refresh the marketplace so Claude Code sees the new version in plugin.json:
+/plugin marketplace update web-modernize
+
+# 2. Reinstall to pick up the new contents (uninstall first to clear the cache):
+/plugin uninstall web-modernize
+/plugin install web-modernize
+
+# 3. Restart Claude Code (or exit the conversation with Ctrl+D and reopen with `claude`)
+#    so the new hooks, skills, and agents load fresh in-memory.
+```
+
+Without the restart, skills picked up at the next slash-command invocation will reflect the new SKILL.md content, but hooks (e.g., `hooks/heartbeat.mjs`) are loaded once at session start and stay cached until you restart. If `/web-modernize:status` shows stale heartbeats after an update, that's the most likely cause.
+
+The currently installed version is shown in your Claude Code plugin list (and in `.claude-plugin/plugin.json` of this repo). Bumping `plugin.json` `version` is what tells Claude Code an update is available — see [CHANGELOG.md](./CHANGELOG.md) for what changes between versions.
+
+If the new release bumps `state.schema.json` `schema_version`, this plugin does **not** ship migration scripts: delete `.claude/modernize/` and re-run `/web-modernize:init` (notes under `.claude/modernize/notes/` are safe to copy back after re-init). See the Versioning policy section below.
+
 ---
 
 ## The workflow
@@ -40,11 +62,17 @@ Once installed, every legacy repo follows the same shape:
 3. (edit migration.md)       ← team fills target framework, strategy, auth, acceptance criteria
 4. /web-modernize:plan       ← generate plan.md and unit list
 5. Loop:
-     /web-modernize:scaffold    (once)
-     /web-modernize:auth        (once)
-     /web-modernize:next        (repeat, one unit at a time)
-     /web-modernize:verify      (after each unit, or batch)
+     /web-modernize:scaffold              (once)
+     /web-modernize:auth                  (once)
+     /web-modernize:next                  ← auto-pick the next eligible unit
+     /web-modernize:migrate <unit-id>     ← OR explicitly pick a named unit (e.g., one assigned in standup)
+     /web-modernize:verify                (after each unit, or batch)
    Until /web-modernize:status reports "complete".
+
+   /next and /migrate <unit-id> do the same translation work — only unit
+   selection differs. Use /next if you want the plugin to pick the next
+   eligible pending unit; use /migrate <unit-id> when the team has already
+   decided who takes what (standup, ticket assignment).
 
 Failure recovery (any time after a /next or /migrate):
      /web-modernize:rollback --unit <id>   ← revert one unit's files via git
