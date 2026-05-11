@@ -27,19 +27,21 @@ You are the **rollback** skill. You undo a single unit's migration so the team c
    ```
    and stop.
 
-2. Read `state.json`. Require:
-   - `status >= "in_progress"`. If earlier, redirect: "Nothing to rollback — no units have been migrated yet."
-   - `unit = state.units.find(u => u.id == $unit_id)`. If not found, list valid ids and stop.
-   - `unit.status ∈ {"migrated", "verified", "failed"}`. Other statuses:
-     - `pending` → "Unit is already pending; nothing to rollback."
-     - `in_progress` → "Unit is currently in-flight. Either wait for it to finish, or use /web-modernize:abandon --unit to abort it first."
-     - `blocked` / `skipped` → "Unit is `<status>`; use /web-modernize:abandon --unit to clear the marker, or edit state.json manually if you want to roll back a previously-completed migration that was later marked skipped."
+2. Read `.claude/modernize/state.json`. Require `status >= "in_progress"`. If earlier, redirect: "Nothing to rollback — no units have been migrated yet."
+
+3. Read `.claude/modernize/units/<unit-id>.json`. If the file does not exist, list valid ids (`ls .claude/modernize/units/*.json`) and stop.
+
+4. Check `unit.status`:
+   - `migrated`, `verified`, or `failed` → proceed.
+   - `pending` → "Unit is already pending; nothing to rollback."
+   - `in_progress` → "Unit is currently in-flight. Either wait for it to finish, or use /web-modernize:abandon --unit to abort it first."
+   - `blocked` / `skipped` → "Unit is `<status>`; use /web-modernize:abandon --unit to clear the marker, or edit units/<id>.json manually if you want to roll back a previously-completed migration that was later marked skipped."
 
 ## Discover what to revert
 
 Inspect:
 
-1. **Feature branch** — if `state.units[*].failure.branch` or the conventional name `modernize/<unit.id>` exists locally:
+1. **Feature branch** — if `unit.failure.branch` or the conventional name `modernize/<unit.id>` exists locally:
    ```sh
    git branch --list modernize/<unit.id>
    ```
@@ -80,11 +82,11 @@ Feature branch:
   - modernize/<unit.id>  (exists, 4 commits ahead) → will be deleted locally
     (Pushed to origin? Run `git push origin --delete modernize/<unit.id>` yourself.)
 
-State changes:
-  - unit.status: <current> → pending
-  - unit.target_paths: cleared
-  - unit.verification: cleared
-  - unit.rollback_info: populated
+Per-unit file changes (.claude/modernize/units/<unit.id>.json):
+  - status: <current> → pending
+  - target_paths: cleared
+  - verification: cleared
+  - rollback_info: populated
 
 Proceed? (yes/no)
 ```
@@ -99,7 +101,7 @@ In this order:
 
 2. **Branch**: if a `modernize/<unit.id>` branch exists locally and is not the current branch, run `git branch -D modernize/<unit.id>`. If it IS the current branch, refuse to delete and tell the user to `git checkout <main-branch>` first, then re-run rollback. Do NOT touch the remote.
 
-3. **state.json mutations**:
+3. **Per-unit file mutations** — write to `.claude/modernize/units/<unit.id>.json`:
 
    ```json
    {
@@ -126,7 +128,7 @@ In this order:
 
    Do NOT clear `unit.history` or `unit.notes_path` — they are the audit trail for the next attempt. Do NOT clear `unit.failure.diagnostic_history` either — the next `/retry` will append to it.
 
-4. Bump `state.updated_at`. Save state.json.
+4. Bump `state.json.updated_at` (only the timestamp; do not touch top-level `status` or any other field). Save `state.json`.
 
 ## After writing
 
@@ -138,6 +140,7 @@ Print:
 Files reverted: <count>
 Feature branch deleted: <yes|no — branch name>
 Unit status: <previous> → pending
+Unit file: .claude/modernize/units/<unit.id>.json
 
 The unit's design notes are preserved at .claude/modernize/notes/<unit.id>.md
 (append a "Rollback #<retry_count + 1>" section before retrying so the
@@ -159,7 +162,7 @@ Next:
 ## State transitions
 
 - Pre: `state.status >= "in_progress"`, `unit.status ∈ {migrated, verified, failed}`.
-- Post: top-level status unchanged. Unit: `<previous>` → `pending`, `rollback_info` populated.
+- Post: top-level status unchanged. Per-unit file: `<previous>` → `pending`, `rollback_info` populated.
 
 ## Out of scope
 

@@ -32,16 +32,18 @@ You are the **retry** skill. You re-attempt a failed unit migration with the sam
      files before retrying, run /web-modernize:rollback --unit <id> first.
      ```
 
-2. Read `state.json`. Require:
-   - `status ∈ {auth_done, in_progress}`. Otherwise redirect to the missing skill.
-   - `unit = state.units.find(u => u.id == $unit_id)`. If not found, list valid ids and stop.
-   - `unit.status == "failed"`. Other statuses:
-     - `pending` → "Unit is `pending`; just use /web-modernize:next or /web-modernize:migrate."
-     - `in_progress` → "Unit is currently in-flight. Wait or use /web-modernize:next to take over."
-     - `migrated` / `verified` → "Unit has already been migrated. Use /web-modernize:rollback --unit <id> first if you want to redo it."
-     - `blocked` / `skipped` → "Unit is `<status>`. Use /web-modernize:abandon --unit to clear the marker first."
+2. Read `.claude/modernize/state.json`. Require `status ∈ {auth_done, in_progress}`. Otherwise redirect to the missing skill.
 
-3. If `unit.target_paths` is non-empty and any of those files still exist on disk, **warn**:
+3. Read `.claude/modernize/units/<unit-id>.json`. If the file does not exist, list valid ids (`ls .claude/modernize/units/*.json`) and stop.
+
+4. Check `unit.status`:
+   - `failed` → proceed.
+   - `pending` → "Unit is `pending`; just use /web-modernize:next or /web-modernize:migrate."
+   - `in_progress` → "Unit is currently in-flight. Wait or use /web-modernize:next to take over."
+   - `migrated` / `verified` → "Unit has already been migrated. Use /web-modernize:rollback --unit <id> first if you want to redo it."
+   - `blocked` / `skipped` → "Unit is `<status>`. Use /web-modernize:abandon --unit to clear the marker first."
+
+5. If `unit.target_paths` is non-empty and any of those files still exist on disk, **warn**:
 
    ```
    WARNING: Unit <id> has leftover target files from the failed attempt:
@@ -79,8 +81,9 @@ If the user provided `--with-prompt`, repeat their override back to them verbati
 Load `${CLAUDE_PLUGIN_ROOT}/agents/unit-migrator.md` and follow it with:
 
 - `mode = "retry"`
-- `unit = <the failed unit>`
+- `unit = <the failed unit object you just read from units/<id>.json>`
 - `retry_prompt = <the --with-prompt value, or null>`
+- `force_deps = false`
 
 The shared agent will:
 
@@ -88,9 +91,9 @@ The shared agent will:
 2. Increment `unit.retry_count`.
 3. Set `unit.last_retry_prompt = retry_prompt` (or leave unchanged if null).
 4. Reset `unit.failure.diagnostic` and `unit.failure.branch` to empty.
-5. Acquire the unit (status → `in_progress`, populate `in_flight`).
+5. Acquire the unit (status → `in_progress`, populate `in_flight`) and write `units/<unit.id>.json`.
 6. Bias the migration design by `retry_prompt` if set.
-7. Either finish as `migrated` or stop as `failed` (with the new diagnostic in `failure.diagnostic`, the old one already preserved).
+7. Either finish as `migrated` or stop as `failed` (with the new diagnostic in `failure.diagnostic`, the old one already preserved in `failure.diagnostic_history`).
 
 ## Closing message
 
@@ -102,9 +105,10 @@ On success (`unit.status == "migrated"`):
 Source: <source_paths>
 Target: <target_paths>
 Notes:  .claude/modernize/notes/<unit.id>.md  (see "Retry #<n>" section)
+Unit file: .claude/modernize/units/<unit.id>.json
 
-The prior failure diagnostics are preserved in state.json under
-unit.failure.diagnostic_history (use /web-modernize:status or read state.json
+The prior failure diagnostics are preserved in units/<unit.id>.json under
+unit.failure.diagnostic_history (use /web-modernize:status or read the file
 to inspect).
 
 Next:
@@ -121,14 +125,14 @@ On failure (`unit.status == "failed"` again):
 New diagnostic:
   <unit.failure.diagnostic>
 
-Diagnostic history now has <n> entries — inspect state.json to see the pattern
-across attempts. Possible next steps:
+Diagnostic history now has <n> entries — inspect units/<unit.id>.json to see
+the pattern across attempts. Possible next steps:
 
   - Try another /web-modernize:retry with a more specific --with-prompt.
   - /web-modernize:rollback --unit <id> to clean up partial files first.
   - /web-modernize:abandon --unit <id> to declare this unit out of scope.
-  - Edit state.json directly to set status `blocked` and document why a human
-    needs to migrate this unit manually.
+  - Edit units/<id>.json directly to set status `blocked` and document why a
+    human needs to migrate this unit manually.
 ```
 
 ## Edge cases
@@ -140,4 +144,4 @@ across attempts. Possible next steps:
 ## State transitions
 
 - Pre: `state.status ∈ {auth_done, in_progress}`, `unit.status == "failed"`.
-- Post: top-level status unchanged. Unit: `failed` → `in_progress` → `migrated` (or `failed` again with bumped retry_count and appended diagnostic_history).
+- Post: top-level status unchanged. Per-unit file: `failed` → `in_progress` → `migrated` (or `failed` again with bumped retry_count and appended diagnostic_history).

@@ -2,9 +2,10 @@
 description: >
   Bootstraps a legacy web app repository for migration with the web-modernize plugin.
   Copies the migration.md template to the repo root, creates .claude/modernize/
-  with an initial state.json, seeds the notes/ directory, and patches .gitignore.
-  Safe to run multiple times — refuses to overwrite existing files. Run this once
-  per legacy repo as the very first command in the modernization workflow.
+  with an initial state.json plus an empty units/ directory, seeds the notes/
+  directory, and patches .gitignore. Safe to run multiple times — refuses to
+  overwrite existing files. Run this once per legacy repo as the very first
+  command in the modernization workflow.
 disable-model-invocation: false
 ---
 
@@ -17,7 +18,7 @@ You are the **init** skill of the `web-modernize` plugin. Your job is to lay dow
 Before writing anything, do all of the following:
 
 1. Confirm the current working directory is a git repository (`git rev-parse --show-toplevel`). If it is not, stop and tell the user to run `git init` first.
-2. Read `${CLAUDE_PLUGIN_ROOT}/templates/migration.md`, `${CLAUDE_PLUGIN_ROOT}/templates/state.schema.json`, and `${CLAUDE_PLUGIN_ROOT}/templates/notes-template.md` (you'll need them in step 3).
+2. Read `${CLAUDE_PLUGIN_ROOT}/templates/migration.md`, `${CLAUDE_PLUGIN_ROOT}/templates/state.schema.json`, `${CLAUDE_PLUGIN_ROOT}/templates/unit.schema.json`, and `${CLAUDE_PLUGIN_ROOT}/templates/notes-template.md` (you'll need them in step 3).
 3. Check for any of these existing files in the repo root:
    - `migration.md`
    - `.claude/modernize/state.json`
@@ -25,7 +26,23 @@ Before writing anything, do all of the following:
 
    If **any** exist, do NOT touch them. Tell the user what already exists and ask if they want to (a) keep going and only create what is missing, or (b) cancel. Do not proceed until they confirm.
 
-   Exception: if `.claude/modernize/state.json` exists with `schema_version: 1`, you MUST upgrade it in place to schema v2 (see "Schema migration" below). This is the only state.json mutation init is allowed to make on an existing file. Treat the migration as "creating what is missing": do not ask before doing it; print what changed afterwards.
+4. **Schema-version check.** If `.claude/modernize/state.json` exists, read its `schema_version`. If it is anything other than `3`, refuse and print:
+
+   ```
+   ✗ state.json has schema_version: <N>, but this plugin version expects 3.
+
+   The web-modernize plugin does not ship schema-migration scripts. To proceed:
+
+     1. Back up .claude/modernize/ if you want to keep notes or history.
+     2. Delete the .claude/modernize/ directory entirely.
+     3. Re-run /web-modernize:init.
+
+   You will need to re-run /web-modernize:analyze and /web-modernize:plan to
+   rebuild state. Per-unit notes under .claude/modernize/notes/ are safe to
+   copy back after re-init.
+   ```
+
+   Stop without mutating anything.
 
 ## Files to create
 
@@ -41,8 +58,8 @@ Write a minimal valid state.json. Use the current ISO-8601 UTC timestamp for `cr
 
 ```json
 {
-  "schema_version": 2,
-  "plugin_version": "0.2.0",
+  "schema_version": 3,
+  "plugin_version": "0.3.0",
   "repo": {
     "remote": "<GIT_REMOTE_OR_EMPTY>",
     "root_commit": "<GIT_SHORT_SHA_OR_EMPTY>"
@@ -52,7 +69,7 @@ Write a minimal valid state.json. Use the current ISO-8601 UTC timestamp for `cr
   "target_stack": null,
   "strategy": null,
   "scaffold": null,
-  "units": [],
+  "unit_ids": [],
   "out_of_scope": [],
   "lock": null,
   "created_at": "<NOW_ISO>",
@@ -60,15 +77,19 @@ Write a minimal valid state.json. Use the current ISO-8601 UTC timestamp for `cr
 }
 ```
 
-### 3. `.claude/modernize/notes/.gitkeep`
+### 3. `.claude/modernize/units/.gitkeep`
+
+Empty file so the per-unit directory is tracked in git even before any units are seeded.
+
+### 4. `.claude/modernize/notes/.gitkeep`
 
 Empty file so the directory is tracked in git.
 
-### 4. `.claude/modernize/verify.config.json`
+### 5. `.claude/modernize/verify.config.json`
 
 Copy `${CLAUDE_PLUGIN_ROOT}/templates/verify.config.json` verbatim. Tell the user they should edit it after running `/web-modernize:scaffold` so it points at their actual target directories.
 
-### 5. `.gitignore` patch
+### 6. `.gitignore` patch
 
 Open the team's existing `.gitignore` (create it if absent). Append the following block at the end, but **only if the block is not already present** (check by searching for the marker line):
 
@@ -78,61 +99,36 @@ CLAUDE.local.md
 .claude/settings.local.json
 ```
 
-## Schema migration (v1 → v2)
-
-If the existing `.claude/modernize/state.json` has `schema_version: 1`, upgrade it to v2 before doing anything else. The upgrade is lossless and idempotent — re-running on an already-v2 file is a no-op.
-
-Read the existing state.json, then write back the same object with these mutations:
-
-1. Set `schema_version: 2`.
-2. Set `plugin_version: "0.2.0"`.
-3. Set `updated_at: "<NOW_ISO>"`.
-4. For **every** entry in `units[]`, add the following keys if they are not already present (do not overwrite if present):
-   - `retry_count: 0`
-   - `last_retry_prompt: null`
-   - `rollback_info: null`
-   - If `failure` is set on the unit but `failure.diagnostic_history` is missing, add `failure.diagnostic_history: []`. Do not back-fill the array from the existing `failure.diagnostic` — leave that for the first `/retry` to capture.
-
-No other fields move. Do not validate the rest of the file against the schema; preserve unknown keys verbatim.
-
-After upgrading, print:
-
-```
-✓ Upgraded .claude/modernize/state.json from schema v1 to v2.
-  Added per-unit fields: retry_count, last_retry_prompt, rollback_info.
-  No existing data was modified.
-```
-
-If the file is already v2, skip silently — do not print the banner.
-
 ## After writing
 
 Print this exact summary to the user, substituting actual file paths:
 
 ```
-✓ web-modernize initialized
+✓ web-modernize initialized (schema v3)
 
 Created:
   - migration.md                          ← target choices go here AFTER /analyze
   - .claude/modernize/state.json
+  - .claude/modernize/units/              (per-unit state will land here)
+  - .claude/modernize/notes/              (per-unit design notes)
   - .claude/modernize/verify.config.json
-  - .claude/modernize/notes/
 
 Next steps:
   1. Run /web-modernize:analyze first — it auto-fills migration.md §2 (source stack).
   2. Open migration.md and fill in sections 3, 6, 7, 10 (the REQUIRED target choices)
      on top of the populated §2.
-  3. Run /web-modernize:plan to generate the migration plan.
+  3. Run /web-modernize:plan to generate the migration plan and seed units.
 ```
 
 ## Failure modes
 
 - Working directory not a git repo → instruct user to `git init`, then re-run.
 - `migration.md` already exists → ask before touching.
+- `state.json` exists with `schema_version != 3` → refuse with the message above; do not migrate.
 - Cannot write to `.claude/modernize/` (permissions) → report exact error.
 - Skill must be **idempotent** if re-run after partial creation: detect what already exists and only create what is missing.
 
 ## State transition
 
-- Pre: any (typically nothing, but tolerates re-runs).
+- Pre: any (typically nothing, but tolerates re-runs against a v3 state).
 - Post: `state.json.status = "initialized"` (only if state.json was newly created; do not modify an existing state.json's status).

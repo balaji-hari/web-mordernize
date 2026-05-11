@@ -16,33 +16,36 @@ The actual per-unit translation work is shared with `/web-modernize:migrate` and
 
 ## Preflight
 
-1. Read `state.json`. Require `status` to be one of `auth_done`, `in_progress`, or `complete`.
+1. Read `.claude/modernize/state.json`. Require `status` to be one of `auth_done`, `in_progress`, or `complete`.
    - If earlier, redirect: "Run /web-modernize:<missing-skill> first."
    - If `complete`, tell user the migration is done; suggest `/web-modernize:status` for the recap.
 2. Read `migration.md` (for target stack + constraints) and `.claude/modernize/plan.md` (for context).
 
 ## Resume an in-flight unit (if any)
 
-Scan `state.json.units[]` for any unit with `status: "in_progress"`. If one exists, **do not run unit selection** — load `${CLAUDE_PLUGIN_ROOT}/agents/unit-migrator.md` and follow it with:
+Iterate `state.unit_ids[]` and read each `.claude/modernize/units/<id>.json`. Find any unit with `status: "in_progress"`. If one exists, **do not run unit selection** — load `${CLAUDE_PLUGIN_ROOT}/agents/unit-migrator.md` and follow it with:
 
 - `mode = "next"`
-- `unit = <the in-flight unit>`
+- `unit = <the in-flight unit object you just read>`
 - `retry_prompt = null`
+- `force_deps = false`
 
 The agent procedure handles Cases A/B/C (resume own work, warn about another developer, reclaim stale). After the agent returns, jump to "Closing message" below.
 
 ## Select next unit
 
-Filter `state.json.units[]` to candidates:
+Iterate `state.unit_ids[]` in order, reading each `units/<id>.json`. A unit is a candidate if:
 
-- `status == "pending"`
-- All `depends_on` ids exist and have `status` in `{"migrated", "verified"}` (the synthetic `__auth__` is satisfied once `state.status == "auth_done"`).
+- `unit.status == "pending"`, AND
+- every id in `unit.depends_on[]` either:
+  - is `__auth__` and the synthetic auth unit's per-unit file shows status `migrated`/`verified` (or top-level `state.status >= "auth_done"` as a fast-path check), OR
+  - corresponds to another unit with status `migrated` or `verified`.
 
-If candidates is empty:
-- If any units are still `in_progress` or `pending` but blocked: print blocked-chain analysis (which dep is missing for each).
-- If all units are `migrated` or `verified` or `skipped`: set `state.status = "complete"` and print congratulations.
+If no candidate has all dependencies satisfied:
+- If any unit is still `pending` or `in_progress` but blocked: print blocked-chain analysis showing for each blocked unit which dep id is missing and that dep's current status.
+- If every unit is `migrated`, `verified`, or `skipped`: set top-level `state.status = "complete"`, save `state.json`, and print congratulations.
 
-Sort candidates by `(phase asc, list_index asc)`. Pick the first.
+Pick the **first** candidate in `unit_ids` order (which already reflects `phase asc, list_index asc` from `/plan`).
 
 ## Run the shared migration procedure
 
@@ -51,8 +54,9 @@ Load `${CLAUDE_PLUGIN_ROOT}/agents/unit-migrator.md` and follow it with:
 - `mode = "next"`
 - `unit = <the candidate you just picked>`
 - `retry_prompt = null`
+- `force_deps = false`
 
-The agent handles unit acquisition (status + in_flight write), the translation body, stop conditions, and finalization. When it returns, the unit is either `migrated` or `failed`.
+The agent handles unit acquisition (status + in_flight write to `units/<id>.json`), the translation body, stop conditions, and finalization. When it returns, the unit is either `migrated` or `failed`.
 
 ## Closing message
 
@@ -63,6 +67,7 @@ On success (`unit.status == "migrated"`):
   Source: <source_paths>
   Target: <target_paths>
   Notes:  .claude/modernize/notes/<unit.id>.md
+  Unit file: .claude/modernize/units/<unit.id>.json
 
 Suggested next steps:
   1. Review the diff: git diff --stat
@@ -76,5 +81,5 @@ On failure (`unit.status == "failed"`): the agent already printed the diagnostic
 ## State transitions
 
 - Pre: `state.status` ∈ {`auth_done`, `in_progress`}
-- Post: `state.status` = `in_progress` (or `complete` if this was the last unit)
-- Unit: `pending` → `in_progress` → `migrated` (or `failed`)
+- Post: top-level `state.status` = `in_progress` (or `complete` if this was the last unit)
+- Per-unit file: `pending` → `in_progress` → `migrated` (or `failed`)

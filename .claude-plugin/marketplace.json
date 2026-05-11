@@ -8,8 +8,8 @@
     {
       "name": "web-modernize",
       "source": "./",
-      "description": "Guides teams through migrating legacy web applications to modern stacks. Provides /web-modernize:analyze, plan, scaffold, next, verify, rollback, retry, sync, report, and other slash commands.",
-      "version": "0.2.0"
+      "description": "Guides teams through migrating legacy web applications to modern stacks. Provides /web-modernize:analyze, plan, scaffold, next, verify, rollback, retry, sync, report, and other slash commands. Per-unit state file split for multi-developer concurrency.",
+      "version": "0.3.0"
     }
   ]
 }

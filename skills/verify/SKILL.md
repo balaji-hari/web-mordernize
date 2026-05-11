@@ -1,9 +1,10 @@
 ---
 description: >
   Runs target-stack lint, typecheck, and tests for a migrated unit (or for the
-  whole project) and records the evidence in state.json + notes/<unit-id>.md.
-  Reads verification commands from .claude/modernize/verify.config.json so the
-  team can tune to their stack. Transitions units from migrated → verified
+  whole project) and records the evidence in the per-unit file
+  (.claude/modernize/units/<id>.json) plus notes/<unit-id>.md. Reads
+  verification commands from .claude/modernize/verify.config.json so the team
+  can tune to their stack. Transitions units from migrated → verified
   (when everything passes) or back to migrated with annotations if failures.
 disable-model-invocation: false
 ---
@@ -14,17 +15,17 @@ You are the **verify** skill. Your job is to prove (or disprove) that a migrated
 
 ## Preflight
 
-1. Read `state.json`. Require at least `status == "scaffolded"` (i.e., target project exists).
+1. Read `.claude/modernize/state.json`. Require at least `status == "scaffolded"` (i.e., target project exists).
 2. Read `.claude/modernize/verify.config.json`. Required.
 3. Parse `$ARGUMENTS`:
-   - Empty → verify ALL units currently in status `migrated`.
-   - `<unit-id>` → verify just that unit.
+   - Empty → verify ALL units currently in status `migrated`. Iterate `state.unit_ids[]`, read each `units/<id>.json`, filter to `status == "migrated"`.
+   - `<unit-id>` → read `.claude/modernize/units/<unit-id>.json`. If the file does not exist, list valid ids (`ls .claude/modernize/units/*.json`) and stop.
 
 ## Per-unit verification
 
 For each unit to verify:
 
-1. **Look up the unit**. Must exist and be in status `migrated` (or `verified` for re-runs). If in some other status, print:
+1. **Check status**. Unit must be in status `migrated` (or `verified` for re-runs). If in some other status, print:
    - `pending` / `in_progress` → "Cannot verify — unit has not been migrated yet."
    - `failed` → "Cannot verify — unit migration failed. Fix and re-migrate first."
    - `skipped` / `blocked` → "Cannot verify — unit is <status>."
@@ -36,7 +37,7 @@ For each unit to verify:
 
    Substitute placeholders:
    - `${target_path}` = unit's target_paths joined by space
-   - `${ui_root}`, `${api_root}` = paths from state.json.scaffold
+   - `${ui_root}`, `${api_root}` = paths from `state.json.scaffold`
 
 3. **Run the commands** in order: lint → typecheck → tests. For each:
    - Run via Bash with appropriate working directory.
@@ -57,11 +58,11 @@ For each unit to verify:
 
    Use `n/a` if a command was not defined for this subsystem.
 
-5. **Decide unit status transition**:
-   - All `tests_must_pass`, `lint_must_pass`, `typecheck_must_pass` thresholds met → set unit `status = "verified"`.
+5. **Decide unit status transition** and write `.claude/modernize/units/<unit-id>.json`:
+   - All `tests_must_pass`, `lint_must_pass`, `typecheck_must_pass` thresholds met → set `status = "verified"`.
    - Otherwise → keep `status = "migrated"` but record the failure detail in `verification.failures[]` and in the unit's `notes_path`.
 
-6. **Append history**:
+6. **Append history** to the per-unit file:
    ```json
    { "at": "<now>", "by": "<user>", "from": "migrated", "to": "verified" (or unchanged), "session_id": "..." }
    ```
@@ -73,16 +74,16 @@ For each unit to verify:
 If `verify.config.json` has `global_post_checks[]`, evaluate each:
 - `run_when: "every_unit"` → run after every successful unit verification.
 - `run_when: "every_5_units"` → run only if `(verified count) % 5 == 0`.
-- `run_when: "before_complete"` → run only when this verification would tip `state.status` to `complete`.
+- `run_when: "before_complete"` → run only when this verification would tip top-level `state.status` to `complete`.
 
 Common post-check: a full `npm run build` to catch cross-unit type errors that per-unit lint missed.
 
 ## Project-wide complete check
 
-If, after this run, every non-skipped unit has `status == "verified"`:
+After this run, iterate `state.unit_ids[]`, read each `units/<id>.json`, and check if every non-skipped unit has `status == "verified"`. If yes:
 
 - Iterate `migration.md §10` acceptance criteria. For each unchecked `- [ ]` item, ask the user "Is this met? (yes/no/n/a)" and if yes, change to `- [x]` in migration.md.
-- Once all required acceptance criteria are checked: set `state.status = "complete"` and print a closing message.
+- Once all required acceptance criteria are checked: set `state.json.status = "complete"`, save `state.json`, and print a closing message.
 
 ## After writing
 
@@ -111,5 +112,5 @@ Next: address failures, then re-run /web-modernize:verify <unit.id>.
 ## State transitions
 
 - Pre: `state.status` ≥ `scaffolded`
-- Post: unaffected at top level (unless this was the last verification → `complete`)
-- Unit: `migrated` → `verified` (on pass) or unchanged
+- Post: top-level unaffected unless this was the last verification → `complete`
+- Per-unit file: `migrated` → `verified` (on pass) or unchanged

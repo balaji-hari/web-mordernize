@@ -18,27 +18,33 @@ The plugin's runtime artifacts split into two locations: this repo (plugin sourc
 .claude-plugin/
   plugin.json              # manifest — name, version, author
   marketplace.json         # self-referencing marketplace (source: "./")
-skills/<name>/SKILL.md     # one per slash command (10 total)
+skills/<name>/SKILL.md     # one per slash command (14 total — see Slash command reference in README)
 templates/                 # files copied into the user's repo by /init and /plan
-agents/legacy-analyzer.md  # read-only subagent for source-stack detection
+  state.schema.json        # top-level state schema (schema_version 3)
+  unit.schema.json         # per-unit object schema
+agents/
+  legacy-analyzer.md       # read-only subagent for source-stack detection
+  unit-migrator.md         # shared per-unit migration loop used by /next, /migrate, /retry
 hooks/
   hooks.json               # PostToolUse heartbeat
-  heartbeat.mjs            # Node script that bumps state.json.in_flight.last_heartbeat
+  heartbeat.mjs            # Node script that bumps last_heartbeat in each in-flight unit file
 ```
 
 ### User's repo (created/maintained by the plugin)
 
 ```
-migration.md                            # 11-section configuration the team fills in
+migration.md                            # 11+1 section configuration the team fills in
 .claude/modernize/
-  state.json                            # git-tracked progress ledger; conforms to templates/state.schema.json
+  state.json                            # top-level workflow ledger; conforms to templates/state.schema.json
+  units/<unit-id>.json                  # per-unit state; one file per unit; conforms to templates/unit.schema.json
   plan.md                               # generated migration plan
   analysis.json                         # source-stack analysis from /analyze
   verify.config.json                    # verification commands per target stack
   notes/<unit-id>.md                    # per-unit design notes
+  reports/<date>-<format>               # generated stakeholder reports (from /report)
 ```
 
-`state.json` is the single source of truth for "where is this migration?" — every skill reads it on entry and updates it on exit.
+`state.json` holds top-level workflow state (status, stacks, scaffold, lock, ordered `unit_ids[]`). Per-unit state lives in its own file under `units/`. Every skill reads `state.json` and the relevant per-unit files on entry, and writes the per-unit file on per-unit mutations. Only top-level phase transitions (e.g., `auth_done → in_progress`, `→ complete`) and `/plan`'s ordering updates touch `state.json` itself.
 
 ### State machine
 
@@ -48,11 +54,15 @@ Top-level `state.json.status` transitions monotonically:
 uninitialized → initialized → analyzed → planned → scaffolded → auth_done → in_progress → complete
 ```
 
-Each skill enforces a precondition on this status and refuses (with a redirect to the correct skill) if it's wrong. The per-unit status (`pending → in_progress → migrated → verified`, plus `blocked` / `skipped` / `failed`) lives inside each `units[]` entry.
+Each skill enforces a precondition on this status and refuses (with a redirect to the correct skill) if it's wrong. The per-unit status (`pending → in_progress → migrated → verified`, plus `blocked` / `skipped` / `failed`) lives in each `units/<unit-id>.json` file.
 
 ### Multi-developer model
 
-State is shared via git, not a server. The plugin adds an advisory `lock` block for full-repo operations (`/plan`, `/scaffold`) and an `in_flight` block per unit with a heartbeat. The real concurrency arbiter is a git merge conflict on `state.json`; the plugin's locks just make those conflicts loud and predictable.
+State is shared via git, not a server. The architecture targets teams that **coordinate offline** (standup, Slack) on unit assignments — the plugin does not arbitrate acquisition races between concurrent `/next` runs.
+
+The per-unit file split is the load-bearing concurrency feature: Alice editing `units/LoginPage.json` and Bob editing `units/PaymentProcessor.json` touch completely different files, so git produces no conflict. Top-level `state.json` is mutated only on phase transitions, scaffold subsystem updates, and `/plan` re-runs — `/web-modernize:sync` reconciles those cleanly when collisions do happen.
+
+Per-unit `in_flight` blocks (with a heartbeat bumped by `hooks/heartbeat.mjs` on every Write) signal who is working on what. An advisory `lock` on `state.json` exists for `/plan` and `/scaffold` (10-min TTL).
 
 ## Editing skills
 
@@ -65,23 +75,23 @@ Each `skills/<name>/SKILL.md` is a prompt that gets loaded into Claude's context
 
 Skills cannot directly invoke other skills. They can only instruct Claude (via prose) to suggest the next slash command to the user.
 
-`/web-modernize:migrate` defers its main algorithm by reference to `/web-modernize:next` — don't duplicate the migration loop, edit it in one place.
+`/web-modernize:next`, `/web-modernize:migrate`, and `/web-modernize:retry` all delegate the actual per-unit translation work to `agents/unit-migrator.md`. Don't duplicate the migration loop — edit it in `agents/unit-migrator.md`. The skills handle only unit selection, dependency gating, and the closing message; the agent handles in-flight collision resolution (Case A/B/C), unit acquisition, the translation body, and finalization.
 
 ## Editing templates
 
 `templates/migration.md` is the team-facing config. Sections marked **REQUIRED** are validated by `/plan` — if you add a new required section, update the validation list in `skills/plan/SKILL.md`.
 
-`templates/state.schema.json` is a JSON Schema (draft 2020-12). Bump `schema_version` (top-level `const`) when you make breaking changes, and add migration logic to `/init` to move old state forward.
+`templates/state.schema.json` and `templates/unit.schema.json` are JSON Schemas (draft 2020-12). Bump `schema_version` (top-level `const` in state.schema.json) when you make breaking changes. **Do NOT add migration logic.** The plugin has no production users yet; schema bumps require a fresh `/init`. `/init` should refuse to operate on a state file with a mismatched `schema_version` and tell the user to delete `.claude/modernize/` and re-init.
 
-`templates/plan.md` uses `{{PLACEHOLDER}}` markers that `/plan` substitutes. New placeholders need a corresponding substitution rule in the skill.
+`templates/plan.md` and `templates/report.md` use `{{PLACEHOLDER}}` markers that the corresponding skill substitutes. New placeholders need a corresponding substitution rule in the skill.
 
 ## Versioning policy
 
 - `.claude-plugin/plugin.json` has an **explicit** `version`. Without bumping this, users will NOT pull updates (Claude Code uses the manifest version for change detection).
 - Patch (0.x.y → 0.x.y+1): bug fix, doc change, hook script tweak.
-- Minor (0.x.y → 0.x+1.0): new skill, new framework support, additive schema change.
-- Major (0.x.y → 1.0.0): breaking state schema change, renamed/removed skill, renamed slash command.
-- Mirror version bumps in `CHANGELOG.md`.
+- Minor (0.x.y → 0.x+1.0): new skill, new framework support, additive schema change (rare, since we don't ship migrations).
+- Major (0.x.y → 1.0.0): breaking state schema change (per-unit-file layout change, removed fields), renamed/removed skill, renamed slash command. Note: schema bumps require users to delete `.claude/modernize/` and re-init; this is acceptable while the plugin has no production users.
+- Mirror version bumps in `.claude-plugin/marketplace.json` and `CHANGELOG.md`. Tag the release as `vX.Y.Z`.
 
 ## Local plugin development
 

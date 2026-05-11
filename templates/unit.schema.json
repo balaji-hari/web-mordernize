@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/balaji-hari/web-mordernize/templates/unit.schema.json",
+  "title": "web-modernize migration unit",
+  "description": "Schema for .claude/modernize/units/<unit-id>.json — one file per migration unit. Lifted from v2's state.schema.json $defs/unit.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "kind", "source_paths", "depends_on", "status"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Stable identifier (e.g., LoginController, OrderListPage). Used in /web-modernize:migrate <id>, the file name, and notes_path."
+    },
+    "kind": {
+      "enum": ["page", "controller", "component", "module", "service", "endpoint", "shared"]
+    },
+    "source_paths": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string" }
+    },
+    "target_paths": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "depends_on": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Other unit ids (or __auth__) that must be migrated first."
+    },
+    "phase": { "type": "integer", "minimum": 1 },
+    "effort": { "enum": ["S", "M", "L", "XL"] },
+    "status": {
+      "enum": ["pending", "in_progress", "migrated", "verified", "blocked", "skipped", "failed"]
+    },
+    "history": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/history_entry" }
+    },
+    "in_flight": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/in_flight" }
+      ]
+    },
+    "notes_path": { "type": "string" },
+    "verification": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "lint": { "type": "string" },
+        "typecheck": { "type": "string" },
+        "tests": { "type": "string" },
+        "verified_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "failure": {
+      "type": "object",
+      "properties": {
+        "diagnostic": { "type": "string" },
+        "branch": { "type": "string" },
+        "diagnostic_history": {
+          "type": "array",
+          "description": "Append-only log of every failure diagnostic this unit has seen. Each /retry pushes the current diagnostic here before overwriting failure.diagnostic with the new one.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["at", "diagnostic"],
+            "properties": {
+              "at": { "type": "string", "format": "date-time" },
+              "diagnostic": { "type": "string" },
+              "retry_count": { "type": "integer", "minimum": 0 }
+            }
+          }
+        }
+      }
+    },
+    "retry_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of times this unit has been retried after a previous failure. Bumped by /web-modernize:retry."
+    },
+    "last_retry_prompt": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "string" }
+      ],
+      "description": "The most recent --with-prompt override passed to /web-modernize:retry, or null if never retried with a prompt."
+    },
+    "rollback_info": {
+      "description": "Populated by /web-modernize:rollback when a unit is rolled back. Null if never rolled back.",
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["at", "by"],
+          "properties": {
+            "at": { "type": "string", "format": "date-time" },
+            "by": { "type": "string" },
+            "branch": { "type": "string", "description": "The feature branch that was reset/removed, if any." },
+            "restored_paths": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Target files that were reverted (deleted, or restored to pre-migration state)."
+            },
+            "reason": { "type": "string" }
+          }
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "history_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["at", "by", "from", "to"],
+      "properties": {
+        "at": { "type": "string", "format": "date-time" },
+        "by": { "type": "string", "description": "User identity (email when available)." },
+        "from": { "type": "string" },
+        "to": { "type": "string" },
+        "session_id": { "type": "string" }
+      }
+    },
+    "in_flight": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["started_at", "by", "last_heartbeat"],
+      "properties": {
+        "started_at": { "type": "string", "format": "date-time" },
+        "by": { "type": "string" },
+        "host": { "type": "string" },
+        "session_id": { "type": "string" },
+        "last_heartbeat": { "type": "string", "format": "date-time" },
+        "current_step": { "type": "string" },
+        "files_touched_so_far": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

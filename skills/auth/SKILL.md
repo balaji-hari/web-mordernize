@@ -3,8 +3,10 @@ description: >
   Migrates the application's authentication as a distinct first slice, because
   almost every feature unit depends on knowing who the user is. Reads the
   current and target auth providers from migration.md §7, wires up login/logout/
-  session-refresh in the target stack, and records the design in notes/auth.md.
-  Runs after /web-modernize:scaffold and before any /web-modernize:next.
+  session-refresh in the target stack, and records the design in
+  notes/__auth__.md. Creates or updates the synthetic __auth__ unit file at
+  .claude/modernize/units/__auth__.json. Runs after /web-modernize:scaffold
+  and before any /web-modernize:next.
 disable-model-invocation: false
 ---
 
@@ -14,7 +16,7 @@ You are the **auth** skill. Your job is to migrate authentication end-to-end so 
 
 ## Preflight
 
-1. Read `state.json`. Require `status == "scaffolded"`.
+1. Read `.claude/modernize/state.json`. Require `status == "scaffolded"`.
    - If earlier, redirect to the missing skill.
    - If later (`auth_done`, `in_progress`), tell the user auth has already been migrated and confirm before re-running.
 2. Read `migration.md §7` — current and target auth provider, identity store, session model, claims/roles.
@@ -23,7 +25,7 @@ You are the **auth** skill. Your job is to migrate authentication end-to-end so 
 
 ## Treat auth as a special unit
 
-Create or update the synthetic unit with id `__auth__` in `state.json.units[]`:
+Create or update `.claude/modernize/units/__auth__.json` with the synthetic auth unit:
 
 ```json
 {
@@ -40,9 +42,14 @@ Create or update the synthetic unit with id `__auth__` in `state.json.units[]`:
     "started_at": "<now>", "by": "<user>", "host": "<hostname>", "session_id": "...",
     "last_heartbeat": "<now>", "current_step": "discovering auth surface", "files_touched_so_far": []
   },
-  "notes_path": ".claude/modernize/notes/__auth__.md"
+  "notes_path": ".claude/modernize/notes/__auth__.md",
+  "retry_count": 0,
+  "last_retry_prompt": null,
+  "rollback_info": null
 }
 ```
+
+Also ensure `__auth__` is at the start of `state.json.unit_ids[]` (insert if missing). Save state.json after the insert.
 
 ## Discovery
 
@@ -106,22 +113,24 @@ Run the relevant pieces of `verify.config.json` against the auth files:
 - Typecheck passes.
 - A smoke test exists at minimum (e.g., "renders login form").
 
-If anything fails, set unit status to `failed` with `failure.diagnostic`, leave the in-flight branch in place, and stop. Do not advance `state.status`.
+If anything fails, write `.claude/modernize/units/__auth__.json` with `status = "failed"` and `failure.diagnostic` set; leave the in-flight branch in place; stop. Do not advance `state.status`.
 
 ## Commit suggestion
 
 ```
 Suggested commit:
-  git add apps/web-new/src/features/auth/ apps/api-new/src/auth/ .claude/modernize/notes/__auth__.md
+  git add apps/web-new/src/features/auth/ apps/api-new/src/auth/ .claude/modernize/notes/__auth__.md .claude/modernize/units/__auth__.json .claude/modernize/state.json
   git commit -m "auth: migrate authentication via web-modernize"
 ```
 
 ## Finalize
 
-Update `state.json`:
-- Set `__auth__.status = "migrated"`.
+Update `.claude/modernize/units/__auth__.json`:
+- Set `status = "migrated"`.
 - Append history entry.
-- Clear `__auth__.in_flight = null`.
+- Clear `in_flight = null`.
+
+Update `.claude/modernize/state.json`:
 - Set top-level `state.status = "auth_done"`.
 - `updated_at = "<now>"`.
 
@@ -134,6 +143,7 @@ Print:
   Identity store: <where>
   Sessions: <model>
   Files written: <count> (see notes/__auth__.md)
+  Unit file: .claude/modernize/units/__auth__.json
 
 Next: /web-modernize:next  (begin migrating feature units one at a time)
 ```
@@ -141,4 +151,4 @@ Next: /web-modernize:next  (begin migrating feature units one at a time)
 ## State transition
 
 - Pre: `state.status` == `scaffolded`
-- Post: `state.status` = `auth_done`; unit `__auth__.status` = `migrated`
+- Post: `state.status` = `auth_done`; `units/__auth__.json.status` = `migrated`

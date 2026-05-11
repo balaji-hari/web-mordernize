@@ -4,6 +4,7 @@ description: >
   to run at any time. Shows current workflow phase, counts of pending/in-progress/
   migrated/verified units, what is currently in flight (and by whom), the next
   unit /web-modernize:next would pick, and any blockers or stale sessions.
+  Iterates per-unit files under .claude/modernize/units/.
 disable-model-invocation: false
 ---
 
@@ -14,8 +15,9 @@ You are the **status** skill. You are **read-only**. Do not modify any files.
 ## What to read
 
 1. `.claude/modernize/state.json` — required. If it does not exist, tell the user "No web-modernize state found. Run `/web-modernize:init` to start." and stop.
-2. `.claude/modernize/plan.md` — optional. If it exists, you can reference phase names.
-3. The current ISO-8601 UTC time.
+2. Every `.claude/modernize/units/*.json` in the order given by `state.unit_ids[]`. If `unit_ids` is empty, skip the unit-related sections.
+3. `.claude/modernize/plan.md` — optional. If it exists, you can reference phase names.
+4. The current ISO-8601 UTC time.
 
 ## What to print
 
@@ -27,6 +29,7 @@ Format the output as a dashboard with these sections, in this order. Use plain A
 web-modernize status — <PROJECT_NAME from migration.md §1, or repo dir name>
 state.json: <relative path>     schema_version: <n>     plugin_version: <v>
 workflow phase: <state.status>     updated_at: <state.updated_at> (<relative time>)
+unit files: .claude/modernize/units/  (<count of unit_ids> tracked)
 ```
 
 ### 2. Stack
@@ -50,7 +53,7 @@ If `scaffold` is null, print `scaffold: not run yet — run /web-modernize:scaff
 
 ### 4. Unit counts
 
-Count units by status:
+Aggregate across every `units/*.json` you read. Count by status:
 
 ```
 units:  <total> total   <pending> pending   <in_progress> in-flight   <migrated> migrated   <verified> verified   <blocked> blocked   <skipped> skipped   <failed> failed
@@ -69,14 +72,13 @@ For every unit with `status: "in_progress"`, print a block:
     files touched: <count> (<first 3>...)
 ```
 
-**Stale detection**: if `last_heartbeat` is more than 15 minutes ago, append on a new line `    ⚠ POSSIBLY STALLED — heartbeat is <N> min old. /web-modernize:next will offer to take over.` (Use the word STALLED in plain text — no emoji is fine; the ⚠ here is just an example; if your environment does not render it, use `WARNING:`.)
+**Stale detection**: if `last_heartbeat` is more than 15 minutes ago, append on a new line `    WARNING: POSSIBLY STALLED — heartbeat is <N> min old. /web-modernize:next will offer to take over.`
 
 ### 6. Next up
 
-If `state.status` is `in_progress` (or later) and there are pending units, determine the next unit `/web-modernize:next` would pick:
+If `state.status` is `auth_done` or `in_progress` and there are pending units, determine the next unit `/web-modernize:next` would pick by iterating `state.unit_ids` in order and reading each `units/<id>.json`:
 
-- Filter `units` to those with `status: "pending"` AND all `depends_on` already in `{"migrated", "verified"}`.
-- Sort by `phase` asc, then list order.
+- Filter to those with `status: "pending"` AND all `depends_on` ids satisfied (other units with status `migrated`/`verified`, plus `__auth__` if `state.status >= auth_done`).
 - Take the first.
 
 Print:
@@ -132,7 +134,7 @@ Otherwise omit.
 
 ### 9. Recent activity (last 5)
 
-Across all units, gather the last 5 `history[]` entries by timestamp and print them most recent first:
+Across every per-unit file you read, gather all `history[]` entries (carry the unit id alongside each entry) and print the 5 most recent by timestamp:
 
 ```
 recent activity:

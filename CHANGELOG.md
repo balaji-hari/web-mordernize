@@ -2,6 +2,33 @@
 
 All notable changes to the `web-modernize` plugin are documented here. Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] - 2026-05-12
+
+### Breaking changes
+- **`state.schema.json` bumped to v3.** Per-unit state moves out of `state.json.units[]` into one file per unit at `.claude/modernize/units/<unit-id>.json`. Top-level `state.json` now carries only workflow status, stacks, scaffold, lock, and an ordered `unit_ids` array.
+- **`/web-modernize:init` no longer migrates older state files.** No schema-migration scripts ship with the plugin (the v1→v2 migrator added in 0.2.0 has been removed). If `state.json` exists with `schema_version != 3`, `/init` refuses with a clear message and asks the user to delete `.claude/modernize/` and re-init.
+- **`/web-modernize:migrate <id>` now blocks on unmet dependencies by default.** Pass `--force` to restore the previous warn-and-stub behavior; the agent will stub missing dep imports with `// TODO: provided by <dep.id>` comments and record the override in `notes/<id>.md`.
+
+### Added
+- **`templates/unit.schema.json`** — per-unit object schema, referenced by every per-unit file under `.claude/modernize/units/`.
+- **`.claude/modernize/units/`** directory created by `/init`. Tracked in git via `.gitkeep`.
+
+### Changed
+- **Per-unit file layout for multi-developer concurrency.** Two developers working on different units now edit completely different files; git merges trivially with zero conflicts. The headline win for teams that coordinate offline (standup-style) and pick disjoint units.
+- **`/web-modernize:init`** — emits a schema v3 bootstrap state. Creates `.claude/modernize/units/` and `.claude/modernize/notes/` with `.gitkeep` files. Removes the v1→v2 schema migration block.
+- **`/web-modernize:plan`** — seeds units by writing one file per unit to `.claude/modernize/units/<id>.json`. Maintains `state.unit_ids` in plan order. The re-runnable history-preservation logic now reads/writes the per-unit file instead of an in-memory array.
+- **`/web-modernize:next`, `/migrate`, `/retry`, `/rollback`** — all read/write `.claude/modernize/units/<id>.json` instead of `state.units[]`. `/migrate` adds `--force` and blocks by default on unmet deps.
+- **`/web-modernize:verify`, `/status`, `/report`, `/auth`, `/abandon`** — refactored to iterate `units/*.json` or the per-unit file by id. `/auth` now writes the synthetic `__auth__` unit to `units/__auth__.json` and ensures it heads `state.unit_ids`. `/abandon --soft` clears every per-unit file and resets `unit_ids: []`; `--hard` deletes `.claude/modernize/` including `units/`; `--unit <id>` writes one per-unit file and prunes the dep from every other unit's `depends_on`.
+- **`/web-modernize:sync`** — per-file merge for `units/*.json` (Cases 1/2/3: only-on-remote → take, only-on-local → keep, both → field-level merge). Top-level `state.json` merge unchanged in spirit but updated for `unit_ids` and the schema v3 shape.
+- **`agents/unit-migrator.md`** — all unit mutations write `units/<id>.json`. Top-level `state.json` is touched only for the `auth_done → in_progress` transition. Accepts a `force_deps` flag from `/migrate --force` to enable the stub-with-TODO behavior on demand.
+- **`hooks/heartbeat.mjs`** — walks `.claude/modernize/units/*.json` instead of `state.json.units[]`. Heartbeat updates land in the per-unit file only; the hook no longer touches `state.json` at all, keeping the top-level file conflict-free across concurrent edits.
+
+### Removed
+- v1→v2 schema-migration block from `skills/init/SKILL.md` (added in 0.2.0). No migration scripts ship with the plugin going forward; schema bumps require a fresh `/init`.
+
+### Versioning
+- `state.schema.json` `schema_version` bumped to `3`. No automated migration from v1 or v2. To upgrade an existing repo, delete `.claude/modernize/` and re-run `/web-modernize:init` followed by `/analyze` and `/plan`. Notes under `.claude/modernize/notes/` are safe to copy back after re-init.
+
 ## [0.2.0] - 2026-05-11
 
 ### Added

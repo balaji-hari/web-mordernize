@@ -1,16 +1,17 @@
 ---
 description: >
   Validates that migration.md has all required fields filled in, then generates
-  .claude/modernize/plan.md (human-readable migration plan) and seeds
-  state.json.units[] from analysis.json. Refuses to run if migration.md is
-  incomplete; produces a numbered list of missing fields with section anchors.
+  .claude/modernize/plan.md (human-readable migration plan), seeds one file per
+  unit under .claude/modernize/units/<id>.json from analysis.json, and records
+  the ordered id list in state.json.unit_ids. Refuses to run if migration.md
+  is incomplete; produces a numbered list of missing fields with section anchors.
   This is the gate between "exploration" and "execution".
 disable-model-invocation: false
 ---
 
 # `/web-modernize:plan`
 
-You are the **plan** skill. Your job is to convert the team's intent (in `migration.md`) plus the detected source stack (in `analysis.json`) into an executable, ordered migration plan.
+You are the **plan** skill. Your job is to convert the team's intent (in `migration.md`) plus the detected source stack (in `analysis.json`) into an executable, ordered migration plan with one file per unit.
 
 ## Preflight — validate migration.md
 
@@ -25,7 +26,7 @@ Read `migration.md` and `analysis.json`. Then check the following REQUIRED field
 | Target auth provider | §7 | any non-empty value |
 | Acceptance criteria | §10 | at least 3 unchecked checkbox items |
 
-If **any** required field is missing or still has the template placeholder, **STOP**. Do not write `plan.md` or modify state. Print a numbered failure report:
+If **any** required field is missing or still has the template placeholder, **STOP**. Do not write `plan.md`, do not touch state, do not write any per-unit files. Print a numbered failure report:
 
 ```
 ✗ Cannot generate plan — migration.md is incomplete.
@@ -55,7 +56,7 @@ Before writing, set `state.json.lock`:
 If a non-expired lock already exists held by **someone other than the current user**, warn:
 
 ```
-⚠ <lock.holder> started planning <N> minutes ago and the lock has not yet expired.
+WARNING: <lock.holder> started planning <N> minutes ago and the lock has not yet expired.
   Running /plan now risks conflicting changes when you both commit.
   Override anyway? (yes/no)
 ```
@@ -76,7 +77,7 @@ Based on `migration.md §6 Strategy`:
 
 ### Unit seeding (with history preservation on re-runs)
 
-The first time `/plan` runs, `state.units[]` is empty and this section just seeds it. On subsequent runs (when `state.status` is already `planned` or beyond), preserve the progress made on units that survive the regeneration.
+The first time `/plan` runs, `.claude/modernize/units/` is empty (apart from `.gitkeep`) and this section just creates new per-unit files. On subsequent runs (when `state.status` is already `planned` or beyond), preserve the progress made on units that survive the regeneration.
 
 #### Step 1 — Read the rename map from migration.md
 
@@ -87,11 +88,11 @@ Look for an optional `## 9b. Unit rename map` section in migration.md. Parse eac
 - AnotherOldId → AnotherNewId
 ```
 
-Build a dict `rename = { old_id: new_id, ... }`. Empty if the section is absent. Reverse-lookup is built on the fly. Splits, merges, and "removed" markers are NOT supported in this version — they can be performed by hand-editing state.json.
+Build a dict `rename = { old_id: new_id, ... }`. Empty if the section is absent. Reverse-lookup is built on the fly. Splits, merges, and "removed" markers are NOT supported in this version — perform those by hand-editing the affected per-unit files.
 
 #### Step 2 — Build the candidate list from analysis.json
 
-For each entry in `analysis.json.entry_points[]`, build a candidate unit:
+For each entry in `analysis.json.entry_points[]`, build a candidate unit (in-memory object):
 
 ```json
 {
@@ -118,39 +119,45 @@ Heuristics for `effort`:
 - 3-10 files OR >800 LOC OR touches data layer → L
 - Anything involving complex stateful UI (wizards, designers, real-time) → XL
 
-#### Step 3 — Merge with existing units
+#### Step 3 — Discover existing per-unit files
+
+List every file matching `.claude/modernize/units/*.json` (excluding `.gitkeep`). Read each into memory. This is the set of `existing_units` keyed by `unit.id` (which must match the file's basename).
+
+#### Step 4 — Merge each candidate with the existing per-unit file
 
 For each candidate `U_new`:
 
 1. Look up the matching old unit. Resolution order:
-   - If any entry in `rename` maps to `U_new.id` (reverse lookup): the predecessor's id is the key. Use that.
-   - Else: look for `U_old.id == U_new.id`.
-2. If a match exists in `state.units[]`:
-   - Copy these fields from `U_old` (preserve progress): `status`, `history`, `in_flight`, `notes_path`, `target_paths`, `verification`, `failure`, `retry_count`, `last_retry_prompt`, `rollback_info`.
+   - If any entry in `rename` maps to `U_new.id` (reverse lookup): the predecessor's id is the key. Use that to look up `existing_units[<old_id>]`.
+   - Else: look for `existing_units[U_new.id]`.
+2. If a match exists:
+   - Copy these fields from the existing unit (preserve progress): `status`, `history`, `in_flight`, `notes_path`, `target_paths`, `verification`, `failure`, `retry_count`, `last_retry_prompt`, `rollback_info`.
    - Append a history entry: `{ from: <status>, to: <status>, reason: "carried forward by /web-modernize:plan re-run", at: <now>, by: <user> }`. If renamed, the reason should be `"renamed from <old_id> by /plan"`.
    - Take these from `U_new` (refreshed by re-analyze): `source_paths`, `kind`, `depends_on`, `phase`, `effort`.
-   - Use `U_new.id` (the new id wins). Update `notes_path` to match the new id, and if a notes file at the old path exists, rename it on disk (`git mv .claude/modernize/notes/<old_id>.md .claude/modernize/notes/<new_id>.md`).
+   - Use `U_new.id` (the new id wins).
+   - Update `notes_path` to match the new id. If a notes file at the old path exists, rename it on disk (`git mv .claude/modernize/notes/<old_id>.md .claude/modernize/notes/<new_id>.md`).
+   - If renamed, delete the old per-unit file (`git rm .claude/modernize/units/<old_id>.json`) after writing the new one — otherwise both will sit on disk.
 3. If no match: use `U_new` verbatim as a brand-new unit.
 
-#### Step 4 — Handle dropped units
+#### Step 5 — Handle dropped units (existing files not in regenerated candidates)
 
-For each `U_old` in the existing `state.units[]` that does NOT appear in the regenerated candidates (after applying the rename map):
+For each entry in `existing_units` whose id (after applying the rename map) is not in the regenerated candidate list:
 
-- If `U_old.status == "pending"` and no rename was declared: silently drop. The plan no longer wants it.
-- If `U_old.status` is anything else (`in_progress`, `migrated`, `verified`, `blocked`, `skipped`, `failed`): **keep the unit** in `state.units[]` (do not drop) and print a warning:
+- If its `status == "pending"` and no rename was declared: silently delete the per-unit file (`git rm .claude/modernize/units/<id>.json`). The plan no longer wants it.
+- If its `status` is anything else (`in_progress`, `migrated`, `verified`, `blocked`, `skipped`, `failed`): **keep the per-unit file** and print a warning:
   ```
-  WARNING: existing unit `<U_old.id>` (status: <status>) is not in the regenerated plan.
+  WARNING: existing unit `<id>` (status: <status>) is not in the regenerated plan.
     Possible causes:
       - The analyzer didn't re-detect it (source files moved or deleted).
       - The unit was renamed but migration.md §9b is missing the mapping.
       - The unit is genuinely out of scope now (declare it in §9 and re-run).
-    Action taken: kept the unit as-is so progress is not lost. Add `<U_old.id> → <new_id>` to
-    §9b Unit rename map, OR add `<U_old.id>` to §9 Out of scope, then re-run /web-modernize:plan.
+    Action taken: kept .claude/modernize/units/<id>.json as-is so progress is not lost.
+    Add `<id> → <new_id>` to §9b Unit rename map, OR add `<id>` to §9 Out of scope, then re-run /web-modernize:plan.
   ```
 
 Collect all warnings and print them as a block after the success banner — do not stop the plan generation.
 
-#### Step 5 — Dependency repair after renames
+#### Step 6 — Dependency repair after renames
 
 For every unit's `depends_on[]`, if any entry references an old id that was renamed, replace it with the new id. If an entry references an id that no longer exists at all (and is not `__auth__`), drop it and warn:
 
@@ -180,7 +187,9 @@ Mirror `migration.md §9` list verbatim into the plan's "Out of scope" section.
 
 1. **`.claude/modernize/plan.md`** — fully rendered template. Overwrite any existing one (warn the user first if it exists and has been edited since last generation — detect by comparing the `Generated <timestamp>` header).
 
-2. **`.claude/modernize/state.json`** — update:
+2. **`.claude/modernize/units/<id>.json`** — one file per merged unit. Each file contains the full unit object (the shape defined in `templates/unit.schema.json`). Use 2-space indent + trailing newline for git-friendly diffs.
+
+3. **`.claude/modernize/state.json`** — update:
 
 ```json
 {
@@ -192,7 +201,7 @@ Mirror `migration.md §9` list verbatim into the plan's "Out of scope" section.
   },
   "strategy": "<from §6>",
   "scaffold": "<see rule below>",
-  "units": [ <merged units, see "Unit seeding" above> ],
+  "unit_ids": [ <ordered list of unit ids, including any kept-but-warned units from Step 5> ],
   "out_of_scope": [ <from §9> ],
   "lock": null,
   "updated_at": "<ISO now>"
@@ -206,6 +215,8 @@ Mirror `migration.md §9` list verbatim into the plan's "Out of scope" section.
 **`scaffold` rule** — only initialize if currently `null`:
 - If `state.scaffold` is `null` (first plan run): seed `{ ui: {status: "pending"}, api: {status: "pending|skipped"}, db: {status: "pending|skipped"} }`.
 - If `state.scaffold` is non-null (re-plan after scaffold ran): leave it alone. The scaffold has already been generated; changing its status here would lie about what's on disk.
+
+**`unit_ids` ordering** — must match the canonical plan order: sort by `(phase asc, list_index asc)` where `list_index` reflects the analyzer's discovery order. Re-plans preserve relative order for kept units and append any new ones at their natural phase position.
 
 Release the lock by setting `lock: null`.
 
@@ -222,6 +233,8 @@ Print:
   API units: <count or "skipped (target API = none)">
   DB work: <skipped|migration|replatform>
 
+  Per-unit files: .claude/modernize/units/*.json  (<count> files)
+
 Review .claude/modernize/plan.md. If the unit list looks wrong, edit migration.md and re-run /web-modernize:plan.
 
 Next: /web-modernize:scaffold
@@ -231,11 +244,11 @@ Next: /web-modernize:scaffold
 
 If `state.source_stack.confidence < 0.5`:
 
-- Generate `plan.md` with a header banner: "**⚠ Skeleton plan — source framework was not confidently detected. Treat unit list as a starting suggestion only.**"
+- Generate `plan.md` with a header banner: "**WARNING — Skeleton plan: source framework was not confidently detected. Treat unit list as a starting suggestion only.**"
 - Mark every unit with `effort: "L"` (conservative).
 - Add a prominent open question: "Confirm or correct the unit list before running /web-modernize:scaffold."
 
 ## State transition
 
-- Pre: `state.status` == `analyzed` (or `planned`, for re-runs)
-- Post: `state.status` = `planned`
+- Pre: `state.status` == `analyzed` (or anything later, for re-runs)
+- Post: `state.status` = `planned` (or unchanged if already further)

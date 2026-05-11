@@ -63,17 +63,18 @@ Concretely, after step 1 your repo will contain:
 your-repo/
 ├── migration.md                        ← team-editable configuration
 ├── .claude/modernize/
-│   ├── state.json                      ← progress ledger (git-tracked)
+│   ├── state.json                      ← top-level workflow ledger (git-tracked)
 │   ├── plan.md                         ← generated migration plan (git-tracked)
 │   ├── analysis.json                   ← source-stack analysis (git-tracked)
 │   ├── verify.config.json              ← verification commands per target stack
+│   ├── units/<unit-id>.json            ← one file per migration unit (git-tracked)
 │   └── notes/<unit-id>.md              ← per-unit design notes (git-tracked)
 ├── apps/web-new/                       ← target UI scaffold (created by /scaffold)
 ├── apps/api-new/                       ← target API scaffold (optional)
 └── (existing legacy source untouched)
 ```
 
-Commit the `.claude/modernize/` directory. That's how Alice on Monday and Bob on Wednesday see the same progress.
+Commit the `.claude/modernize/` directory. That's how Alice on Monday and Bob on Wednesday see the same progress. The per-unit split under `units/` is what makes concurrent work conflict-free — Alice editing `units/LoginPage.json` and Bob editing `units/PaymentProcessor.json` touch completely separate files; git has nothing to merge.
 
 ---
 
@@ -81,16 +82,16 @@ Commit the `.claude/modernize/` directory. That's how Alice on Monday and Bob on
 
 | Command | Purpose | When you run it |
 |---------|---------|-----------------|
-| `/web-modernize:init` | Bootstrap `migration.md` + `.claude/modernize/`; upgrade state.json schema if needed | Once per legacy repo |
+| `/web-modernize:init` | Bootstrap `migration.md` + `.claude/modernize/` (state.json, units/, notes/) | Once per legacy repo |
 | `/web-modernize:analyze` | Detect source stack and entry points; auto-fill `migration.md §2` | Immediately after `/init`, before filling out the rest of `migration.md` |
 | `/web-modernize:plan` | Validate `migration.md`, generate `plan.md`, seed unit list (re-runnable; carries history forward) | After `migration.md` is complete; re-run whenever the unit list changes |
 | `/web-modernize:scaffold` | Create target project skeleton (UI, optional API, optional DB) | Once, after `/plan` |
 | `/web-modernize:auth` | Migrate authentication as a distinct first slice | Once, after `/scaffold` |
 | `/web-modernize:next` | Pick next pending unit and migrate it | In a loop until migration is complete |
-| `/web-modernize:migrate <id>` | Migrate a specifically named unit | When you need to jump to a unit out of order (debug) |
+| `/web-modernize:migrate <id> [--force]` | Migrate a specifically named unit. Blocks on unmet deps unless `--force` | When you need to jump to a unit out of order (debug) |
 | `/web-modernize:retry <id> [--with-prompt="…"]` | Re-attempt a failed unit; preserves diagnostic history | When `/status` shows a unit in `failed` status |
 | `/web-modernize:rollback --unit <id>` | Revert one unit's target files via git; reset to `pending` | When a migrated/verified unit broke and you want a clean re-attempt |
-| `/web-modernize:sync` | Merge latest `state.json` from origin into local | After pulling, when other developers have been working in parallel |
+| `/web-modernize:sync` | Merge latest `state.json` and per-unit files from origin into local | After pulling, when other developers have been working in parallel |
 | `/web-modernize:verify [id]` | Lint + typecheck + test a migrated unit, record evidence | After each `/next`, or in batch |
 | `/web-modernize:report [--format=md\|json\|html]` | Generate stakeholder progress report (burndown, ETA, risks) | Sprint syncs, exec updates, weekly digests |
 | `/web-modernize:status` | Print progress dashboard | Anytime — read-only |
@@ -130,25 +131,40 @@ The plugin assumes git is the source of truth. There is no central server; colla
 | Artifact | Git tracked? | Why |
 |----------|--------------|-----|
 | `migration.md` | yes | Shared configuration |
-| `.claude/modernize/state.json` | yes | Shared progress ledger |
+| `.claude/modernize/state.json` | yes | Top-level workflow ledger (status, stacks, scaffold, lock, unit_ids) |
+| `.claude/modernize/units/<id>.json` | yes | Per-unit state — one file per unit |
 | `.claude/modernize/plan.md` | yes | Reviewable migration plan |
-| `.claude/modernize/notes/` | yes | Per-unit design records |
+| `.claude/modernize/notes/<id>.md` | yes | Per-unit design records |
 | `.claude/modernize/verify.config.json` | yes | Team's verification commands |
 | `CLAUDE.local.md` | **no** (gitignored) | Your personal scratch space |
 | `.claude/settings.local.json` | **no** (gitignored) | Personal Claude Code settings |
 
-### Concurrent work
+### Designed for offline coordination
 
-If Alice runs `/web-modernize:next` on Monday and Bob runs `/web-modernize:next` on Wednesday, both will:
-1. Re-read `state.json` (so Bob sees what Alice did)
-2. Pick the next eligible pending unit based on `depends_on`
-3. Record their work in `state.json.history[]` with their email
+The plugin assumes teams **decide unit assignments out-of-band** (standup, Slack, ticket assignment) — not inside the tool. Alice and Bob agree in their morning standup: "Alice takes `PaymentProcessor`, Bob takes `LoginPage`." Each then runs:
 
-If Alice and Bob are working **simultaneously** on different machines:
-- Both will pick what looks like the next unit. They may pick the same one if Alice hasn't pushed yet.
-- The plugin sets `state.json.units[i].in_flight` when work starts. The optional heartbeat hook keeps `last_heartbeat` fresh.
-- `/web-modernize:status` shows in-flight units, including who and where.
-- When the second person pushes, git produces a merge conflict on `state.json`. **This is intentional** — git is your source of truth for "who got there first." Resolve the conflict in favor of the most-advanced status (`verified > migrated > in_progress > pending`).
+```
+# Alice:
+/web-modernize:migrate PaymentProcessor
+
+# Bob (separately, on his machine):
+/web-modernize:migrate LoginPage
+```
+
+Behind the scenes, Alice's work touches only `.claude/modernize/units/PaymentProcessor.json` and her target files under `apps/web-new/src/features/payment/`. Bob's work touches only `units/LoginPage.json` and his target files under `apps/web-new/src/features/auth/`. **Their commits touch zero overlapping files.** When they push/pull, git merges trivially. No JSON conflict resolution, no `/sync` invocation needed.
+
+### When `/sync` is useful
+
+Per-unit files solve most of the multi-dev pain, but `state.json` itself (top-level: workflow status, scaffold subsystems, advisory lock, `unit_ids` array) is still shared. The few operations that mutate `state.json` are:
+- Phase transitions (`/auth` flipping `state.status` to `auth_done`, `/verify` flipping it to `complete`, etc.).
+- `/scaffold` updating per-subsystem `scaffold.{ui,api,db}` blocks.
+- `/plan` re-runs updating `unit_ids` and stack fields.
+
+If two devs trigger these simultaneously, `/web-modernize:sync` reconciles the top-level file deterministically (most-advanced status wins, freshest scaffold completion wins, etc.). It also handles the rare case where two devs edit the **same** unit's per-unit file.
+
+### What about acquisition races?
+
+If two devs both run `/web-modernize:next` at the same time without coordinating offline, they may both pick the same eligible unit before either pushes — and write to the same target files. The plugin does NOT auto-detect this. The offline coordination assumption is load-bearing: have your standup, agree on assignments, then run the commands. If your team genuinely cannot coordinate offline, file an issue describing the workflow and a `/claim`/auto-fetch follow-up can be added.
 
 ### Advisory locks
 
@@ -156,8 +172,8 @@ If Alice and Bob are working **simultaneously** on different machines:
 
 ### Recommended cadence
 
-- Commit `.claude/modernize/state.json` and `notes/` after every successful unit migration. Small commits make conflicts trivial.
-- Use a branch per unit if your team's policy allows: the `/next` skill creates `modernize/<unit-id>` branches automatically when git is clean.
+- Commit `.claude/modernize/state.json` plus the relevant `units/<id>.json` and `notes/<id>.md` after every successful unit migration. Small commits make any remaining conflicts trivial.
+- Use a branch per unit if your team's policy allows: the migration agent creates `modernize/<unit-id>` branches automatically when git is clean.
 - Run `/web-modernize:status` before starting work — it shows what's in-flight elsewhere.
 
 ---
@@ -207,20 +223,19 @@ It does NOT touch `migration.md` (so you can re-run `/web-modernize:init` and pi
 
 If you want to keep your design notes for postmortem, use `/web-modernize:abandon --soft` instead.
 
-### Two developers' `state.json` conflict on merge
+### Two developers' state files conflict on merge
 
-You have two options:
+With per-unit files (schema v3), this should be rare — concurrent work on different units touches different files. But for the cases where it does happen (both devs edited top-level `state.json`, or both edited the same unit's file):
 
-1. **Use `/web-modernize:sync`** (recommended). Run it after `git fetch` instead of `git pull`. It reads the remote state.json, applies these merge rules deterministically, and writes the result to your working tree for you to review and commit:
-   - For each unit, take the most-advanced `status` (`verified > migrated > in_progress > failed > blocked > skipped > pending`).
-   - For `history[]`, concatenate both sides, de-duplicate, and sort by `at`.
-   - For `in_flight`, take the fresher heartbeat (or drop both if both >15 min stale).
-   - For top-level `status`, take the higher of `complete > in_progress > auth_done > scaffolded > planned > analyzed > initialized > uninitialized`.
-   - For `failure.diagnostic_history[]`, concatenate both sides.
-   - For `retry_count`, take the max.
+1. **Use `/web-modernize:sync`** (recommended). Run it after `git fetch` instead of `git pull`. It reads the remote `state.json` plus every remote `units/<id>.json`, applies these merge rules deterministically, and writes the result to your working tree for you to review and commit:
+   - For each per-unit file: only-on-remote → take; only-on-local → keep; both → field-level merge (most-advanced status wins, freshest heartbeat wins, max `retry_count`, etc.).
+   - For top-level `status`: take the higher of `complete > in_progress > auth_done > scaffolded > planned > analyzed > initialized > uninitialized`.
+   - For `unit_ids`: union, preserving remote order with local-only ids appended.
+   - For `history[]` (per-unit): concatenate, de-duplicate, sort by `at`.
+   - For `failure.diagnostic_history[]`: concatenate.
    - Prints a plain-language reconciliation report — no JSON hand-merging.
 
-2. **Resolve manually with git**. Follow the same rules listed above, then commit and run `/web-modernize:status` to verify. Use this if `/sync` refuses (e.g., you have uncommitted state.json changes).
+2. **Resolve manually with git**. Follow the same rules listed above, then commit and run `/web-modernize:status` to verify. Use this if `/sync` refuses (e.g., you have uncommitted changes under `.claude/modernize/`).
 
 ### The heartbeat hook isn't firing
 
@@ -234,7 +249,7 @@ Check `node --version` resolves to ≥ 16. Without Node, the hook silently no-op
 A: Yes — first-class case. In `migration.md`, set §4 Target API framework to `none` and §5 Database to `unchanged`. The plan, scaffold, and unit list will skip API/DB work entirely.
 
 **Q: Can I edit `plan.md` directly?**
-A: You can, but `/web-modernize:plan` will overwrite it on next run. Better to edit `migration.md` (the source) and regenerate. If you need a per-unit override (e.g., move one unit to a different phase), edit `state.json` directly — the plugin honors manual edits.
+A: You can, but `/web-modernize:plan` will overwrite it on next run. Better to edit `migration.md` (the source) and regenerate. If you need a per-unit override (e.g., move one unit to a different phase, change its dependencies, or mark it skipped), edit the per-unit file at `.claude/modernize/units/<id>.json` directly — the plugin honors manual edits.
 
 **Q: What if my target framework isn't in the dropdown for §3?**
 A: Pick `custom` and tell `/web-modernize:scaffold` you'll scaffold manually. After scaffolding by hand, mark `state.scaffold.ui.status = "done"` and continue.
@@ -243,7 +258,7 @@ A: Pick `custom` and tell `/web-modernize:scaffold` you'll scaffold manually. Af
 A: Yes for the plugin itself — git host doesn't matter. The marketplace install is via GitHub today; teams behind GHE / GitLab need to clone this repo internally and use `/plugin marketplace add` with the local clone path.
 
 **Q: Can I run multiple migrations in the same repo?**
-A: Not concurrently — `state.json` is a single document. If you need to migrate two distinct legacy apps living in the same repo, treat each as a separate working directory (different `migration.md`, different `.claude/modernize/`).
+A: Not concurrently — `.claude/modernize/` is a single workspace. If you need to migrate two distinct legacy apps living in the same repo, treat each as a separate working directory (different `migration.md`, different `.claude/modernize/`).
 
 **Q: How do I add a new framework to detection?**
 A: Edit `agents/legacy-analyzer.md` — add a row to the framework-recognition table with signals. PR welcome.
@@ -264,7 +279,7 @@ The plugin uses explicit semver. The `version` field in `.claude-plugin/plugin.j
 - **Minor** (0.1.x → 0.2.0) — new skill, new framework support, additive schema change
 - **Major** (0.x.x → 1.0.0) — `state.schema.json` breaking change, removed/renamed skill, changed slash-command name
 
-`state.schema.json` is versioned independently via the `schema_version` integer. The plugin's `/init` handles migrations forward (currently `1 → 2`, adding `retry_count`, `last_retry_prompt`, `rollback_info`, and `failure.diagnostic_history[]` per unit — losslessly and idempotently).
+`state.schema.json` is versioned independently via the `schema_version` integer (currently `3`). **No migration scripts ship with the plugin** — a schema bump requires deleting `.claude/modernize/` and re-running `/web-modernize:init`. This is a deliberate choice while the plugin has no production users; carrying forward-migration code adds review burden and locks past decisions in. Per-unit notes at `.claude/modernize/notes/` are safe to copy back after re-init.
 
 ---
 

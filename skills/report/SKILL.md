@@ -2,17 +2,17 @@
 description: >
   Generates a stakeholder-friendly migration progress report — burndown,
   velocity, ETA, risk heat-map, ownership, recent activity, blockers, and
-  acceptance-criteria status. Read-only on state.json; writes the rendered
+  acceptance-criteria status. Read-only on state files; writes the rendered
   report to .claude/modernize/reports/<date>-<format>. Useful for sprint
   syncs, exec summaries, or pasting into Slack. Defaults to Markdown; can
   also emit JSON (for dashboards) or HTML (for sharing with non-technical
-  stakeholders).
+  stakeholders). Iterates per-unit files under .claude/modernize/units/.
 disable-model-invocation: false
 ---
 
 # `/web-modernize:report [--format=html|json|md] [--filter=phase|effort|owner]`
 
-You are the **report** skill. You produce a human-readable digest of the migration's current state. You are **read-only on state.json** — do not modify it.
+You are the **report** skill. You produce a human-readable digest of the migration's current state. You are **read-only on state files** — do not modify them.
 
 ## Preflight
 
@@ -22,15 +22,17 @@ You are the **report** skill. You produce a human-readable digest of the migrati
 
 3. Read `.claude/modernize/plan.md` if present (for phase names — fall back to `Phase <N>` if absent).
 
-4. Parse `$ARGUMENTS`:
+4. Iterate `state.unit_ids[]`. For each id, read `.claude/modernize/units/<id>.json`. Skip ids whose file is missing (and warn about them in the report footer). The result is the in-memory `units[]` array used by every metric below.
+
+5. Parse `$ARGUMENTS`:
    - `--format=md` (default) | `--format=json` | `--format=html`
    - `--filter=phase` | `--filter=effort` | `--filter=owner` — narrows the burndown/ownership tables to that dimension. Omit for all dimensions.
 
-5. Confirm the output directory exists: `.claude/modernize/reports/`. Create it if missing (this is a generated artifact directory — safe to add).
+6. Confirm the output directory exists: `.claude/modernize/reports/`. Create it if missing (this is a generated artifact directory — safe to add).
 
 ## Compute metrics
 
-Read every unit in `state.units[]` and aggregate:
+Aggregate the in-memory `units[]` collected in preflight step 4.
 
 ### Counts by status
 
@@ -57,7 +59,7 @@ Skipped units do not count toward the denominator — they're explicitly out of 
 
 ### Velocity & ETA
 
-Walk `unit.history[]` across all units. Find every entry where `to == "verified"`.
+Walk every unit's `history[]`. Find every entry where `to == "verified"`.
 
 - `velocity_7d` = count of `→ verified` transitions in the last 7 days (relative to `<now>`).
 - `velocity_30d` = same for last 30 days.
@@ -83,7 +85,7 @@ Include any unit with at least one signal in the risk table. Format: `<unit.id> 
 
 ### Ownership
 
-Walk `unit.history[]`. For each entry, attribute one "touch" to `entry.by`. Also attribute the current `in_flight.by` (if set) as the most-recent activity.
+Walk every unit's `history[]`. For each entry, attribute one "touch" to `entry.by`. Also attribute the current `in_flight.by` (if set) as the most-recent activity.
 
 For each contributor:
 - `units_worked_on` = count of distinct unit ids they appear in.
@@ -94,7 +96,7 @@ Sort contributors by units_worked_on desc.
 ### In flight, recent activity, blockers
 
 - **In flight block**: for each unit with `status == "in_progress"`, render its `in_flight` block in the same format as `/web-modernize:status` §5 (id, started, by, host, current_step, heartbeat freshness).
-- **Recent activity (last 10)**: across all units, collect history entries, sort by `at` desc, take top 10. Format: `<at>  <by>  <unit.id>: <from> → <to>`.
+- **Recent activity (last 10)**: across all units, collect history entries (carrying the unit id), sort by `at` desc, take top 10. Format: `<at>  <by>  <unit.id>: <from> → <to>`.
 - **Blockers**: every unit with status `blocked` or `failed`. Format: `<status>: <unit.id> — <failure.diagnostic or "no diagnostic recorded">`. If none, say "No blockers."
 
 ### Acceptance criteria
@@ -166,22 +168,23 @@ After writing the file, print a one-screen summary to stdout:
 Share the file with stakeholders, or commit it to keep a snapshot history.
 ```
 
-Do not modify state.json.
+Do not modify state files.
 
 ## What report does NOT do
 
 - Does not push, share, or upload the report anywhere. Output stays on disk.
 - Does not "predict the future" beyond linear extrapolation of recent velocity. If the team's burndown shape is non-linear, the ETA is wrong.
 - Does not compute a confidence score on the ETA. The `±variance` is a flat 25% — for serious capacity planning, the team should overlay their own sprint commitments.
-- Does not analyze code coverage, performance, or accessibility. Those are `/web-modernize:audit` territory (future skill, not in 0.2.0).
+- Does not analyze code coverage, performance, or accessibility. Those are `/web-modernize:audit` territory (deferred to a future release).
 
 ## State transitions
 
-None. Report is read-only on state.
+None. Report is read-only.
 
 ## Edge cases
 
-- **No units in plan yet** (status is `planned` but `units[]` is empty): print "Plan is empty — nothing to report." and stop. Do not write a report file.
-- **All units verified** (migration complete): include a "🎉 Migration complete" banner at the top of the report and skip the burndown/ETA sections (replace with "Complete on <date>, took <N> days from plan").
-- **History entries missing `at` field** (corrupt state): skip those entries in velocity calculation and add a warning to the report's footer.
+- **No units in plan yet** (status is `planned` but `state.unit_ids` is empty): print "Plan is empty — nothing to report." and stop. Do not write a report file.
+- **`state.unit_ids` references a missing `units/<id>.json` file** (corrupt state): skip the missing entries; add a warning to the report's footer listing every missing file.
+- **All units verified** (migration complete): include a "Migration complete" banner at the top of the report and skip the burndown/ETA sections (replace with "Complete on <date>, took <N> days from plan").
+- **History entries missing `at` field** (corrupt unit file): skip those entries in velocity calculation and add a warning to the report's footer.
 - **`migration.md` missing or malformed**: render the report without §1 metadata and §10 acceptance-criteria blocks; substitute "(migration.md missing)" placeholders.

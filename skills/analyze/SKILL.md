@@ -68,7 +68,7 @@ Write a complete payload. Schema:
 }
 ```
 
-`entry_points[]` is the seed list that `/web-modernize:plan` will turn into `state.json.units[]`. Be thorough but not exhaustive — large repos can have hundreds; cap at the top 100 by importance heuristic (route registration, "Main" pages, controllers with many actions).
+`entry_points[]` is the seed list that `/web-modernize:plan` will turn into per-unit files under `.claude/modernize/units/<id>.json` plus an ordered `state.json.unit_ids` array. Be thorough but not exhaustive — large repos can have hundreds; cap at the top 100 by importance heuristic (route registration, "Main" pages, controllers with many actions).
 
 ## Output 2: update `migration.md` §2
 

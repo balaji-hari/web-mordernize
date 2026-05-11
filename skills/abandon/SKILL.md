@@ -1,11 +1,11 @@
 ---
 description: >
   Rollback / reset for the web-modernize migration. Two-step destructive command
-  with multiple modes: --soft clears state but keeps notes/, --hard deletes
-  generated artifacts including target scaffold, --unit <id> marks a single
-  unit as skipped without touching the rest. Always requires a second
-  confirming invocation before deleting anything. Use when the team wants to
-  start over or formally drop a unit from scope.
+  with multiple modes: --soft clears per-unit files and top-level state but
+  keeps notes/, --hard deletes generated artifacts including target scaffold,
+  --unit <id> marks a single unit as skipped without touching the rest. Always
+  requires a second confirming invocation before deleting anything. Use when
+  the team wants to start over or formally drop a unit from scope.
 disable-model-invocation: false
 ---
 
@@ -15,12 +15,26 @@ You are the **abandon** skill. You are explicitly destructive. **Never delete an
 
 ## Preflight
 
-1. Read `state.json`. If it does not exist, tell user "Nothing to abandon — web-modernize is not initialized here." and stop.
+1. Read `.claude/modernize/state.json`. If it does not exist, tell user "Nothing to abandon — web-modernize is not initialized here." and stop.
 2. Parse `$ARGUMENTS`:
-   - `--soft` → keep `notes/` directory and `migration.md`; clear state.json units and reset top-level status to `initialized`.
-   - `--hard` → delete `.claude/modernize/`, delete target scaffold directories (whatever's in `state.scaffold.ui.path`, `.api.path`, `.db.path`), leave `migration.md` alone.
-   - `--unit <id>` → mark single unit as `skipped` with reason; do not touch other state.
+   - `--soft` → keep `notes/` directory and `migration.md`; clear `units/*.json` files; reset `state.unit_ids = []`, scaffold, source/target stack; reset top-level status to `initialized`.
+   - `--hard` → delete `.claude/modernize/` (which includes `units/` and `notes/`); delete target scaffold directories (whatever's in `state.scaffold.ui.path`, `.api.path`, `.db.path`); leave `migration.md` alone.
+   - `--unit <id>` → mark single unit's per-unit file as `skipped` with reason; prune the dep from every other per-unit file's `depends_on`; do not touch top-level state otherwise.
    - No args → ask the user which mode they want; describe each clearly.
+
+## In-flight refusal
+
+For `--soft` and `--hard`, iterate `units/*.json` to look for any unit with `status == "in_progress"`. If one exists, refuse:
+
+```
+✗ Cannot abandon — unit <id> is currently in-flight (started by <in_flight.by>, <N> min ago).
+
+Resolve first by:
+  - Letting the migration finish (re-run /web-modernize:next to resume it), or
+  - /web-modernize:abandon --unit <id>  (skip just that unit), then re-run /web-modernize:abandon.
+```
+
+Then stop.
 
 ## Two-step confirmation
 
@@ -33,7 +47,8 @@ Check for the existence of `.claude/modernize/ABANDON_REQUESTED`.
    For `--soft`:
    ```
    This will:
-     - Reset .claude/modernize/state.json (units, scaffold, source/target stack cleared)
+     - Delete every .claude/modernize/units/<id>.json (<count> files)
+     - Reset .claude/modernize/state.json (unit_ids=[], scaffold, source/target stack cleared)
      - Reset state.status from <current> back to "initialized"
      - KEEP migration.md
      - KEEP .claude/modernize/notes/ (postmortem-friendly)
@@ -46,8 +61,10 @@ Check for the existence of `.claude/modernize/ABANDON_REQUESTED`.
      - .claude/modernize/state.json
      - .claude/modernize/plan.md
      - .claude/modernize/analysis.json
+     - .claude/modernize/units/  (and every per-unit file under it)
      - .claude/modernize/notes/  (and every file under it)
      - .claude/modernize/verify.config.json
+     - .claude/modernize/reports/  (if exists)
      - <ui.path>/   <- target UI scaffold directory
      - <api.path>/  <- target API scaffold directory (if applicable)
      - <db.path>/   <- DB migrations directory (if applicable)
@@ -62,12 +79,12 @@ Check for the existence of `.claude/modernize/ABANDON_REQUESTED`.
    For `--unit <id>`:
    ```
    This will:
-     - Set unit <id>.status = "skipped"
-     - Append to <id>.history a "skipped via /abandon" entry
+     - Set .claude/modernize/units/<id>.json: status = "skipped"
+     - Append a "skipped via /abandon" history entry to that file
+     - Prune <id> from depends_on in every other units/*.json that depends on it
      - KEEP .claude/modernize/notes/<id>.md (if exists)
 
-   The unit will no longer be picked by /web-modernize:next and will not block dependents
-   (dependents will skip it in their depends_on resolution).
+   The unit will no longer be picked by /web-modernize:next and will not block dependents.
    ```
 
 2. Write a marker file `.claude/modernize/ABANDON_REQUESTED` containing JSON:
@@ -97,11 +114,12 @@ Check for the existence of `.claude/modernize/ABANDON_REQUESTED`.
 
    #### `--soft`
 
+   - Delete every file in `.claude/modernize/units/` (keep the directory and `.gitkeep`).
    - Read existing state.json.
-   - Reset units, scaffold, source_stack, target_stack, strategy, out_of_scope.
+   - Reset `unit_ids = []`, `scaffold = null`, `source_stack = null`, `target_stack = null`, `strategy = null`, `out_of_scope = []`.
    - Keep `repo` block.
    - Set `status = "initialized"`, `updated_at = "<now>"`.
-   - Save.
+   - Save state.json.
 
    #### `--hard`
 
@@ -113,10 +131,12 @@ Check for the existence of `.claude/modernize/ABANDON_REQUESTED`.
 
    #### `--unit <id>`
 
-   - Find unit. Set `status = "skipped"`.
+   - Read `.claude/modernize/units/<id>.json`. If missing, list available unit ids and stop.
+   - Set `status = "skipped"`.
    - Append history entry: `{from: <previous>, to: "skipped", reason: "manual /abandon"}`.
-   - Update any other units whose `depends_on` includes this id: prune the dependency (so they no longer wait on a skipped unit).
-   - Save state.json.
+   - Save the per-unit file.
+   - For every OTHER unit file in `units/*.json`, if its `depends_on[]` includes the skipped id, prune it and save that file too.
+   - Do NOT touch top-level `state.json` apart from bumping `updated_at`.
 
 3. Delete the marker file.
 
@@ -135,10 +155,10 @@ Check for the existence of `.claude/modernize/ABANDON_REQUESTED`.
 
 - **Marker exists but user invokes with different flags**: treat as ambiguous; print both the marker contents and the new args, ask user which they meant.
 - **`--hard` without target scaffold paths in state.json** (state.json corrupt or pre-scaffold): only delete `.claude/modernize/`, warn the user that target directories might exist but the plugin doesn't know their paths.
-- **In-flight unit exists**: refuse `--soft` and `--hard` until in-flight is resolved (`/web-modernize:status` will show it). Tell the user how to abort the in-flight (Ctrl+C if active, or `/web-modernize:abandon --unit <id>` first).
+- **`--unit <id>` against a unit currently in_progress**: refuse with "Cannot skip an in-flight unit. Either let the in-flight finish or take it over with /web-modernize:next first."
 
 ## State transition
 
 - `--soft`: `<any>` → `initialized`
 - `--hard`: `<any>` → effectively `uninitialized` (state.json deleted)
-- `--unit <id>`: top-level status unchanged; unit → `skipped`
+- `--unit <id>`: top-level status unchanged; per-unit file → `skipped`

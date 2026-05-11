@@ -2,46 +2,93 @@
 description: >
   Migrates a specifically named unit, bypassing /web-modernize:next's automatic
   selection. The escape hatch for senior developers who want to jump to a
-  specific page/controller/component (e.g., to debug a problem unit out of
-  dependency order). Otherwise behaves identically to /web-modernize:next.
+  specific page/controller/component. Blocks by default when the unit's
+  depends_on are not all migrated/verified; pass --force to override and let
+  the shared migration agent stub missing dep imports with TODO comments.
   For retrying a previously failed unit, prefer /web-modernize:retry.
 disable-model-invocation: false
 ---
 
-# `/web-modernize:migrate <unit-id>`
+# `/web-modernize:migrate <unit-id> [--force]`
 
 You are the **migrate** skill. You take an explicit unit id as `$ARGUMENTS` and migrate it, overriding the dependency-aware picking that `/web-modernize:next` does.
 
-The translation work itself is shared with `/web-modernize:next` and `/web-modernize:retry` and lives in `${CLAUDE_PLUGIN_ROOT}/agents/unit-migrator.md`. This skill handles **explicit selection** and **status-specific gating**; the migration body is delegated.
+The translation work itself is shared with `/web-modernize:next` and `/web-modernize:retry` and lives in `${CLAUDE_PLUGIN_ROOT}/agents/unit-migrator.md`. This skill handles **explicit selection**, **dependency gating**, and **status-specific gating**; the migration body is delegated.
 
 ## Preflight
 
-1. Parse `$ARGUMENTS` as the unit id. If empty, print:
+1. Parse `$ARGUMENTS`:
+   - First token is `<unit-id>` (required).
+   - Optional flag `--force` — override the dependency block.
+   - If `<unit-id>` is missing, print usage and stop:
+     ```
+     Usage: /web-modernize:migrate <unit-id> [--force]
+
+     Examples:
+       /web-modernize:migrate LoginController
+       /web-modernize:migrate PaymentProcessor --force   (allow unmet deps; stubs them)
+
+     To see available units: /web-modernize:status
+     ```
+
+2. Read `.claude/modernize/state.json`. Require `status ∈ {auth_done, in_progress}`. Otherwise redirect to the missing skill.
+
+3. Read `.claude/modernize/units/<unit-id>.json`. If the file does not exist:
    ```
-   Usage: /web-modernize:migrate <unit-id>
-
-   Example: /web-modernize:migrate LoginController
-   To see available units: /web-modernize:status
+   ✗ No unit named `<id>` in the plan. Available units:
+     <ls .claude/modernize/units/*.json, stripped of path and .json>
    ```
-   and stop.
+   Stop.
 
-2. Read `state.json`. Require `status` ∈ {`auth_done`, `in_progress`}. Otherwise redirect.
+## Dependency check (block by default, --force overrides)
 
-3. Find the unit: `unit = state.units.find(u => u.id == $ARGUMENTS)`.
-   - If not found, print: "No unit named `<id>` in the plan. Run `/web-modernize:status` to list units." and stop.
+Inspect `unit.depends_on`. For each dependency, determine its current status:
 
-## Dependency check (warn, don't block)
+- `__auth__` — satisfied if top-level `state.status >= "auth_done"`.
+- Other ids — read `units/<dep-id>.json` and check its `status`. Satisfied if `status ∈ {migrated, verified}`.
 
-Inspect `unit.depends_on`. If any dependency is not in `{"migrated", "verified"}`:
+If any dependency is **not** satisfied, build a list of `(dep_id, dep_status)` pairs.
+
+### Default (no `--force`) — refuse
+
+Print and stop:
 
 ```
-WARNING: Unit <id> has unmet dependencies: <list of dep_ids and their statuses>.
+✗ Unit <id> has unmet dependencies:
 
-Migrating out of order risks broken references (the unit may import symbols
-from a not-yet-migrated dependency). Continue anyway? (yes/no)
+  - <dep_id_1>: <status>
+  - <dep_id_2>: <status>
+  ...
+
+Migrate the dependencies first (via /web-modernize:next or by name), then re-run.
+
+To override and migrate out of order anyway, re-run with --force:
+  /web-modernize:migrate <id> --force
+
+Forcing will leave `// TODO: provided by <dep.id>` stubs in the target code for
+every missing dep symbol. The override is recorded in
+.claude/modernize/notes/<id>.md so reviewers see it.
 ```
 
-If the user says yes, the shared procedure will stub the missing deps with TODO comments. If no, stop.
+Make no mutations.
+
+### With `--force` — warn but proceed
+
+Print:
+
+```
+WARNING: Migrating <id> out of dependency order. The following deps are unmet:
+
+  - <dep_id_1>: <status>
+  - <dep_id_2>: <status>
+
+Missing symbols will be stubbed with `// TODO: provided by <dep.id>` comments.
+This override will be recorded in .claude/modernize/notes/<id>.md "Gotchas".
+
+Proceeding in 3 seconds... (Ctrl+C to cancel)
+```
+
+Then proceed.
 
 ## Status-based gating
 
@@ -51,20 +98,21 @@ Decide whether to invoke the shared agent based on `unit.status`:
 |----------------|--------|
 | `pending` | Proceed straight to the shared agent. |
 | `in_progress` | Proceed; the shared agent's Case A/B/C handling will sort out the collision. |
-| `migrated` | Ask: "Already migrated. (a) reset to pending and re-migrate, (b) view current state and skip, (c) cancel?" On (a), set unit back to `pending` (append history `{from: migrated, to: pending, reason: "manual re-migrate"}`) then proceed. On (b)/(c), stop. |
+| `migrated` | Ask: "Already migrated. (a) reset to pending and re-migrate, (b) view current state and skip, (c) cancel?" On (a), set unit back to `pending` in `units/<id>.json` (append history `{from: migrated, to: pending, reason: "manual re-migrate"}`) then proceed. On (b)/(c), stop. |
 | `verified` | Same as migrated, but extra warning: "Re-migrating will reset verification status." Clear `verification` if user confirms. |
 | `failed` | Print the prior diagnostic and redirect: "Use `/web-modernize:retry <id>` to re-attempt — it preserves the diagnostic history and supports `--with-prompt` for guidance overrides." Stop unless the user explicitly forces with a confirmation. |
-| `blocked` / `skipped` | Ask the user to confirm they want to take this unit out of that state. On confirm, set to `pending` and proceed. |
+| `blocked` / `skipped` | Ask the user to confirm they want to take this unit out of that state. On confirm, set to `pending` in the per-unit file and proceed. |
 
 ## Run the shared migration procedure
 
 Load `${CLAUDE_PLUGIN_ROOT}/agents/unit-migrator.md` and follow it with:
 
 - `mode = "migrate"`
-- `unit = <the unit named by the user>`
+- `unit = <the unit object you just read from units/<id>.json>`
 - `retry_prompt = null`
+- `force_deps = <true if --force was passed, else false>`
 
-If `depends_on` were unmet and the user confirmed override, pass a flag to the agent so it stubs missing dep imports rather than failing.
+The agent reads and writes only `units/<unit.id>.json` for unit-level state and `state.json` only for the top-level `auth_done → in_progress` transition.
 
 ## Closing message
 
@@ -75,6 +123,7 @@ On success:
   Source: <source_paths>
   Target: <target_paths>
   Notes:  .claude/modernize/notes/<unit.id>.md
+  Unit file: .claude/modernize/units/<unit.id>.json
 
 Suggested next steps:
   1. Review the diff: git diff --stat
@@ -87,4 +136,4 @@ On failure: the agent already printed the diagnostic and the recovery options (i
 ## State transitions
 
 - Top-level: `auth_done` → `in_progress` (if first migration), unchanged otherwise.
-- Unit: `pending` (or whatever the user opted out of) → `in_progress` → `migrated` (or `failed`).
+- Per-unit file: `pending` (or whatever the user opted out of) → `in_progress` → `migrated` (or `failed`).
