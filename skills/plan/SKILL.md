@@ -1,0 +1,178 @@
+---
+description: >
+  Validates that migration.md has all required fields filled in, then generates
+  .claude/modernize/plan.md (human-readable migration plan) and seeds
+  state.json.units[] from analysis.json. Refuses to run if migration.md is
+  incomplete; produces a numbered list of missing fields with section anchors.
+  This is the gate between "exploration" and "execution".
+disable-model-invocation: false
+---
+
+# `/web-modernize:plan`
+
+You are the **plan** skill. Your job is to convert the team's intent (in `migration.md`) plus the detected source stack (in `analysis.json`) into an executable, ordered migration plan.
+
+## Preflight — validate migration.md
+
+Read `migration.md` and `analysis.json`. Then check the following REQUIRED fields are filled in (not blank, not the template placeholder `<!-- fill in -->`):
+
+| Required field | Section | Allowed values |
+|----------------|---------|----------------|
+| Target UI framework | §3, "Framework" line | one of: react-vite-ts, next-app-router, vue3-vite, angular-17, svelte-kit, or custom |
+| Target UI language | §3, "Language" line | TypeScript or JavaScript |
+| Migration strategy | §6, "Strategy" line | strangler-fig, big-bang, module-by-module |
+| Current auth provider | §7 | any non-empty value |
+| Target auth provider | §7 | any non-empty value |
+| Acceptance criteria | §10 | at least 3 unchecked checkbox items |
+
+If **any** required field is missing or still has the template placeholder, **STOP**. Do not write `plan.md` or modify state. Print a numbered failure report:
+
+```
+✗ Cannot generate plan — migration.md is incomplete.
+
+Missing required fields:
+  1. §3 "Framework" — not filled in (currently blank or template placeholder).
+  2. §6 "Strategy" — invalid value: <what they wrote>. Use one of: strangler-fig, big-bang, module-by-module.
+  3. §10 — only 1 acceptance criterion. Add at least 2 more.
+
+Open migration.md, fix these, then re-run /web-modernize:plan.
+```
+
+Be specific about which line is wrong. Do not summarize; list every issue.
+
+## Acquire advisory lock
+
+Before writing, set `state.json.lock`:
+
+```json
+{
+  "holder": "<git config user.email or 'unknown'>",
+  "session_id": "<current Claude session id if you can determine it, else timestamp>",
+  "expires_at": "<ISO now + 10 minutes>"
+}
+```
+
+If a non-expired lock already exists held by **someone other than the current user**, warn:
+
+```
+⚠ <lock.holder> started planning <N> minutes ago and the lock has not yet expired.
+  Running /plan now risks conflicting changes when you both commit.
+  Override anyway? (yes/no)
+```
+
+Wait for confirmation.
+
+## Generate plan.md
+
+Read `${CLAUDE_PLUGIN_ROOT}/templates/plan.md` and substitute placeholders. Key transformations:
+
+### Phase assignment
+
+Based on `migration.md §6 Strategy`:
+
+- **strangler-fig**: Phase 1 = scaffold + auth. Phase 2 = read-only / low-risk units (typically dashboards, listing pages). Phase 3 = form-heavy / write-path units. Phase 4 = admin / batch / reporting. Phase N = cutover.
+- **big-bang**: Phase 1 = scaffold + auth. Phase 2 = ALL remaining units in parallel-ready order. Phase 3 = cutover. (Mark this strategy as "small-app only" in the plan summary.)
+- **module-by-module**: Phase 1 = scaffold + auth. Phase 2-N = one phase per top-level module/area discovered in analysis.json.
+
+### Unit seeding
+
+For each entry in `analysis.json.entry_points[]`, create a unit:
+
+```json
+{
+  "id": "<entry_point.id>",
+  "kind": "<entry_point.kind>",
+  "source_paths": <entry_point.files>,
+  "target_paths": [],
+  "depends_on": ["__auth__"],
+  "phase": <assigned phase>,
+  "effort": "<S|M|L|XL based on file count + LOC>",
+  "status": "pending",
+  "history": [],
+  "in_flight": null,
+  "notes_path": ".claude/modernize/notes/<id>.md"
+}
+```
+
+Heuristics for `effort`:
+- Single file, <200 LOC → S
+- 1-3 files, 200-800 LOC → M
+- 3-10 files OR >800 LOC OR touches data layer → L
+- Anything involving complex stateful UI (wizards, designers, real-time) → XL
+
+### `depends_on` graph
+
+- All non-auth units depend on `__auth__`.
+- If the analyzer's dependency_graph shows unit A imports symbols from unit B, add B to A's `depends_on`.
+- Cut cycles by breaking on the larger unit (the assumption: the larger one will probably need refactoring during migration anyway).
+
+### Open questions
+
+Compose 3-5 open questions for the team based on:
+- Items the analyzer flagged as warnings.
+- Ambiguous mappings (e.g., legacy `MasterPage` → ???).
+- Items in `migration.md §11 Risks & open questions` that look unresolved.
+
+### Out of scope
+
+Mirror `migration.md §9` list verbatim into the plan's "Out of scope" section.
+
+## Write outputs
+
+1. **`.claude/modernize/plan.md`** — fully rendered template. Overwrite any existing one (warn the user first if it exists and has been edited since last generation — detect by comparing the `Generated <timestamp>` header).
+
+2. **`.claude/modernize/state.json`** — update:
+
+```json
+{
+  "status": "planned",
+  "target_stack": {
+    "ui": "<from §3>",
+    "api": "<from §4 or 'none'>",
+    "db": "<from §5 or 'unchanged'>"
+  },
+  "strategy": "<from §6>",
+  "scaffold": {
+    "ui": { "status": "pending" },
+    "api": { "status": "<pending or skipped if api==none>" , "reason": "..." },
+    "db": { "status": "<pending or skipped if db==unchanged>", "reason": "..." }
+  },
+  "units": [ <seeded units> ],
+  "out_of_scope": [ <from §9> ],
+  "lock": null,
+  "updated_at": "<ISO now>"
+}
+```
+
+Release the lock by setting `lock: null`.
+
+## After writing
+
+Print:
+
+```
+✓ Plan generated.
+
+  Strategy: <strategy>
+  Phases: <count>
+  Total units: <count>   (S:<n> M:<n> L:<n> XL:<n>)
+  API units: <count or "skipped (target API = none)">
+  DB work: <skipped|migration|replatform>
+
+Review .claude/modernize/plan.md. If the unit list looks wrong, edit migration.md and re-run /web-modernize:plan.
+
+Next: /web-modernize:scaffold
+```
+
+## Low-confidence path
+
+If `state.source_stack.confidence < 0.5`:
+
+- Generate `plan.md` with a header banner: "**⚠ Skeleton plan — source framework was not confidently detected. Treat unit list as a starting suggestion only.**"
+- Mark every unit with `effort: "L"` (conservative).
+- Add a prominent open question: "Confirm or correct the unit list before running /web-modernize:scaffold."
+
+## State transition
+
+- Pre: `state.status` == `analyzed` (or `planned`, for re-runs)
+- Post: `state.status` = `planned`

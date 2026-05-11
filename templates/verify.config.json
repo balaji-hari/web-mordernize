@@ -1,0 +1,27 @@
+{
+  "$schema": "https://github.com/balaji-hari/web-mordernize/templates/verify.config.schema.json",
+  "description": "Default verification commands run by /web-modernize:verify. Edit per-project to match your target stack. The plugin substitutes ${target_path} with the unit's target_paths joined by space.",
+  "ui": {
+    "lint":      "npm --prefix ${ui_root} run lint -- ${target_path}",
+    "typecheck": "npm --prefix ${ui_root} run typecheck",
+    "tests":     "npm --prefix ${ui_root} test -- --run ${target_path}"
+  },
+  "api": {
+    "lint":      "npm --prefix ${api_root} run lint",
+    "typecheck": "npm --prefix ${api_root} run typecheck",
+    "tests":     "npm --prefix ${api_root} test -- ${target_path}"
+  },
+  "thresholds": {
+    "tests_must_pass": true,
+    "lint_must_pass": true,
+    "typecheck_must_pass": true,
+    "coverage_floor": null
+  },
+  "global_post_checks": [
+    {
+      "name": "build",
+      "command": "npm --prefix ${ui_root} run build",
+      "run_when": "every_5_units"
+    }
+  ]
+}

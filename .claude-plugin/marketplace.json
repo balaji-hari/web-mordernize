@@ -1,0 +1,15 @@
+{
+  "name": "web-modernize",
+  "owner": {
+    "name": "Balaji Harikrishnan",
+    "email": "balaji.harikrishnan@cognizant.com"
+  },
+  "plugins": [
+    {
+      "name": "web-modernize",
+      "source": "./",
+      "description": "Guides teams through migrating legacy web applications to modern stacks. Provides /web-modernize:analyze, plan, scaffold, next, verify, status, and other slash commands.",
+      "version": "0.1.0"
+    }
+  ]
+}
