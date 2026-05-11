@@ -98,6 +98,7 @@ your-repo/
 │   ├── units/<unit-id>.json            ← one file per migration unit (git-tracked)
 │   └── notes/<unit-id>.md              ← per-unit design notes (git-tracked)
 ├── apps/web-new/                       ← target UI scaffold (created by /scaffold)
+│   └── public/                         ← legacy assets (images, fonts, favicon) copied by /scaffold
 ├── apps/api-new/                       ← target API scaffold (optional)
 └── (existing legacy source untouched)
 ```
@@ -113,7 +114,7 @@ Commit the `.claude/modernize/` directory. That's how Alice on Monday and Bob on
 | `/web-modernize:init` | Bootstrap `migration.md` + `.claude/modernize/` (state.json, units/, notes/) | Once per legacy repo |
 | `/web-modernize:analyze` | Detect source stack and entry points; auto-fill `migration.md §2` | Immediately after `/init`, before filling out the rest of `migration.md` |
 | `/web-modernize:plan` | Validate `migration.md`, generate `plan.md`, seed unit list (re-runnable; carries history forward) | After `migration.md` is complete; re-run whenever the unit list changes |
-| `/web-modernize:scaffold` | Create target project skeleton (UI, optional API, optional DB) | Once, after `/plan` |
+| `/web-modernize:scaffold [--assets-only]` | Create target project skeleton (UI, optional API, optional DB) **and** copy legacy assets (images, fonts, favicon) into the target's `public/`. `--assets-only` backfills assets on an already-scaffolded repo. | Once, after `/plan`. Re-run with `--assets-only` if assets were missed. |
 | `/web-modernize:auth` | Migrate authentication as a distinct first slice | Once, after `/scaffold` |
 | `/web-modernize:next` | Pick next pending unit and migrate it | In a loop until migration is complete |
 | `/web-modernize:migrate <id> [--force]` | Migrate a specifically named unit. Blocks on unmet deps unless `--force` | When you need to jump to a unit out of order (debug) |
@@ -135,7 +136,7 @@ Commit the `.claude/modernize/` directory. That's how Alice on Monday and Bob on
 |---------|-----------|-------|
 | 1. Project identity | recommended | Just metadata — name, team, ticket |
 | 2. Source stack | AUTO | Filled by `/analyze`; override if it got something wrong |
-| 3. Target UI framework | **yes** | Pick from react-vite-ts, next-app-router, vue3-vite, angular-17, svelte-kit, or custom |
+| 3. Target UI framework | **yes** | Pick from react-vite-ts, next-app-router, vue3-vite, angular-17, svelte-kit, or custom. Includes two optional sub-sections (legacy design system, asset directories) — fill them for high-fidelity migrations. |
 | 4. Target API framework | optional | Set to `none` for UI-only migrations — plan skips API work entirely |
 | 5. Database | optional | `unchanged` is the most common; set if replatforming |
 | 6. Migration strategy | **yes** | strangler-fig (default), big-bang (small apps), module-by-module |
@@ -239,7 +240,24 @@ The unit's status will be `failed` with `failure.diagnostic` populated. The plug
 1. **Retry with guidance**: `/web-modernize:retry <unit-id> --with-prompt="<corrective hint>"`. Increments `retry_count`, preserves the prior diagnostic in `failure.diagnostic_history`, and runs the migration again with your override layered on top of `migration.md`.
 2. **Roll back first, then retry**: `/web-modernize:rollback --unit <unit-id>` reverts any target files the failed attempt left behind, then `/web-modernize:retry <unit-id>` for a clean re-attempt.
 3. **Declare out of scope**: `/web-modernize:abandon --unit <unit-id>`.
-4. **Mark for human migration**: edit `state.json` directly to set status `blocked` with a `failure.diagnostic` explaining why.
+4. **Mark for human migration**: edit the unit's `units/<unit-id>.json` directly to set status `blocked` with a `failure.diagnostic` explaining why.
+
+### Migrated pages look wrong / use generic styling instead of the legacy design
+
+The migration agent has explicit instructions (as of v0.3.1) to detect the legacy custom design system, preserve class-name conventions, and translate visual intent faithfully — see `agents/unit-migrator.md` §3 step 7b. If your unit still came out with generic styling:
+
+1. Make sure `migration.md §3` "Legacy design system / custom CSS" is filled in with the class-name prefix(es) and stylesheet locations. The agent treats this as authoritative; heuristics are the fallback.
+2. Confirm the agent had access to the legacy stylesheets — they should be in the same directory as the source files, or referenced via `<link>` / `@import`. The agent reads sibling `*.css`/`*.scss`/`*.less` automatically.
+3. Re-migrate the unit with `/web-modernize:migrate <unit-id>` (it will ask "reset to pending and re-migrate?" — choose yes). The fresh pass picks up the new guidance.
+
+### Migrated page shows broken images / missing favicon / 404s on assets
+
+The plugin (as of v0.3.1) copies legacy asset directories (`Pics/`, `images/`, `Content/`, `wwwroot/`, `assets/`, `fonts/`, `favicon.ico`, etc.) into the target's `public/` during `/web-modernize:scaffold`. If your existing scaffold predates v0.3.1, or the auto-detection missed something:
+
+1. Update the plugin (see "Update to a newer version" above).
+2. Run `/web-modernize:scaffold --assets-only` to backfill assets onto an already-scaffolded repo. It scans the legacy tree, copies anything missing, and prints a summary. Top-level workflow status is unchanged.
+3. For directories the auto-detection won't find, declare them in `migration.md §3` "Asset directories" — those are then authoritative.
+4. If the legacy CSS uses absolute URLs like `url('/Content/Pics/foo.png')`, the scaffold step warns you and writes a note to `.claude/modernize/notes/__scaffold__.md` describing the base-path implications for your target framework.
 
 ### I want to start over
 

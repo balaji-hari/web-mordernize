@@ -2,6 +2,22 @@
 
 All notable changes to the `web-modernize` plugin are documented here. Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.3.1] - 2026-05-12
+
+Bug-fix patch driven by a real testing session. Migrated pages were looking wrong (custom legacy design system flattened to generic utility classes) and assets (images, favicon, fonts) were missing from the target's `public/` directory because the plugin didn't instruct Claude to handle either concern.
+
+### Added
+- **`agents/unit-migrator.md` §3 step 7b "Translate visuals, not just logic — preserve the legacy design"** — new explicit guidance to read adjacent CSS/SCSS/LESS files alongside `source_paths`, detect custom design-system class-name prefixes (e.g., `esh-*`, `app-*`), preserve visual fidelity when translating to Tailwind / CSS Modules / Material UI / etc., verify asset references resolve to the target `public/`, and append a "Design translation" mapping table to `notes/<unit.id>.md`.
+- **`skills/scaffold/SKILL.md` "Copy legacy assets" step** — scans the legacy tree for common asset directories (`Pics/`, `images/`, `Content/`, `wwwroot/`, `assets/`, `fonts/`, `static/`, top-level favicons) and copies them into the target UI's `public/` (or `src/assets/` for Angular). Honors `migration.md §3` declared paths as authoritative when present; falls back to heuristics otherwise. Detects absolute-URL references in legacy CSS (e.g., `url('/Content/Pics/foo.png')`) and warns about target framework basePath implications. Idempotent — never overwrites existing target files.
+- **`/web-modernize:scaffold --assets-only` flag** — runs ONLY the asset-copy step (skips framework/API/DB scaffolders and `verify.config.json` updates). For teams whose scaffold ran on a pre-0.3.1 plugin and need to backfill missing assets without touching the rest. Precondition: `state.status >= "scaffolded"`. Does not advance top-level status.
+- **`templates/migration.md` §3 optional sub-sections** — "Legacy design system / custom CSS" (class-name prefixes, stylesheet locations, notes) and "Asset directories" (explicit list of paths in the legacy tree). If filled, both `/scaffold` and the migrator use them as authoritative; if blank, heuristics apply.
+
+### Changed
+- **`agents/unit-migrator.md` §3 step 1** — now also reads stylesheets adjacent to `source_paths` (sibling `*.css`/`*.scss`/`*.less`, files referenced via `<link>` / `@import`, project-wide style files), not just the source files. The legacy visual design lives in those stylesheets; reading them upfront is essential to preserving fidelity in step 7b.
+
+### Why this isn't a breaking change
+No schema bump (state remains v3). No skill renamed or removed. No behavior removed — only additive guidance and a new step. Existing scaffolds keep working; teams who hit the asset gap can run `/web-modernize:scaffold --assets-only` to backfill.
+
 ## [0.3.0] - 2026-05-12
 
 ### Breaking changes

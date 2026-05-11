@@ -45,6 +45,23 @@ Pick one. Add a one-line rationale.
 - **Styling**: <!-- e.g., Tailwind, CSS Modules, MUI, Bootstrap -->
 - **Rationale**:
 
+### Legacy design system / custom CSS — OPTIONAL
+
+Describe the legacy app's class-name conventions and where their CSS lives. If the app uses a custom design system, the migration agent will preserve those class names (or map them faithfully) rather than reducing them to generic utility classes. Leave blank to use heuristics (the agent will scan for prefix patterns like `esh-*`, `app-*`, `mat-*` automatically).
+
+- **Class-name prefix(es)**: <!-- e.g., esh-, app-, acme-button-, mui- -->
+- **Stylesheet locations**: <!-- e.g., Content/site.css, wwwroot/css/site.css, src/main/webapp/resources/css/ -->
+- **Notes**: <!-- e.g., "Uses BEM, esh-card has padding+shadow+rounded+bg; reproduce as @apply component class in Tailwind" -->
+
+### Asset directories — OPTIONAL
+
+List paths in the legacy tree that contain images, fonts, favicons, or other static assets. `/web-modernize:scaffold` copies these into the target's `public/` (or Angular's `src/assets/`) so migrated pages don't break on missing assets. Leave blank to let `/scaffold` auto-detect (it scans for `Pics/`, `images/`, `Content/`, `wwwroot/`, `assets/`, `fonts/`, `static/`, `favicon.ico` by default).
+
+- <!-- e.g., Pics/ -->
+- <!-- e.g., Content/images/ -->
+- <!-- e.g., wwwroot/lib/ -->
+- <!-- e.g., favicon.ico -->
+
 ## 4. Target API framework — OPTIONAL
 
 If your migration includes a new backend, fill this in. Otherwise set `Framework: none` and `/web-modernize:plan` will skip API work entirely.

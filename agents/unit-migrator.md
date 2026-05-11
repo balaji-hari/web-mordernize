@@ -129,7 +129,7 @@ This is the actual translation work.
 
 ### General algorithm
 
-1. **Read all `source_paths`** in full.
+1. **Read all `source_paths`** in full, plus **every stylesheet they depend on** — sibling files in the same directory (`<source>.css`, `<source>.scss`, `<source>.less`), stylesheets referenced from the source markup via `<link rel="stylesheet">` or `@import`, and project-wide style files (`site.css`, `app.scss`, anything under `Content/`, `wwwroot/css/`, `src/main/webapp/resources/css/`, `assets/styles/`, etc.). The legacy visual design lives in those files; missing them produces "looks-nothing-like-the-original" output.
 2. **Read related target context**: existing `target_paths[]` of migrated dependencies (read each dep's `units/<dep_id>.json` if you need their paths), the target framework's conventions, and any existing shared utilities under `apps/web-new/src/lib/` etc.
 3. **Update `in_flight.current_step = "designing target structure"`** and save the per-unit file.
 4. **Decide target file layout** based on `unit.kind` and `state.target_stack.ui`/`.api`:
@@ -138,15 +138,35 @@ This is the actual translation work.
    - Shared utility → `apps/web-new/src/lib/`.
 5. **Create a feature branch** (recommended): `git checkout -b modernize/<unit.id>` — only if git is clean and the team allows. For `retry` mode, prefer a fresh branch name (e.g., suffix with `-retry-<retry_count>`) to keep failed-attempt history reviewable.
 6. **Write target files**. Update `in_flight.files_touched_so_far` and `current_step` as you go and save the per-unit file periodically; the heartbeat hook keeps `last_heartbeat` fresh on every Write tool call.
-7. **Translate semantics, not syntax**:
+7. **Translate semantics, not syntax** (data and logic):
    - WebForms event handlers → React event handlers + useState/useReducer.
    - Server-side controls (`<asp:GridView>`) → modern data table component.
    - ViewState → component state or query string, depending on intent.
    - Server-side validators → client + server validation.
    - JSP scriptlets → typed view models + template logic.
    - AngularJS controllers → modern composables / hooks.
+
+7b. **Translate visuals, not just logic — preserve the legacy design.** This is as important as step 7. The user expectation is "the new page looks like the old page", not a clean-room re-design. A migration that produces correct data and broken-looking pages is a half-done migration.
+
+   - **Detect the legacy design system.** Scan the stylesheets you read in step 1 for class-name prefix patterns. If a custom prefix appears in more than three distinct class names, treat it as a load-bearing design system. Common signals:
+     - `esh-*` (Microsoft eShop reference apps)
+     - `app-*`, `acme-*` (custom in-house BEM)
+     - `btn-`, `card-`, `form-` (Bootstrap-derived but customised — check the rules)
+     - `mat-`, `mdc-` (Material Design)
+     - Framework defaults like `ng-`, `v-`, `data-bind` are NOT design-system classes; skip those.
+   - **Honor `migration.md §3` declarations when present.** If the team has filled in "Legacy design system / custom CSS" in §3, that is authoritative — read it first, use it as the primary guide, and prefer it over heuristics.
+   - **Match visual fidelity, not just functional fidelity.** When translating to the target styling system:
+     - **Tailwind / utility-first**: do NOT silently flatten the legacy custom classes to generic utilities. For each custom class that encapsulates a repeated decorative pattern (padding + shadow + border-radius + bg-color, etc.), produce either (a) a `@apply`-style component class in the project's main CSS that maps to the utility combination, or (b) keep the legacy class name and add a corresponding rule in the global stylesheet. The visual definition can move to utilities; the *semantic name and visual result* should survive.
+     - **CSS Modules / styled-components / Vue scoped styles**: prefer preserving the semantic class names from the legacy as the new component's style boundaries. The definition moves into the component file; the name stays.
+     - **Material UI / Chakra / ready-made design libraries**: pick the closest library equivalent for each custom class. Write a brief mapping note in `notes/<unit.id>.md` so reviewers see the translation table.
+   - **Verify asset references resolve.** For every `<img src="...">`, `background-image: url(...)`, `<link rel="icon">`, or `@font-face src="..."`:
+     - If the path points at a directory under the legacy `Pics/`, `images/`, `Content/`, `wwwroot/`, `fonts/`, etc., the file should already exist in the target's `public/` (copied by `/web-modernize:scaffold`'s asset-copy step).
+     - If the asset is missing, do NOT silently break the reference. Add a `// TODO: asset missing — copy from <legacy path>` comment near the reference and add a "Gotchas — missing assets" note in `notes/<unit.id>.md` with the expected target path.
+     - If the legacy uses absolute URLs like `/Content/Pics/foo.png` and the target framework serves `public/` at a different base path (e.g., Next.js basePath, Vite base config, custom prefix), surface the discrepancy in the unit's notes.
+   - **Record the design translation in notes.** Append to `notes/<unit.id>.md` a "Design translation" section. Format: a short table mapping each legacy custom class used in this unit to its target translation (Tailwind utilities, CSS module class, component library equivalent), plus any rules that ended up in shared CSS rather than per-component styles.
+
 8. **Add a placeholder test** (smoke test at minimum). The `migration.md §10` acceptance criteria should drive what is asserted.
-9. **Append to `notes/<unit.id>.md`**: design decisions, source-to-target symbol map, gotchas. For `retry` mode, add a "Retry #<N>" section that records what was different this time and (if `retry_prompt` was set) quote the user's override verbatim.
+9. **Append to `notes/<unit.id>.md`**: design decisions, source-to-target symbol map, gotchas. For `retry` mode, add a "Retry #<N>" section that records what was different this time and (if `retry_prompt` was set) quote the user's override verbatim. The "Design translation" section from step 7b lives in this same notes file.
 
 ### Honor `retry_prompt` when set
 
