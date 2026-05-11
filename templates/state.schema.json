@@ -9,7 +9,7 @@
   "properties": {
     "schema_version": {
       "description": "Increment when the schema shape changes; /init can migrate forward.",
-      "const": 1
+      "const": 2
     },
     "plugin_version": {
       "description": "Version of the web-modernize plugin that last wrote this file.",
@@ -173,8 +173,56 @@
           "type": "object",
           "properties": {
             "diagnostic": { "type": "string" },
-            "branch": { "type": "string" }
+            "branch": { "type": "string" },
+            "diagnostic_history": {
+              "type": "array",
+              "description": "Append-only log of every failure diagnostic this unit has seen. Each /retry pushes the current diagnostic here before overwriting failure.diagnostic with the new one.",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["at", "diagnostic"],
+                "properties": {
+                  "at": { "type": "string", "format": "date-time" },
+                  "diagnostic": { "type": "string" },
+                  "retry_count": { "type": "integer", "minimum": 0 }
+                }
+              }
+            }
           }
+        },
+        "retry_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of times this unit has been retried after a previous failure. Bumped by /web-modernize:retry."
+        },
+        "last_retry_prompt": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "string" }
+          ],
+          "description": "The most recent --with-prompt override passed to /web-modernize:retry, or null if never retried with a prompt."
+        },
+        "rollback_info": {
+          "description": "Populated by /web-modernize:rollback when a unit is rolled back. Null if never rolled back.",
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["at", "by"],
+              "properties": {
+                "at": { "type": "string", "format": "date-time" },
+                "by": { "type": "string" },
+                "branch": { "type": "string", "description": "The feature branch that was reset/removed, if any." },
+                "restored_paths": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Target files that were reverted (deleted, or restored to pre-migration state)."
+                },
+                "reason": { "type": "string" }
+              }
+            }
+          ]
         }
       }
     },

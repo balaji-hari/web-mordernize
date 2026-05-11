@@ -98,6 +98,17 @@ List items the plugin should **not** plan or migrate. Each line becomes an entry
 - <!-- e.g., LegacyReportsModule -->
 - <!-- e.g., FaxIntegration -->
 
+## 9b. Unit rename map — OPTIONAL
+
+Only relevant when re-running `/web-modernize:plan` after the unit list has shifted (a file moved, a controller was split, the analyzer picked a new id). Each entry tells `/plan` "this old unit became that new unit — carry the status, history, notes, and verification forward."
+
+Format: one bullet per rename, `old_id → new_id`. Splits and merges are not auto-supported; perform those by editing `state.json` directly.
+
+- <!-- LegacyLogin → LoginController -->
+- <!-- OrdersListPage → OrderListPage -->
+
+If `/plan` finds a previously-tracked unit that has progress (status beyond `pending`) but is no longer in the regenerated unit list, it will keep the unit and print a warning telling you to either add a mapping here or add it to §9 above. Pending units that fall off the plan are silently dropped.
+
 ## 10. Acceptance criteria — REQUIRED
 
 The checklist `/web-modernize:verify` will use to call a unit (or the whole migration) "done."

@@ -74,9 +74,24 @@ Based on `migration.md §6 Strategy`:
 - **big-bang**: Phase 1 = scaffold + auth. Phase 2 = ALL remaining units in parallel-ready order. Phase 3 = cutover. (Mark this strategy as "small-app only" in the plan summary.)
 - **module-by-module**: Phase 1 = scaffold + auth. Phase 2-N = one phase per top-level module/area discovered in analysis.json.
 
-### Unit seeding
+### Unit seeding (with history preservation on re-runs)
 
-For each entry in `analysis.json.entry_points[]`, create a unit:
+The first time `/plan` runs, `state.units[]` is empty and this section just seeds it. On subsequent runs (when `state.status` is already `planned` or beyond), preserve the progress made on units that survive the regeneration.
+
+#### Step 1 — Read the rename map from migration.md
+
+Look for an optional `## 9b. Unit rename map` section in migration.md. Parse each bulleted line of the form:
+
+```
+- old_id → new_id
+- AnotherOldId → AnotherNewId
+```
+
+Build a dict `rename = { old_id: new_id, ... }`. Empty if the section is absent. Reverse-lookup is built on the fly. Splits, merges, and "removed" markers are NOT supported in this version — they can be performed by hand-editing state.json.
+
+#### Step 2 — Build the candidate list from analysis.json
+
+For each entry in `analysis.json.entry_points[]`, build a candidate unit:
 
 ```json
 {
@@ -86,11 +101,14 @@ For each entry in `analysis.json.entry_points[]`, create a unit:
   "target_paths": [],
   "depends_on": ["__auth__"],
   "phase": <assigned phase>,
-  "effort": "<S|M|L|XL based on file count + LOC>",
+  "effort": "<S|M|L|XL>",
   "status": "pending",
   "history": [],
   "in_flight": null,
-  "notes_path": ".claude/modernize/notes/<id>.md"
+  "notes_path": ".claude/modernize/notes/<id>.md",
+  "retry_count": 0,
+  "last_retry_prompt": null,
+  "rollback_info": null
 }
 ```
 
@@ -99,6 +117,47 @@ Heuristics for `effort`:
 - 1-3 files, 200-800 LOC → M
 - 3-10 files OR >800 LOC OR touches data layer → L
 - Anything involving complex stateful UI (wizards, designers, real-time) → XL
+
+#### Step 3 — Merge with existing units
+
+For each candidate `U_new`:
+
+1. Look up the matching old unit. Resolution order:
+   - If any entry in `rename` maps to `U_new.id` (reverse lookup): the predecessor's id is the key. Use that.
+   - Else: look for `U_old.id == U_new.id`.
+2. If a match exists in `state.units[]`:
+   - Copy these fields from `U_old` (preserve progress): `status`, `history`, `in_flight`, `notes_path`, `target_paths`, `verification`, `failure`, `retry_count`, `last_retry_prompt`, `rollback_info`.
+   - Append a history entry: `{ from: <status>, to: <status>, reason: "carried forward by /web-modernize:plan re-run", at: <now>, by: <user> }`. If renamed, the reason should be `"renamed from <old_id> by /plan"`.
+   - Take these from `U_new` (refreshed by re-analyze): `source_paths`, `kind`, `depends_on`, `phase`, `effort`.
+   - Use `U_new.id` (the new id wins). Update `notes_path` to match the new id, and if a notes file at the old path exists, rename it on disk (`git mv .claude/modernize/notes/<old_id>.md .claude/modernize/notes/<new_id>.md`).
+3. If no match: use `U_new` verbatim as a brand-new unit.
+
+#### Step 4 — Handle dropped units
+
+For each `U_old` in the existing `state.units[]` that does NOT appear in the regenerated candidates (after applying the rename map):
+
+- If `U_old.status == "pending"` and no rename was declared: silently drop. The plan no longer wants it.
+- If `U_old.status` is anything else (`in_progress`, `migrated`, `verified`, `blocked`, `skipped`, `failed`): **keep the unit** in `state.units[]` (do not drop) and print a warning:
+  ```
+  WARNING: existing unit `<U_old.id>` (status: <status>) is not in the regenerated plan.
+    Possible causes:
+      - The analyzer didn't re-detect it (source files moved or deleted).
+      - The unit was renamed but migration.md §9b is missing the mapping.
+      - The unit is genuinely out of scope now (declare it in §9 and re-run).
+    Action taken: kept the unit as-is so progress is not lost. Add `<U_old.id> → <new_id>` to
+    §9b Unit rename map, OR add `<U_old.id>` to §9 Out of scope, then re-run /web-modernize:plan.
+  ```
+
+Collect all warnings and print them as a block after the success banner — do not stop the plan generation.
+
+#### Step 5 — Dependency repair after renames
+
+For every unit's `depends_on[]`, if any entry references an old id that was renamed, replace it with the new id. If an entry references an id that no longer exists at all (and is not `__auth__`), drop it and warn:
+
+```
+WARNING: unit `<unit.id>` depended on `<missing_id>` which no longer exists in the plan.
+  Pruned from depends_on. If this was a rename, declare it in §9b and re-run.
+```
 
 ### `depends_on` graph
 
@@ -125,24 +184,28 @@ Mirror `migration.md §9` list verbatim into the plan's "Out of scope" section.
 
 ```json
 {
-  "status": "planned",
+  "status": "<see rule below>",
   "target_stack": {
     "ui": "<from §3>",
     "api": "<from §4 or 'none'>",
     "db": "<from §5 or 'unchanged'>"
   },
   "strategy": "<from §6>",
-  "scaffold": {
-    "ui": { "status": "pending" },
-    "api": { "status": "<pending or skipped if api==none>" , "reason": "..." },
-    "db": { "status": "<pending or skipped if db==unchanged>", "reason": "..." }
-  },
-  "units": [ <seeded units> ],
+  "scaffold": "<see rule below>",
+  "units": [ <merged units, see "Unit seeding" above> ],
   "out_of_scope": [ <from §9> ],
   "lock": null,
   "updated_at": "<ISO now>"
 }
 ```
+
+**`status` rule** — preserve forward progress on re-runs:
+- If the current `state.status` is `analyzed`: set to `planned`.
+- If the current `state.status` is `planned`, `scaffolded`, `auth_done`, `in_progress`, or `complete`: leave as-is. A re-plan never rewinds the workflow.
+
+**`scaffold` rule** — only initialize if currently `null`:
+- If `state.scaffold` is `null` (first plan run): seed `{ ui: {status: "pending"}, api: {status: "pending|skipped"}, db: {status: "pending|skipped"} }`.
+- If `state.scaffold` is non-null (re-plan after scaffold ran): leave it alone. The scaffold has already been generated; changing its status here would lie about what's on disk.
 
 Release the lock by setting `lock: null`.
 

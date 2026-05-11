@@ -30,14 +30,14 @@ The target stack you migrate **to** decides additional tooling (Node + npm for R
 
 ---
 
-## The five-step workflow
+## The workflow
 
 Once installed, every legacy repo follows the same shape:
 
 ```
 1. /web-modernize:init       ← bootstrap scaffolding in this repo
-2. (edit migration.md)       ← team fills target framework, strategy, auth, acceptance criteria
-3. /web-modernize:analyze    ← detect source stack + entry points
+2. /web-modernize:analyze    ← detect source stack and auto-fill migration.md §2
+3. (edit migration.md)       ← team fills target framework, strategy, auth, acceptance criteria
 4. /web-modernize:plan       ← generate plan.md and unit list
 5. Loop:
      /web-modernize:scaffold    (once)
@@ -45,6 +45,16 @@ Once installed, every legacy repo follows the same shape:
      /web-modernize:next        (repeat, one unit at a time)
      /web-modernize:verify      (after each unit, or batch)
    Until /web-modernize:status reports "complete".
+
+Failure recovery (any time after a /next or /migrate):
+     /web-modernize:rollback --unit <id>   ← revert one unit's files via git
+     /web-modernize:retry <id> [--with-prompt="…"]   ← re-attempt a failed unit
+
+Multi-developer sync (anytime after others push):
+     /web-modernize:sync           ← merge latest state.json from origin
+
+Reporting (anytime after /plan):
+     /web-modernize:report [--format=md|json|html]
 ```
 
 Concretely, after step 1 your repo will contain:
@@ -71,16 +81,20 @@ Commit the `.claude/modernize/` directory. That's how Alice on Monday and Bob on
 
 | Command | Purpose | When you run it |
 |---------|---------|-----------------|
-| `/web-modernize:init` | Bootstrap `migration.md` + `.claude/modernize/` | Once per legacy repo |
-| `/web-modernize:analyze` | Detect source stack and entry points | After `/init`, before filling out the rest of `migration.md` |
-| `/web-modernize:plan` | Validate `migration.md`, generate `plan.md`, seed unit list | After `migration.md` is complete |
+| `/web-modernize:init` | Bootstrap `migration.md` + `.claude/modernize/`; upgrade state.json schema if needed | Once per legacy repo |
+| `/web-modernize:analyze` | Detect source stack and entry points; auto-fill `migration.md §2` | Immediately after `/init`, before filling out the rest of `migration.md` |
+| `/web-modernize:plan` | Validate `migration.md`, generate `plan.md`, seed unit list (re-runnable; carries history forward) | After `migration.md` is complete; re-run whenever the unit list changes |
 | `/web-modernize:scaffold` | Create target project skeleton (UI, optional API, optional DB) | Once, after `/plan` |
 | `/web-modernize:auth` | Migrate authentication as a distinct first slice | Once, after `/scaffold` |
 | `/web-modernize:next` | Pick next pending unit and migrate it | In a loop until migration is complete |
-| `/web-modernize:migrate <id>` | Migrate a specifically named unit | When you need to jump to a unit out of order (debug, retry) |
+| `/web-modernize:migrate <id>` | Migrate a specifically named unit | When you need to jump to a unit out of order (debug) |
+| `/web-modernize:retry <id> [--with-prompt="…"]` | Re-attempt a failed unit; preserves diagnostic history | When `/status` shows a unit in `failed` status |
+| `/web-modernize:rollback --unit <id>` | Revert one unit's target files via git; reset to `pending` | When a migrated/verified unit broke and you want a clean re-attempt |
+| `/web-modernize:sync` | Merge latest `state.json` from origin into local | After pulling, when other developers have been working in parallel |
 | `/web-modernize:verify [id]` | Lint + typecheck + test a migrated unit, record evidence | After each `/next`, or in batch |
+| `/web-modernize:report [--format=md\|json\|html]` | Generate stakeholder progress report (burndown, ETA, risks) | Sprint syncs, exec updates, weekly digests |
 | `/web-modernize:status` | Print progress dashboard | Anytime — read-only |
-| `/web-modernize:abandon` | Two-step rollback (`--soft`, `--hard`, `--unit <id>`) | When you need to reset state or drop a unit |
+| `/web-modernize:abandon` | Two-step destructive reset (`--soft`, `--hard`, `--unit <id>`) | When you need to start over or formally drop a unit |
 
 ---
 
@@ -99,10 +113,11 @@ Commit the `.claude/modernize/` directory. That's how Alice on Monday and Bob on
 | 7. Auth provider | **yes** | Current and target; drives `/web-modernize:auth` |
 | 8. Constraints | recommended | Must-keep URLs, compliance, deployment target |
 | 9. Out of scope | optional | Explicit "don't migrate this" list |
+| 9b. Unit rename map | optional | `old_id → new_id` mappings so re-runs of `/plan` carry history across renames |
 | 10. Acceptance criteria | **yes** | At least 3 items; drives `/verify`'s pass/fail bar |
 | 11. Risks & open questions | free-form | Plugin reads but doesn't validate |
 
-You can re-edit and re-run `/web-modernize:plan` at any time — the plan and unit list will regenerate. Note that existing units' progress (`status`, `history`, `notes_path`) is preserved across re-plans by unit `id`; if you rename a unit in the plan, you'll lose its history.
+You can re-edit and re-run `/web-modernize:plan` at any time — the plan and unit list will regenerate. Existing units' progress (`status`, `history`, `notes_path`, `verification`, `failure`, `retry_count`, `last_retry_prompt`, `rollback_info`) is preserved across re-plans by unit `id`. If you rename a unit, declare the mapping in `§9b Unit rename map` and history will carry forward (notes file will be renamed too). If a tracked unit (status beyond `pending`) drops off the plan without a rename mapping, `/plan` will keep it and print a warning rather than silently lose progress.
 
 ---
 
@@ -176,10 +191,11 @@ Your codebase didn't match any of the built-in heuristics with high confidence. 
 
 ### A unit migration failed
 
-The unit's status will be `failed` with `failure.diagnostic` populated. The plugin creates a `modernize/<unit-id>` branch when it starts work; that branch contains whatever it managed to write before stopping. Three options:
-1. Inspect the branch, fix the underlying issue, then `/web-modernize:migrate <unit-id>` to retry.
-2. Decide the unit is out of scope: `/web-modernize:abandon --unit <unit-id>`.
-3. Mark it for human migration: edit `state.json` directly to set status `blocked` with a `failure.diagnostic` explaining why.
+The unit's status will be `failed` with `failure.diagnostic` populated. The plugin creates a `modernize/<unit-id>` branch when it starts work; that branch contains whatever it managed to write before stopping. Four options:
+1. **Retry with guidance**: `/web-modernize:retry <unit-id> --with-prompt="<corrective hint>"`. Increments `retry_count`, preserves the prior diagnostic in `failure.diagnostic_history`, and runs the migration again with your override layered on top of `migration.md`.
+2. **Roll back first, then retry**: `/web-modernize:rollback --unit <unit-id>` reverts any target files the failed attempt left behind, then `/web-modernize:retry <unit-id>` for a clean re-attempt.
+3. **Declare out of scope**: `/web-modernize:abandon --unit <unit-id>`.
+4. **Mark for human migration**: edit `state.json` directly to set status `blocked` with a `failure.diagnostic` explaining why.
 
 ### I want to start over
 
@@ -193,11 +209,18 @@ If you want to keep your design notes for postmortem, use `/web-modernize:abando
 
 ### Two developers' `state.json` conflict on merge
 
-Standard git merge conflict. Rules of thumb:
-- For each conflicting unit, keep the entry with the most-advanced `status` (`verified > migrated > in_progress > pending`).
-- For `history[]`, concatenate both branches' entries and sort by `at` timestamp.
-- For top-level `status`, keep the higher in this order: `complete > in_progress > auth_done > scaffolded > planned > analyzed > initialized > uninitialized`.
-- After resolving, commit and run `/web-modernize:status` to verify.
+You have two options:
+
+1. **Use `/web-modernize:sync`** (recommended). Run it after `git fetch` instead of `git pull`. It reads the remote state.json, applies these merge rules deterministically, and writes the result to your working tree for you to review and commit:
+   - For each unit, take the most-advanced `status` (`verified > migrated > in_progress > failed > blocked > skipped > pending`).
+   - For `history[]`, concatenate both sides, de-duplicate, and sort by `at`.
+   - For `in_flight`, take the fresher heartbeat (or drop both if both >15 min stale).
+   - For top-level `status`, take the higher of `complete > in_progress > auth_done > scaffolded > planned > analyzed > initialized > uninitialized`.
+   - For `failure.diagnostic_history[]`, concatenate both sides.
+   - For `retry_count`, take the max.
+   - Prints a plain-language reconciliation report — no JSON hand-merging.
+
+2. **Resolve manually with git**. Follow the same rules listed above, then commit and run `/web-modernize:status` to verify. Use this if `/sync` refuses (e.g., you have uncommitted state.json changes).
 
 ### The heartbeat hook isn't firing
 
@@ -241,7 +264,7 @@ The plugin uses explicit semver. The `version` field in `.claude-plugin/plugin.j
 - **Minor** (0.1.x → 0.2.0) — new skill, new framework support, additive schema change
 - **Major** (0.x.x → 1.0.0) — `state.schema.json` breaking change, removed/renamed skill, changed slash-command name
 
-`state.schema.json` is versioned independently via the `schema_version` integer. The plugin's `/init` (and any future `/migrate-schema`) handles migrations forward.
+`state.schema.json` is versioned independently via the `schema_version` integer. The plugin's `/init` handles migrations forward (currently `1 → 2`, adding `retry_count`, `last_retry_prompt`, `rollback_info`, and `failure.diagnostic_history[]` per unit — losslessly and idempotently).
 
 ---
 

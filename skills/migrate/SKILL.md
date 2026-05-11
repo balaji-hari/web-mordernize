@@ -3,14 +3,16 @@ description: >
   Migrates a specifically named unit, bypassing /web-modernize:next's automatic
   selection. The escape hatch for senior developers who want to jump to a
   specific page/controller/component (e.g., to debug a problem unit out of
-  dependency order, or to retry a previously failed unit). Otherwise behaves
-  identically to /web-modernize:next.
+  dependency order). Otherwise behaves identically to /web-modernize:next.
+  For retrying a previously failed unit, prefer /web-modernize:retry.
 disable-model-invocation: false
 ---
 
 # `/web-modernize:migrate <unit-id>`
 
 You are the **migrate** skill. You take an explicit unit id as `$ARGUMENTS` and migrate it, overriding the dependency-aware picking that `/web-modernize:next` does.
+
+The translation work itself is shared with `/web-modernize:next` and `/web-modernize:retry` and lives in `${CLAUDE_PLUGIN_ROOT}/agents/unit-migrator.md`. This skill handles **explicit selection** and **status-specific gating**; the migration body is delegated.
 
 ## Preflight
 
@@ -33,31 +35,56 @@ You are the **migrate** skill. You take an explicit unit id as `$ARGUMENTS` and 
 Inspect `unit.depends_on`. If any dependency is not in `{"migrated", "verified"}`:
 
 ```
-⚠ Unit <id> has unmet dependencies: <list of dep_ids and their statuses>.
+WARNING: Unit <id> has unmet dependencies: <list of dep_ids and their statuses>.
 
 Migrating out of order risks broken references (the unit may import symbols
 from a not-yet-migrated dependency). Continue anyway? (yes/no)
 ```
 
-If the user says yes, proceed but record this in `notes/<id>.md` "Gotchas" so reviewers know.
+If the user says yes, the shared procedure will stub the missing deps with TODO comments. If no, stop.
 
-## Status-based handling
+## Status-based gating
 
-- If `unit.status == "pending"` → migrate normally (delegate the rest to the logic in `/web-modernize:next`'s "Migrate" section).
-- If `unit.status == "in_progress"` → behave like `/web-modernize:next`'s in-flight handling (A/B/C cases).
-- If `unit.status == "migrated"` → ask the user: "This unit has already been migrated. Do you want to (a) reset to pending and re-migrate from scratch, (b) view its current state and skip, (c) cancel?"
-- If `unit.status == "verified"` → same as migrated, with extra warning: "Re-migrating will reset verification status."
-- If `unit.status == "failed"` → print the previous failure diagnostic and ask: "Retry this unit? Address the underlying issue first if needed."
-- If `unit.status == "blocked"` or `"skipped"` → ask the user to confirm they want to take this unit out of that state.
+Decide whether to invoke the shared agent based on `unit.status`:
 
-## Migration body
+| Current status | Action |
+|----------------|--------|
+| `pending` | Proceed straight to the shared agent. |
+| `in_progress` | Proceed; the shared agent's Case A/B/C handling will sort out the collision. |
+| `migrated` | Ask: "Already migrated. (a) reset to pending and re-migrate, (b) view current state and skip, (c) cancel?" On (a), set unit back to `pending` (append history `{from: migrated, to: pending, reason: "manual re-migrate"}`) then proceed. On (b)/(c), stop. |
+| `verified` | Same as migrated, but extra warning: "Re-migrating will reset verification status." Clear `verification` if user confirms. |
+| `failed` | Print the prior diagnostic and redirect: "Use `/web-modernize:retry <id>` to re-attempt — it preserves the diagnostic history and supports `--with-prompt` for guidance overrides." Stop unless the user explicitly forces with a confirmation. |
+| `blocked` / `skipped` | Ask the user to confirm they want to take this unit out of that state. On confirm, set to `pending` and proceed. |
 
-Once past the preflight and status handling, delegate to the same algorithm documented in `${CLAUDE_PLUGIN_ROOT}/skills/next/SKILL.md` under "Migrate". The only difference between `/next` and `/migrate` is **which unit is selected**; the actual porting work is identical.
+## Run the shared migration procedure
 
-To avoid drift, do not duplicate that algorithm here. Instead, follow it by reference: read `next/SKILL.md`'s "Migrate" section and apply it to the unit selected above.
+Load `${CLAUDE_PLUGIN_ROOT}/agents/unit-migrator.md` and follow it with:
+
+- `mode = "migrate"`
+- `unit = <the unit named by the user>`
+- `retry_prompt = null`
+
+If `depends_on` were unmet and the user confirmed override, pass a flag to the agent so it stubs missing dep imports rather than failing.
+
+## Closing message
+
+On success:
+
+```
+✓ Migrated <unit.id> (out of dependency order: <yes|no>)
+  Source: <source_paths>
+  Target: <target_paths>
+  Notes:  .claude/modernize/notes/<unit.id>.md
+
+Suggested next steps:
+  1. Review the diff: git diff --stat
+  2. Run /web-modernize:verify <unit.id>
+  3. Commit when satisfied.
+```
+
+On failure: the agent already printed the diagnostic and the recovery options (including `/web-modernize:retry`). Do not add a second banner.
 
 ## State transitions
 
-Same as `/web-modernize:next`:
 - Top-level: `auth_done` → `in_progress` (if first migration), unchanged otherwise.
-- Unit: `pending`/`failed`/etc. → `in_progress` → `migrated` (or `failed`).
+- Unit: `pending` (or whatever the user opted out of) → `in_progress` → `migrated` (or `failed`).
