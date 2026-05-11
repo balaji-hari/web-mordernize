@@ -1,7 +1,7 @@
 {
   "name": "web-modernize",
   "description": "Guides teams through migrating legacy web applications (ASP.NET WebForms, Java/JSP, AngularJS 1.x, etc.) to modern stacks. Provides slash commands for analyze, plan, scaffold, and unit-by-unit migration with resumable, multi-developer state.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": {
     "name": "Balaji Harikrishnan",
     "email": "balaji.harikrishnan@cognizant.com"
