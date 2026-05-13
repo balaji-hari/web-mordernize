@@ -142,3 +142,28 @@ The checklist `/web-modernize:verify` will use to call a unit (or the whole migr
 Free-form. Update as the migration progresses. The plugin reads this section as context but does not validate it.
 
 - <!-- e.g., "Unknown how OrderProcessor uses HttpContext.Items — investigate before migrating" -->
+
+## 12. Testing — REQUIRED
+
+Pick the test framework for each subsystem and the coverage bar. `/web-modernize:scaffold` installs the chosen runner and writes a working harness; `/web-modernize:next` / `/migrate` / `/retry` translate any legacy tests it finds for each unit, then generate additional tests to top up to the target coverage. The smoke gate on each unit runs the unit's scoped tests with coverage before flipping to `migrated`. Coverage below target is a **soft fail** — the unit still finalises, but with a `below_threshold` flag and a warning listing the uncovered regions.
+
+Suggestions per target stack (override if you have a reason — the plugin uses your value, not the suggestion):
+
+| Target stack | Suggested runner |
+|---|---|
+| React / Vue / Svelte via Vite | **vitest** |
+| Next.js | **jest** (or vitest) |
+| Angular | **karma-jasmine** (Angular default) or **jest** |
+| SvelteKit | **vitest** |
+| FastAPI | **pytest** (+ pytest-cov + httpx) |
+| .NET minimal API | **xunit** (+ coverlet); nunit / mstest are alternates |
+| Spring Boot | **junit5** (+ MockMvc / WebTestClient, JaCoCo) |
+| NestJS | **jest** (ships with `nest new`) |
+
+- **UI test framework**: <!-- vitest | jest | karma-jasmine | other: ___ -->
+- **API test framework**: <!-- pytest | xunit | junit5 | jest | nunit | mstest | other: ___ -->
+- **Target coverage %**: <!-- integer 0–100; recommended 80 -->
+
+Notes:
+- If `migration.md §4 Target API framework` is `none` or `reuse-existing`, the API test framework field can be `n/a`.
+- If the team uses a runner the plugin does not have a recipe for (any "other:" value), `/scaffold` will record `"test_harness": "manual"` and skip auto-installing — the team is expected to wire the runner up by hand. Unit-migrator will likewise record `tests.framework = "manual"` and skip the per-unit coverage check (soft-skip, never hard-fail).

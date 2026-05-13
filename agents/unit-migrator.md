@@ -165,7 +165,86 @@ This is the actual translation work.
      - If the legacy uses absolute URLs like `/Content/Pics/foo.png` and the target framework serves `public/` at a different base path (e.g., Next.js basePath, Vite base config, custom prefix), surface the discrepancy in the unit's notes.
    - **Record the design translation in notes.** Append to `notes/<unit.id>.md` a "Design translation" section. Format: a short table mapping each legacy custom class used in this unit to its target translation (Tailwind utilities, CSS module class, component library equivalent), plus any rules that ended up in shared CSS rather than per-component styles.
 
-8. **Add a placeholder test** (smoke test at minimum). The `migration.md §10` acceptance criteria should drive what is asserted.
+7c. **Tests — translate legacy first, then top up to coverage threshold.** Read `state.testing.ui_framework`, `state.testing.api_framework`, and `state.testing.target_pct` (seeded by `/web-modernize:plan` from `migration.md §12`). Pick the framework that matches this unit's `target_paths` (UI framework if paths fall under `state.scaffold.ui.path`, API framework if under `state.scaffold.api.path`, or run both for cross-cutting units). If the relevant framework is `"manual"` or `"n/a"`, record `unit.tests = { "framework": "<value>", "skipped_reason": "<manual|n/a>" }` and skip the rest of 7c.
+
+   **Step 1 — Scan for legacy tests touching this unit's `source_paths`.** Conventions per detected source stack (`state.source_stack.primary_framework` or analysis.json):
+   - **NUnit / MSTest** (.NET legacy): walk sibling `*.Tests/` or `Tests/` directories; match by namespace + the class-under-test name; also grep for `using` directives or constructor references to the unit's source types.
+   - **JUnit** (Java legacy): walk `src/test/java/`; match by package + class-under-test name; grep for `@Autowired` / direct imports of the unit's classes.
+   - **Jasmine / Karma / Mocha** (AngularJS / classic JS legacy): walk `**/*.spec.js`, `**/*.test.js`; match `describe(...)` titles and `import`/`require` paths against the unit's source files.
+   - **pytest / unittest** (Python legacy): walk `tests/test_*.py` and `*_test.py`; match imports of the unit's modules.
+   - **Other** (no recognised legacy test stack): skip directly to Step 5 (generation from scratch).
+
+   Collect all matched legacy test files into `legacy_tests[]`.
+
+   **Step 2 — Translate the translatable ones.** For each file in `legacy_tests[]`:
+   - **Skip if disabled.** Markers: `[Ignore]`, `[Skip]`, `@Disabled`, `@Ignored`, `xit`, `xdescribe`, `@pytest.mark.skip`, `@pytest.mark.skipif`. Record in `unit.tests.skipped_legacy[]` as `{ "path": "<legacy path>", "reason": "<marker>" }`.
+   - **Translate enabled tests** to the target framework chosen in `migration.md §12`. Preserve test names verbatim where the target syntax allows (`should_return_404_when_id_missing` works in pytest, vitest, junit, xunit identically). Translate:
+     - Assertions: `Assert.AreEqual(x, y)` → `assert x == y` / `expect(x).toBe(y)` / `assertEquals(x, y)`.
+     - Mock libraries: `Moq` (`new Mock<IFoo>()`) → `unittest.mock.MagicMock` / `vi.fn()` / Mockito `@Mock`. Spring `@MockBean` → pytest fixture providing a stub via `app.dependency_overrides[]`. Jasmine `spyOn` → `vi.spyOn` / `jest.spyOn`.
+     - Fixtures / setup-teardown: NUnit `[SetUp]` / `[TearDown]` → pytest fixture with `yield` / `@BeforeEach` / `beforeEach`.
+     - Parameterised cases: NUnit `[TestCase(...)]` → `pytest.mark.parametrize` / `it.each` / JUnit `@ParameterizedTest`.
+     - HTTP test infrastructure: ASP.NET `TestServer` / `WebApplicationFactory` → FastAPI `TestClient`; Spring `MockMvc.perform(get(...))` → equivalent in the target stack's idiomatic client.
+   - **Note untranslatable tests** — those depending on legacy infrastructure with no clean target equivalent (e.g., IIS-hosted integration tests against COM components, ColdFusion CFC mocks, ASP.NET server-control state). Record in `unit.tests.untranslatable[]` as `{ "legacy_path": "<path>", "reason": "<one-line reason>" }` and append an "Untranslated legacy tests" subsection to `notes/<unit.id>.md` describing what would be needed to port them.
+   - **Write translated tests** to the conventional location for the target framework (e.g., `tests/test_<unit.id>.py` for pytest, `<unit-dir>/<UnitName>.test.tsx` colocated for vitest, `src/test/java/.../<UnitName>Tests.java` for junit, `tests/<Project>.Tests/<UnitName>Tests.cs` for xunit).
+   - Add each written path to `unit.tests.translated_from[]` mapping `{ "legacy_path": "<path>", "target_path": "<path>", "tests_in_file": <count> }`.
+
+   **Step 3 — Run translated tests with coverage** scoped to this unit's `target_paths`. Pick the command from `state.testing.<subsystem>_framework`:
+
+   | Runner | Scoped coverage command |
+   |---|---|
+   | `vitest` | `npx vitest run --coverage --coverage.include='<target_paths joined as glob>'` |
+   | `jest` | `npx jest --coverage --collectCoverageFrom='<target_paths>' <test_file_globs>` |
+   | `karma-jasmine` | `ng test --watch=false --code-coverage --include='<target_paths>'` |
+   | `pytest` | `pytest --cov=<target_paths joined as dotted modules> --cov-report=json:.coverage.json <test_file_paths>` |
+   | `xunit` / `nunit` / `mstest` | `dotnet test --collect:"XPlat Code Coverage" /p:Include="<target_paths>"` then parse the Cobertura XML for line coverage |
+   | `junit5` | `./mvnw -q test jacoco:report -Djacoco.includes=<target_paths joined>` then parse `target/site/jacoco/jacoco.xml` |
+
+   Parse the report into:
+   ```json
+   {
+     "pct": <integer 0–100, line coverage>,
+     "uncovered_regions": [
+       { "file": "<target path>", "line_range": "<start-end>", "branch_description": "<one-line summary of the uncovered branch>" }
+     ]
+   }
+   ```
+
+   If the translated tests **fail to run** (compile error, import error, runtime exception that aborts the test runner — not just an assertion failure), surface that as a hard fail via §4 with diagnostic `Translated legacy tests failed to run: <stderr tail>. The translation may have missed a fixture/mock; review tests.translated_from and either fix or move to tests.untranslatable.` Do not proceed to Step 4.
+
+   Assertion failures inside translated tests are also a hard fail (the legacy behaviour you tried to preserve doesn't actually match), with diagnostic `Translated legacy test <test_name> failed: <assertion message>. The new implementation does not match the legacy behaviour the test encodes — fix the implementation or update the test if the change is intentional.`
+
+   **Step 4 — Top up to `target_pct` if below.** If `coverage.pct >= state.testing.target_pct`, skip to Step 5.
+
+   Otherwise, for each entry in `uncovered_regions`:
+   - Read the **legacy source** at the corresponding location (use the source-to-target line map you built in step 4, or grep the legacy file for the equivalent branch). Understand what behaviour the uncovered branch encodes.
+   - Generate a targeted test that exercises that branch by **observable behaviour** — given input X (or state Y), the unit produces output Z. Avoid asserting on internal implementation (no "this private method was called twice"; that's brittle and tautological against the code you just wrote).
+   - Pull additional context from `migration.md §10` acceptance criteria and the request/response schema (for API units) when designing the assertion.
+   - Append the new test to the appropriate test file (or create a new `tests/test_<unit.id>_generated.py` / `<UnitName>.generated.test.tsx` if the layout calls for it).
+   - Increment `unit.tests.generated_count`.
+
+   Re-run scoped coverage (Step 3). Compare `pct` to `target_pct` again. Iterate up to **2 generation passes total**. After pass 2, take the result as final regardless of whether the threshold was met — do NOT iterate further (auto-generation loops can rot context and produce nonsense; the 2-pass cap is a deliberate ceiling).
+
+   **Step 5 — Record final tests block on the unit.** Build `unit.tests`:
+   ```json
+   {
+     "framework": "<runner>",
+     "translated_from": [...],
+     "translated_count": <N>,
+     "skipped_legacy":   [...],
+     "untranslatable":   [...],
+     "generated_count":  <N>,
+     "coverage": {
+       "pct": <final pct after pass 2>,
+       "target_pct": <state.testing.target_pct>,
+       "below_threshold": <pct < target_pct>,
+       "uncovered_regions": [...]   // only present when below_threshold
+     }
+   }
+   ```
+
+   Update `in_flight.current_step = "tests written"` and save the per-unit file. Proceed to step 8.
+
+8. **Add a placeholder test** (smoke test at minimum). The `migration.md §10` acceptance criteria should drive what is asserted. (Step 7c may have already produced this — skip if `unit.tests.translated_count + unit.tests.generated_count > 0`.)
 9. **Append to `notes/<unit.id>.md`**: design decisions, source-to-target symbol map, gotchas. For `retry` mode, add a "Retry #<N>" section that records what was different this time and (if `retry_prompt` was set) quote the user's override verbatim. The "Design translation" section from step 7b lives in this same notes file.
 
 ### Honor `retry_prompt` when set
@@ -219,6 +298,102 @@ Return control to the caller. Do NOT auto-advance to another unit.
 
 ## 5. Finalize successful migration
 
+Finalisation has two parts: a **smoke-test gate** (§5a) that must pass before the unit can be declared migrated, and the **state write** (§5b) that only runs on a green gate. A failed smoke test does NOT silently downgrade — it routes through the §4 failure path so the user sees the actual reason and gets `/retry` as an option.
+
+### 5a. Smoke-test before finalising
+
+After all target files are written but **before** writing `status = "migrated"`, exercise the generated code. Behaviour depends on which subsystem(s) the unit's `target_paths` touched (compare each path against `state.scaffold.ui.path` and `state.scaffold.api.path`):
+
+**API-touching unit.** Boot the dev server in the background, working dir = `state.scaffold.api.path`. Pick the command by `state.target_stack.api`:
+
+| Stack | Boot command | Health probe |
+|---|---|---|
+| `fastapi` | `uvicorn app.main:app --port <free-port>` | `GET /health` |
+| `nestjs` | `npm run start:dev -- --port <free-port>` | `GET /health` |
+| `spring-boot-3` | `./mvnw -q spring-boot:run -Dspring-boot.run.arguments=--server.port=<free-port>` | `GET /actuator/health` (fall back to `/health`) |
+| `dotnet-minimal-api` | `dotnet run --urls http://localhost:<free-port>` | `GET /health` |
+| other | record `"smoke": "skipped — no recipe"`, skip to §5b | — |
+
+Pick a free port (e.g., sample from 50000–60000 and check it's unused). Wait up to 30 seconds polling the health probe; if it never returns 2xx, treat as smoke failure with diagnostic `boot failed: health endpoint did not respond within 30s`.
+
+Once healthy, for **each endpoint this unit added** (parse the route declarations in the files you wrote — e.g., FastAPI `@router.get/post/...`, NestJS `@Get/@Post`, Spring `@GetMapping`, ASP.NET `app.MapGet/MapPost`):
+
+1. Build a representative request. Sources, in order of preference: (a) an example value in the unit's acceptance criteria from `migration.md §10`; (b) the declared request schema's `example`/`examples` field; (c) a parameter-free GET for GETs with no required params; (d) a POST with the schema's example values filled in.
+2. Issue the request. Use `curl` from a shell or an in-process HTTP client.
+3. Assert **HTTP 2xx** AND the response body conforms to the declared response schema, including: every non-Optional field is present, every non-Optional nested object is non-null and has the keys the schema declares (this is what catches lazy-load / serialisation bugs — the field is in the schema, the JSON has `null`, so the check fails), and array fields are arrays (not `null`).
+
+Tear the server down (kill the background process group) regardless of outcome.
+
+**UI-touching unit.** From `state.scaffold.ui.path`, run `npm run build` and `npm run typecheck`. Both must exit 0. Capture stderr tail on failure.
+
+**Cross-cutting unit** (paths in both UI and API): run both blocks; either failing is a smoke failure.
+
+**No-recipe stack** (custom/other API, or unit touches neither subsystem): record `"smoke": "skipped — no recipe"` on the unit and proceed to §5b. Graceful degrade — never block unknown stacks.
+
+**Run the unit's scoped tests + coverage.** After the boot+curl / build-and-typecheck steps pass, re-run the scoped coverage command from step 7c (the same command that produced `unit.tests.coverage`). The 7c run was a one-shot during the migration body; this re-run is the gate, so it must produce a fresh result the gate can act on.
+
+Decision tree:
+
+| Result | Action |
+|---|---|
+| Tests pass AND `coverage.pct >= state.testing.target_pct` | Green. Proceed to §5b. |
+| Tests pass AND `coverage.pct < state.testing.target_pct` | **Soft-fail on coverage.** Proceed to §5b with `unit.tests.coverage.below_threshold = true`. Print the yellow warning (see below). Do NOT take §4's hard-fail path. |
+| Test runner / coverage tool **errors out** (non-zero exit that is not just "some tests failed" — e.g., import error, config error, the binary crashed) | **Hard fail.** Take §4 with diagnostic `<runner> exited with code <N>: <stderr tail>. The test harness itself broke; check tests/conftest.py or the runner config.` |
+| Tests **fail** (assertion failures or expected-pass tests reporting red) | **Hard fail.** Take §4 with diagnostic `<X>/<Y> tests failed in <unit>: <first-failing-test-name>: <first-failure-assertion-message>. The new implementation may not preserve the legacy behaviour the failing test encodes — review and fix the implementation, or /retry with --with-prompt explaining the intentional change.` |
+
+Yellow warning for the soft-fail-on-coverage case (printed after §5b writes the migrated record):
+
+```
+⚠ Unit <unit.id> migrated, but test coverage below target.
+  Coverage: <pct>%  (target: <target_pct>%)
+  Uncovered:
+    - <file>:<line-range> — <branch_description>
+    ...
+  The unit is finalised. To raise coverage, edit the tests and re-run /web-modernize:verify <unit.id>
+  (verify will re-measure coverage and clear the below_threshold flag once you cross target).
+```
+
+If `unit.tests.framework` is `"manual"` or `"n/a"` (the test harness was opted out at scaffold time), skip the test+coverage gate entirely and proceed to §5b. The functional smoke (boot+curl / build/typecheck) still applies — that part never depends on the test runner.
+
+#### On smoke failure
+
+Take the §4 failure path. Write to `.claude/modernize/units/<unit.id>.json`:
+
+```json
+{
+  "status": "failed",
+  "in_flight": null,
+  "failure": {
+    "diagnostic": "<one-paragraph explanation including the actual response body or build error, not just 'tests failed'>",
+    "branch": "modernize/<unit.id>",
+    "diagnostic_history": <existing array>,
+    "smoke": {
+      "kind": "api" | "ui" | "both" | "tests" | "coverage",
+      "endpoint": "<method> <path>",                  // when kind includes api
+      "response_status": <HTTP code>,                  // when kind includes api
+      "response_body_excerpt": "<first ~2KB of body>", // when kind includes api
+      "build_command": "<cmd>",                        // when kind includes ui
+      "build_stderr_tail": "<last ~40 lines>",         // when kind includes ui
+      "test_runner": "<vitest|pytest|...>",            // when kind == "tests"
+      "tests_failed": "<X/Y>",                         // when kind == "tests"
+      "first_failing_test": "<name>",                  // when kind == "tests"
+      "first_failure_message": "<assertion message>"   // when kind == "tests"
+    }
+  }
+}
+```
+
+The diagnostic MUST be specific enough that `/web-modernize:retry --with-prompt="…"` can paste it back as the override hint. Example diagnostics:
+
+- `Smoke-test boot+curl: GET /catalog/items returned 200, but response body has "catalog_brand": null for every item — declared schema CatalogItemRead.catalog_brand is non-Optional. Likely cause: SQLAlchemy relationship() lazy-loaded after session close. Try eager loading via .options(joinedload(CatalogItem.catalog_brand), joinedload(CatalogItem.catalog_type)).`
+- `Smoke-test UI build: 'npm run typecheck' failed with TS2304: Cannot find name 'useCartContext'. Likely cause: missing import or unmet dependency from <dep.id>.`
+- `Smoke-test tests: 2/7 translated legacy tests failed: test_catalog_get_by_id_returns_404_when_missing failed with AssertionError: expected 404, got 500. The new GET /catalog/items/{id} raises instead of returning 404 — wrap the DB lookup and translate NoResultFound to HTTPException(404).`
+- `Smoke-test tests: pytest exited with code 4 (collection error): ImportError while importing test module tests/test_catalog.py: cannot import name 'CatalogItemRead' from 'app.schemas'. The translated test references a schema that doesn't exist in the new code — either add the missing export or fix the test's import.`
+
+Append a history entry and print the diagnostic with the existing recovery options banner from §4 (`/retry`, `/rollback`, `/abandon`). Return to caller. Do NOT advance.
+
+### 5b. On smoke success — write the migrated record
+
 Write to `.claude/modernize/units/<unit.id>.json`:
 
 ```json
@@ -226,9 +401,35 @@ Write to `.claude/modernize/units/<unit.id>.json`:
   "status": "migrated",
   "target_paths": [<actual paths written>],
   "in_flight": null,
+  "smoke": {
+    "ran_at": "<now>",
+    "kind": "api" | "ui" | "both" | "skipped",
+    "endpoints_hit": [{ "method": "GET", "path": "/catalog/items", "status": 200, "schema_ok": true }],
+    "build":   { "command": "npm run build && npm run typecheck", "exit_code": 0 },
+    "tests":   { "runner": "<vitest|pytest|...>", "passed": <X>, "total": <Y>, "exit_code": 0 },
+    "coverage_check": { "pct": <integer>, "target_pct": <integer>, "below_threshold": <bool> }
+  },
+  "tests": {
+    "framework": "<runner>",
+    "translated_from": [...],
+    "translated_count": <N>,
+    "skipped_legacy":   [...],
+    "untranslatable":   [...],
+    "generated_count":  <N>,
+    "coverage": {
+      "pct": <integer>,
+      "target_pct": <integer>,
+      "below_threshold": <bool>,
+      "uncovered_regions": [...]  // only when below_threshold
+    }
+  },
   "history": [...existing, { "at": "<now>", "by": "<user>", "from": "in_progress", "to": "migrated", "session_id": "<sid>" }]
 }
 ```
+
+Omit the irrelevant sub-fields (e.g., `endpoints_hit` for a pure UI unit, `build` for a pure API unit). For a no-recipe functional smoke stack, `smoke.kind = "skipped"` with `smoke.reason = "no recipe for <stack>"`. For a `manual` / `n/a` test framework, omit `smoke.tests` and `smoke.coverage_check`, and set `tests.framework = "<value>"` with `tests.skipped_reason = "<manual|n/a>"`.
+
+If `coverage_check.below_threshold == true`, print the yellow warning from §5a after the §5b write completes. The unit is still finalised as `migrated` — this is the soft-fail policy.
 
 Update `state.json.updated_at`. Do not touch any other top-level field (status stays `in_progress`; transition to `complete` is `/web-modernize:verify`'s job).
 

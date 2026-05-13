@@ -39,7 +39,7 @@ If `--assets-only`, skip directly to "Copy legacy assets" below; do not run the 
 
 ## Per-subsystem checklist
 
-Process each subsystem in order: UI → API → DB. For each, set `state.json.scaffold.<subsystem>` to `{"status": "in_progress", "path": "...", "started_at": "..."}` before starting, then to `{"status": "done", ...}` when complete. This makes resume-after-interruption straightforward.
+Process each subsystem in order: UI → API → DB. For each, set `state.json.scaffold.<subsystem>` to `{"status": "in_progress", "path": "...", "started_at": "..."}` before starting. **Before flipping the subsystem to `"status": "done"`, run the smoke-build gate** (see "Smoke-build the subsystem" below). If smoke-build fails, leave `status` as `in_progress` and stop — do not advance to the next subsystem. This makes resume-after-interruption straightforward and guarantees a subsystem only reaches `done` when its skeleton actually installs and builds.
 
 ### UI scaffold
 
@@ -95,6 +95,194 @@ Only run if `state.target_stack.db != "unchanged"`. Otherwise mark skipped.
 
 - `schema-migrate-to-<X>`: create `db/migrations/` with a placeholder migration `0001_init.sql` and a README explaining the migration tool the team chose.
 - `replatform-to-<Y>`: create `db/` with a `README.md` describing the source → target plan; defer actual migration scripts to a later phase.
+
+### Test harness
+
+Run this sub-step **after** the framework CLI / API skeleton creation, **before** the smoke-build gate. Pick the recipe based on `state.testing.ui_framework` (for the UI subsystem) and `state.testing.api_framework` (for the API subsystem). Recipes per runner:
+
+#### `vitest` (UI: Vite-based React/Vue/Svelte, SvelteKit)
+
+1. `npm i -D vitest @vitest/coverage-v8 jsdom @testing-library/<framework-bindings> @testing-library/jest-dom` (substitute `react` / `vue` / `svelte` for `<framework-bindings>`; for SvelteKit also add `@sveltejs/vite-plugin-svelte` if not already present).
+2. Write `vitest.config.ts` at the scaffold root with `test.environment = "jsdom"`, `test.globals = true`, `test.coverage = { provider: "v8", reporter: ["text", "json", "html"], include: ["src/**"] }`. Merge with existing Vite config via `mergeConfig` if `vite.config.ts` exists.
+3. Test files are colocated (`*.test.ts`/`*.test.tsx`). Write one sample at `src/App.test.tsx` (or `.spec.ts` for SvelteKit) that renders the placeholder `App` and asserts visible text.
+4. Add `package.json` scripts: `"test": "vitest run"`, `"test:coverage": "vitest run --coverage"`.
+
+#### `jest` (UI: Next.js; API: NestJS)
+
+1. For Next.js: `npm i -D jest jest-environment-jsdom @types/jest ts-jest @testing-library/react @testing-library/jest-dom`. For NestJS: `nest new` already added jest; verify `package.json` has the `jest` block.
+2. Write `jest.config.js` at the scaffold root (or merge with the existing one for Nest). For Next.js include `testEnvironment: "jsdom"`, `transform` with `ts-jest`, and `collectCoverageFrom: ["src/**/*.{ts,tsx}"]`.
+3. Tests live in `__tests__/` or as colocated `*.spec.ts`/`*.test.ts`. Write one sample (`__tests__/app.spec.ts` for Nest, `__tests__/page.test.tsx` for Next) that imports the root and asserts a basic invariant.
+4. Add scripts: `"test": "jest --ci --runInBand"`, `"test:coverage": "jest --ci --coverage"`.
+
+#### `karma-jasmine` (UI: Angular)
+
+1. Angular CLI's `ng new` already installs karma + jasmine and writes `karma.conf.js` and `tsconfig.spec.json`. Verify both exist.
+2. Add `coverageReporter` to `karma.conf.js`:
+   ```js
+   coverageReporter: { dir: require('path').join(__dirname, './coverage/'), reporters: [{ type: 'html' }, { type: 'text-summary' }, { type: 'json-summary' }] }
+   ```
+   Add `karma-coverage` to `plugins` if not present.
+3. Leave the CLI-generated `src/app/app.component.spec.ts` in place as the sample.
+4. Add scripts: `"test": "ng test --watch=false --browsers=ChromeHeadless"`, `"test:coverage": "ng test --watch=false --code-coverage --browsers=ChromeHeadless"`. Tell the user that headless Chrome must be installed on the CI runner.
+
+#### `pytest` (API: FastAPI)
+
+1. Edit `pyproject.toml`:
+   - Add `pytest`, `pytest-cov`, `httpx` to `[project.optional-dependencies].dev`.
+   - Add a `[tool.pytest.ini_options]` block with `testpaths = ["tests"]`, `addopts = "-q"`.
+   - Add a `[tool.coverage.run]` block with `source = ["app"]`.
+2. Re-run `pip install -e ".[dev]"` so the new dev deps land in the environment.
+3. Create `tests/__init__.py` (empty) and `tests/conftest.py` with:
+   ```python
+   import pytest
+   from fastapi.testclient import TestClient
+   from app.main import app
+
+   @pytest.fixture
+   def client():
+       return TestClient(app)
+   ```
+4. Write `tests/test_health.py`:
+   ```python
+   def test_health(client):
+       resp = client.get("/health")
+       assert resp.status_code == 200
+   ```
+
+#### `xunit` (API: .NET minimal API)
+
+1. From the scaffold parent: `dotnet new xunit -o tests/<ProjectName>.Tests`, then `dotnet add tests/<ProjectName>.Tests reference apps/api-new/<ProjectName>.csproj`.
+2. In the test project, `dotnet add package coverlet.collector` and `dotnet add package Microsoft.AspNetCore.Mvc.Testing`.
+3. Make `Program.cs` discoverable for `WebApplicationFactory<Program>` by adding `public partial class Program { }` at the bottom of `Program.cs` (or use a `[assembly: InternalsVisibleTo]` attribute).
+4. Write `tests/<ProjectName>.Tests/HealthTests.cs` using `WebApplicationFactory<Program>` to assert `GET /health` returns 200.
+5. Add a Makefile target or document `dotnet test --collect:"XPlat Code Coverage"` as the coverage command.
+
+#### `nunit` / `mstest` (API: .NET minimal API alternates)
+
+Same as `xunit` but `dotnet new nunit` or `dotnet new mstest`. The `WebApplicationFactory<Program>` pattern is identical; only the attribute syntax differs (`[Test]` for NUnit, `[TestMethod]` for MSTest).
+
+#### `junit5` (API: Spring Boot)
+
+1. `start.spring.io` output already includes `spring-boot-starter-test` which brings JUnit 5. Verify.
+2. Add JaCoCo to `pom.xml`:
+   ```xml
+   <plugin>
+     <groupId>org.jacoco</groupId>
+     <artifactId>jacoco-maven-plugin</artifactId>
+     <version>0.8.12</version>
+     <executions>
+       <execution><goals><goal>prepare-agent</goal></goals></execution>
+       <execution><id>report</id><phase>test</phase><goals><goal>report</goal></goals></execution>
+     </executions>
+   </plugin>
+   ```
+   (Or the Gradle equivalent: `id 'jacoco'` + `jacocoTestReport` task.)
+3. Write `src/test/java/<base-package>/HealthControllerTests.java` using `@SpringBootTest(webEnvironment = RANDOM_PORT)` + `WebTestClient` (or `@AutoConfigureMockMvc` + `MockMvc`) to assert `GET /health` returns 200.
+
+#### `manual` / `other: <name>`
+
+The team chose a runner the plugin doesn't have a recipe for. Set `scaffold.<subsystem>.test_harness = "manual"`, do not install or write any test files, and print:
+
+```
+Test harness for <stack> is manual — install <framework> yourself, write a sample test, and commit before /web-modernize:next runs the first unit. The smoke gate will record "test_harness": "manual" and skip the harness smoke step; per-unit coverage will be skipped (soft-skip, never blocks).
+```
+
+If `state.testing.api_framework == "n/a"` (i.e., §4 set API to `none` / `reuse-existing`), skip the API test harness entirely and record `scaffold.api.test_harness = "n/a"`.
+
+### Smoke-build the subsystem
+
+After files are written for a subsystem (including the test harness above) and **before** flipping `state.json.scaffold.<subsystem>.status` to `"done"`, run two commands from the subsystem's path: an **install + build** smoke, then a **test-harness** smoke. Capture exit code, stdout, and stderr for each.
+
+**Install + build smoke** (proves the skeleton compiles and installs):
+
+| Subsystem / stack | Working dir | Smoke command |
+|---|---|---|
+| UI `react-vite-ts`, `vue3-vite`, `svelte-kit` | `<scaffold.ui.path>` | `npm install && npm run build` |
+| UI `next-app-router` | `<scaffold.ui.path>` | `npm install && npm run build` |
+| UI `angular-17` | `<scaffold.ui.path>` | `npm install && npm run build` |
+| UI `custom`/other | — | record `"smoke": "n/a"`, continue |
+| API `fastapi` | `<scaffold.api.path>` | `pip install -e ".[dev]" && python -c "import app.main"` |
+| API `dotnet-minimal-api` | `<scaffold.api.path>` | `dotnet build` |
+| API `spring-boot-3` | `<scaffold.api.path>` | `./mvnw -q -DskipTests package` (fall back to `mvn -q -DskipTests package` if no wrapper) |
+| API `nestjs` | `<scaffold.api.path>` | `npm install && npm run build` |
+| API `none` / `reuse-existing` | — | not run (subsystem is `skipped`) |
+| DB any | — | no-op for now; record `"smoke": "n/a"` |
+
+**Test-harness smoke** (proves the harness picks up and runs the sample test). Pick the command from `state.testing.ui_framework` / `state.testing.api_framework`:
+
+| Test runner | Working dir | Smoke command |
+|---|---|---|
+| `vitest` | `<scaffold.<subsystem>.path>` | `npm run test -- --run` |
+| `jest` | `<scaffold.<subsystem>.path>` | `npm test -- --ci --runInBand` |
+| `karma-jasmine` | `<scaffold.ui.path>` | `npm run test -- --watch=false --browsers=ChromeHeadless` |
+| `pytest` | `<scaffold.api.path>` | `pytest -q tests/test_health.py` |
+| `xunit` / `nunit` / `mstest` | repo root or `tests/<Project>.Tests/` | `dotnet test --no-build` |
+| `junit5` | `<scaffold.api.path>` | `./mvnw -q test` (fall back to `mvn -q test`) |
+| `manual` | — | record `"test_harness": "manual"`, skip the run |
+| `n/a` (subsystem `skipped`) | — | record `"test_harness": "n/a"`, skip the run |
+
+The test-harness smoke runs only if the install + build smoke succeeded. If install + build fails, do not run the test-harness smoke for that subsystem (it would fail downstream anyway).
+
+On **success** (both smokes exit 0, or one is `n/a`/`manual`), record on the subsystem block and flip to `done`:
+
+```json
+"scaffold": {
+  "<subsystem>": {
+    "status": "done",
+    "path": "...",
+    "started_at": "...",
+    "finished_at": "<now>",
+    "smoke": {
+      "command": "<install+build cmd>",
+      "exit_code": 0,
+      "ran_at": "<now>",
+      "test_harness": {
+        "runner": "<vitest|pytest|...|manual|n/a>",
+        "command": "<test-harness cmd>",
+        "exit_code": 0,
+        "ran_at": "<now>"
+      }
+    }
+  }
+}
+```
+
+On **failure** (either smoke is non-zero), record and stop. The `smoke` block carries whichever sub-block failed; if `smoke.exit_code != 0` the test-harness smoke was not run (`test_harness.skipped_reason: "install+build failed"`).
+
+```json
+"scaffold": {
+  "<subsystem>": {
+    "status": "in_progress",
+    "path": "...",
+    "started_at": "...",
+    "smoke": {
+      "command": "<install+build cmd>",
+      "exit_code": <N>,
+      "ran_at": "<now>",
+      "stderr_tail": "<last ~40 lines of stderr, trimmed>",
+      "test_harness": { "skipped_reason": "install+build failed" }
+    }
+  }
+}
+```
+
+If install+build passed but the test-harness smoke failed, the `test_harness` sub-block carries the non-zero exit and stderr tail; the outer `smoke.exit_code` stays 0 but the overall gate still fails (subsystem stays `in_progress`).
+
+Print the captured `stderr_tail` to the user with one sentence framing what failed (use "install+build" or "test-harness" depending on which sub-step broke):
+
+```
+✗ Scaffold <install+build|test-harness> smoke failed for <subsystem> (<stack>).
+  Command: <cmd>
+  Exit:    <N>
+  Last 40 lines of stderr:
+    <…>
+
+The subsystem is left in `in_progress`. Fix the generated files (or the recipe in skills/scaffold/SKILL.md) and re-run /web-modernize:scaffold to retry.
+```
+
+Then **stop** — do NOT proceed to the next subsystem and do NOT advance `state.status` to `scaffolded`. Re-running `/web-modernize:scaffold` from `status == "planned"` (or from a partially-`scaffolded` re-run) will pick up where it left off.
+
+If the chosen stack has no entry in the table (custom/other), set `"smoke": "n/a"` and proceed — the gate degrades gracefully and never blocks unknown stacks.
 
 ## Copy legacy assets
 

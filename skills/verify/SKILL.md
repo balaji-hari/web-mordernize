@@ -78,6 +78,54 @@ If `verify.config.json` has `global_post_checks[]`, evaluate each:
 
 Common post-check: a full `npm run build` to catch cross-unit type errors that per-unit lint missed.
 
+### Built-in aggregate coverage post-check (soft)
+
+In addition to whatever the team configured in `verify.config.json`, automatically run an aggregate coverage check at `run_when: "before_complete"` if `state.testing.target_pct` is set and at least one unit has a `tests.coverage` block.
+
+1. Pick the runner-wide coverage command from `state.testing` (mirror the per-unit commands in `agents/unit-migrator.md` §3 step 7c, but without `target_paths` scoping — measure the whole project):
+
+   | Runner | Project-wide coverage command (working dir = scaffold path) |
+   |---|---|
+   | `vitest` | `npx vitest run --coverage` |
+   | `jest` | `npx jest --coverage` |
+   | `karma-jasmine` | `ng test --watch=false --code-coverage` |
+   | `pytest` | `pytest --cov=app --cov-report=json:.coverage.json` |
+   | `xunit` / `nunit` / `mstest` | `dotnet test --collect:"XPlat Code Coverage"` then parse the Cobertura XML |
+   | `junit5` | `./mvnw -q test jacoco:report` then parse `target/site/jacoco/jacoco.xml` |
+   | `manual` / `n/a` | skip this post-check entirely |
+
+2. Parse the aggregate `pct` and the per-unit breakdown (map file paths back to units via each unit's `target_paths`).
+
+3. **Soft-fail behaviour.** Whichever way it goes, this post-check **does not block** the flip to `state.status = "complete"`. It informs.
+
+   - If aggregate `pct >= state.testing.target_pct`: print one green line, no further action.
+   - If aggregate `pct < state.testing.target_pct`: print a yellow warning:
+
+     ```
+     ⚠ Project-wide coverage below target.
+       Aggregate: <pct>%  (target: <target_pct>%)
+       Units below threshold:
+         - <unit.id>: <pct>%
+         - ...
+       Soft-fail policy: state.status will still flip to "complete". To enforce a hard bar,
+       raise coverage on the listed units and re-run /web-modernize:verify.
+     ```
+
+4. **Update per-unit `tests.coverage`** for each unit whose measurement just changed. If a previously-below-threshold unit is now at or above target, set `below_threshold = false` and clear `uncovered_regions`. If a previously-above-threshold unit slid below (cross-unit regression), set `below_threshold = true` and re-populate `uncovered_regions`.
+
+5. Record the aggregate result on `state.json.testing.last_aggregate_check`:
+   ```json
+   "last_aggregate_check": {
+     "at": "<now>",
+     "aggregate_pct": <integer>,
+     "target_pct": <integer>,
+     "below_threshold": <bool>,
+     "units_below": ["<unit.id>", "..."]
+   }
+   ```
+
+This post-check is part of `/verify`'s normal flow whenever it would tip top-level status to `complete`. It is not surfaced as a separate command.
+
 ## Project-wide complete check
 
 After this run, iterate `state.unit_ids[]`, read each `units/<id>.json`, and check if every non-skipped unit has `status == "verified"`. If yes:

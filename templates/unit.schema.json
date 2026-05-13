@@ -108,6 +108,91 @@
           }
         }
       ]
+    },
+    "tests": {
+      "description": "Populated by the unit-migrator's step 7c (translate-or-generate) when state.testing has a real framework. Tracks which legacy tests were translated, which were skipped/untranslatable, how many were generated to top up to target coverage, and the final coverage measurement. Omitted (or carries skipped_reason) when the team chose a manual / n/a runner at /scaffold time.",
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "framework": {
+          "type": "string",
+          "description": "Mirrors the relevant entry of state.testing (vitest, pytest, junit5, xunit, jest, karma-jasmine, manual, n/a, etc.)."
+        },
+        "skipped_reason": {
+          "type": "string",
+          "description": "Present when framework is 'manual' or 'n/a' — explains why 7c was a no-op."
+        },
+        "translated_from": {
+          "type": "array",
+          "description": "Legacy test files successfully ported to the target framework.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["legacy_path", "target_path"],
+            "properties": {
+              "legacy_path": { "type": "string" },
+              "target_path": { "type": "string" },
+              "tests_in_file": { "type": "integer", "minimum": 0 }
+            }
+          }
+        },
+        "translated_count": { "type": "integer", "minimum": 0 },
+        "skipped_legacy": {
+          "type": "array",
+          "description": "Legacy tests marked disabled (Ignore, Disabled, xit, pytest.mark.skip, etc.) — recorded but not ported.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "reason"],
+            "properties": {
+              "path": { "type": "string" },
+              "reason": { "type": "string" }
+            }
+          }
+        },
+        "untranslatable": {
+          "type": "array",
+          "description": "Legacy tests that could not be ported (no target equivalent for the legacy infrastructure they depend on).",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["legacy_path", "reason"],
+            "properties": {
+              "legacy_path": { "type": "string" },
+              "reason": { "type": "string" }
+            }
+          }
+        },
+        "generated_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Tests written by 7c to top up to target_pct. Capped at 2 generation passes."
+        },
+        "coverage": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["pct", "target_pct", "below_threshold"],
+          "properties": {
+            "pct": { "type": "integer", "minimum": 0, "maximum": 100 },
+            "target_pct": { "type": "integer", "minimum": 0, "maximum": 100 },
+            "below_threshold": { "type": "boolean" },
+            "uncovered_regions": {
+              "type": "array",
+              "description": "Present when below_threshold is true. Each entry is one branch/region that 7c could not cover after 2 generation passes.",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["file", "line_range"],
+                "properties": {
+                  "file": { "type": "string" },
+                  "line_range": { "type": "string", "description": "e.g., '42-58'" },
+                  "branch_description": { "type": "string" }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "$defs": {

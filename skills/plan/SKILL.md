@@ -25,6 +25,9 @@ Read `migration.md` and `analysis.json`. Then check the following REQUIRED field
 | Current auth provider | §7 | any non-empty value |
 | Target auth provider | §7 | any non-empty value |
 | Acceptance criteria | §10 | at least 3 unchecked checkbox items |
+| UI test framework | §12, "UI test framework" line | one of: vitest, jest, karma-jasmine, or `other: <name>` |
+| API test framework | §12, "API test framework" line | one of: pytest, xunit, junit5, jest, nunit, mstest, `other: <name>`, or `n/a` (only if §4 Framework is `none` or `reuse-existing`) |
+| Target coverage % | §12, "Target coverage %" line | integer 0–100 |
 
 If **any** required field is missing or still has the template placeholder, **STOP**. Do not write `plan.md`, do not touch state, do not write any per-unit files. Print a numbered failure report:
 
@@ -199,6 +202,11 @@ Mirror `migration.md §9` list verbatim into the plan's "Out of scope" section.
     "api": "<from §4 or 'none'>",
     "db": "<from §5 or 'unchanged'>"
   },
+  "testing": {
+    "ui_framework": "<from §12, e.g. vitest>",
+    "api_framework": "<from §12, e.g. pytest, or 'n/a'>",
+    "target_pct": <from §12, integer>
+  },
   "strategy": "<from §6>",
   "scaffold": "<see rule below>",
   "unit_ids": [ <ordered list of unit ids, including any kept-but-warned units from Step 5> ],
@@ -207,6 +215,8 @@ Mirror `migration.md §9` list verbatim into the plan's "Out of scope" section.
   "updated_at": "<ISO now>"
 }
 ```
+
+The `testing` block is the single source of truth for which runner `/scaffold` installs and which coverage bar the unit-migrator and `/verify` measure against. Re-plans overwrite this block from §12 — if a team needs to switch runners mid-migration they edit §12 and re-run `/plan`. (Note that switching runners mid-migration does not retroactively re-translate already-migrated units' tests; new units pick up the new framework.)
 
 **`status` rule** — preserve forward progress on re-runs:
 - If the current `state.status` is `analyzed`: set to `planned`.
