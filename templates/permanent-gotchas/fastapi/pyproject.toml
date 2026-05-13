@@ -1,0 +1,32 @@
+[project]
+name = "api-new"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi[standard]",
+    "bcrypt>=4",
+    "pyjwt[crypto]",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "httpx", "pytest-asyncio"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# Both blocks are load-bearing — see agents/permanent-gotchas.md.
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+only-include = ["app"]
+
+[tool.hatch.build.targets.editable]
+packages = ["app"]
+only-include = ["app"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["app"]

@@ -13,13 +13,28 @@ disable-model-invocation: false
 
 You are the **plan** skill. Your job is to convert the team's intent (in `migration.md`) plus the detected source stack (in `analysis.json`) into an executable, ordered migration plan with one file per unit.
 
+## Plugin-version skew check
+
+Read `state.json.plugin_version` (treat absent/null as "old/unknown"). Read the running plugin's version from `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json`. Parse both as `MAJOR.MINOR.PATCH`. If `state.plugin_version`'s major **or** minor differs from the running version (patch differences are fine), print **before** anything else and **continue** (warn, do not refuse):
+
+```
+⚠ Plugin version skew detected.
+   State written by: <state.plugin_version or "unknown">
+   Running version:  <running.version>
+   Teammates on different plugin versions writing to the same state can
+   produce shape mismatches. Recommended: have everyone run
+   /plugin uninstall web-modernize && /plugin install web-modernize, then continue.
+```
+
+Refusing would block the team until the slowest updater catches up — that's a worse failure mode than a warned-but-continued run. On successful exit (right before the "✓ done" message), set `state.plugin_version = "<running version>"` so the warning self-resolves after one synchronized run.
+
 ## Preflight — validate migration.md
 
 Read `migration.md` and `analysis.json`. Then check the following REQUIRED fields are filled in (not blank, not the template placeholder `<!-- fill in -->`):
 
 | Required field | Section | Allowed values |
 |----------------|---------|----------------|
-| Target UI framework | §3, "Framework" line | one of: react-vite-ts, next-app-router, vue3-vite, angular-17, svelte-kit, or custom |
+| Target UI framework | §3, "Framework" line | one of: react-vite-ts, next-app-router, vue3-vite, angular, svelte-kit, or custom |
 | Target UI language | §3, "Language" line | TypeScript or JavaScript |
 | Migration strategy | §6, "Strategy" line | strangler-fig, big-bang, module-by-module |
 | Current auth provider | §7 | any non-empty value |

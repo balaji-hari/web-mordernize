@@ -41,36 +41,63 @@ If `--assets-only`, skip directly to "Copy legacy assets" below; do not run the 
 
 Process each subsystem in order: UI → API → DB. For each, set `state.json.scaffold.<subsystem>` to `{"status": "in_progress", "path": "...", "started_at": "..."}` before starting. **Before flipping the subsystem to `"status": "done"`, run the smoke-build gate** (see "Smoke-build the subsystem" below). If smoke-build fails, leave `status` as `in_progress` and stop — do not advance to the next subsystem. This makes resume-after-interruption straightforward and guarantees a subsystem only reaches `done` when its skeleton actually installs and builds.
 
+### Stack defaults (used by Node preflight, CORS allow-list, dev proxy)
+
+These defaults drive the per-stack Node check, the API CORS allow-list, and the UI dev-server proxy. Override per `migration.md §8 Constraints` if a team has port collisions or stricter origin rules.
+
+| UI stack | Dev port | Node minimum | Env-var file (UI) | API base URL var |
+|---|---|---|---|---|
+| `react-vite-ts`, `vue3-vite`, `svelte-kit` | 5173 | 22 | `apps/web-new/.env.example` | `VITE_API_URL` |
+| `next-app-router` | 3000 | 20.10 | `apps/web-new/.env.local.example` | `NEXT_PUBLIC_API_URL` |
+| `angular` | 4200 | 20.11 | `src/environments/environment.ts` | `apiUrl` (TS field) |
+
+| API stack | Dev port | CORS allow-list (dev) |
+|---|---|---|
+| `fastapi` | 8000 | `http://localhost:5173`, `http://localhost:3000`, `http://localhost:4200` |
+| `spring-boot-3` | 8080 | same |
+| `dotnet-minimal-api` | 5000 | same |
+| `nestjs` | **3001** | same (Nest's default is 3000 — bump to 3001 so Next.js UIs don't collide) |
+
+Every API scaffold below writes a permissive-for-dev / locked-down-for-prod CORS configuration using this allow-list, and every UI scaffold writes the corresponding `.env.example` (or Angular `environment.ts`) so the team can immediately call the new API. The smoke-build gate also reads the Node minimum from this table — failing fast with a friendly message beats a downstream `npm install` error.
+
 ### UI scaffold
 
 Based on `migration.md §3 Framework`:
 
+> Use **`@latest`** for every CLI below — `npm create vite@latest`, `npx create-next-app@latest`, `npx @angular/cli@latest`, `npx sv create`. Do not pin majors in this file; let the team's `migration.md §8 Constraints` say if an LTS line is required. Node minimums come from the Stack defaults table.
+
 #### `react-vite-ts`
 
-1. Confirm Node ≥ 18 is available (`node --version`). If not, ask user how to proceed.
-2. Run: `npm create vite@latest apps/web-new -- --template react-ts` (or whatever directory was decided).
-3. `cd apps/web-new && npm install`.
-4. Add libraries based on §3 "State management" and "Styling":
-   - State: `redux-toolkit + react-redux` | `zustand` | (none)
-   - Styling: `tailwindcss postcss autoprefixer` + run `npx tailwindcss init -p` | `@mui/material @emotion/react @emotion/styled` | (none)
-5. Add scripts to `apps/web-new/package.json` (or confirm they exist): `dev`, `build`, `lint`, `typecheck`, `test`.
-6. Add a minimal `apps/web-new/src/App.tsx` placeholder reading `Legacy app migration in progress — managed by web-modernize plugin`.
+1. Preflight: Node ≥ **22**.
+2. `npm create vite@latest apps/web-new -- --template react-ts && cd apps/web-new && npm install`.
+3. Install libraries per §3 "State management" + "Styling" (no version pins; `npm install` picks current).
+4. Replace `apps/web-new/src/App.tsx` with a placeholder reading `Legacy app migration in progress — managed by web-modernize plugin`.
+5. **Wire to API** (skip if `state.target_stack.api == "none"`): write `apps/web-new/.env.example` + `.env` with `VITE_API_URL=http://localhost:<api-port>` (port from Stack defaults), and `apps/web-new/src/lib/api.ts` exporting `export const API_URL = import.meta.env.VITE_API_URL;`. The migrator imports `API_URL` when porting fetch calls.
 
 #### `next-app-router`
 
-`npx create-next-app@latest apps/web-new --typescript --tailwind --eslint --app --no-src-dir` (adjust flags per §3 styling answer).
+1. Preflight: Node ≥ **20.10**.
+2. `npx create-next-app@latest apps/web-new --typescript --tailwind --eslint --app --no-src-dir` (adjust flags per §3 styling).
+3. **Wire to API**: write `apps/web-new/.env.local.example` + `.env.local` with `NEXT_PUBLIC_API_URL=http://localhost:<api-port>` (the `NEXT_PUBLIC_` prefix is required for client-component fetches), plus a non-public `API_URL=` alongside for server-side fetches. If the API stack is `nestjs`, use port **3001** — Nest's default 3000 collides with Next's dev port (see `agents/permanent-gotchas.md`).
 
 #### `vue3-vite`
 
-`npm create vite@latest apps/web-new -- --template vue-ts`, install Vue Router and Pinia if §3 state management says so.
+1. Preflight: Node ≥ **22**.
+2. `npm create vite@latest apps/web-new -- --template vue-ts`. Install Vue Router + Pinia if §3 state management says so.
+3. **Wire to API**: same `.env` + `src/lib/api.ts` pattern as `react-vite-ts`.
 
-#### `angular-17`
+#### `angular`
 
-`npx @angular/cli@17 new apps/web-new --routing --style=<scss|css> --strict --skip-git`.
+1. Preflight: Node ≥ **20.11**.
+2. `npx @angular/cli@latest new apps/web-new --routing --style=<scss|css> --strict --skip-git`.
+3. **Wire to API**: Angular doesn't read `.env`. Write `apps/web-new/src/environments/environment.ts` exporting `{ production: false, apiUrl: "http://localhost:<api-port>" }` and a `environment.production.ts` sibling with `production: true` + a placeholder prod URL. Verify `angular.json` has the production `fileReplacements` block.
+4. If §12 picked `karma-jasmine`, see `agents/permanent-gotchas.md` — Angular 18+ may not generate `karma.conf.js`; the test-harness step installs it manually.
 
 #### `svelte-kit`
 
-`npm create svelte@latest apps/web-new`, prompt non-interactively for skeleton project + TS.
+1. Preflight: Node ≥ **22**.
+2. `npx sv create apps/web-new` (the `sv` CLI). **Do not use the retired `npm create svelte@latest`** — see `agents/permanent-gotchas.md`. Pick the `minimal` template + TypeScript non-interactively.
+3. **Wire to API**: write `apps/web-new/.env.example` + `.env` with `PUBLIC_API_URL=http://localhost:<api-port>` and `apps/web-new/src/lib/api.ts` reading from `$env/static/public`.
 
 #### Custom / other
 
@@ -80,14 +107,34 @@ Tell the user the plugin doesn't have a recipe for this framework. Ask them to s
 
 Only run if `state.target_stack.api != "none"` AND `!= "reuse-existing"`. Otherwise set `scaffold.api = {"status": "skipped", "reason": "target API = <value>"}` and move to DB.
 
+Every API stack's `<framework> new` (or Initializr) output is missing two things the smoke gate needs: a `/health` route at that exact path, and a CORS allow-list for the UI dev ports. Don't free-hand either — the durable templates under `templates/permanent-gotchas/<stack>/` carry both. Copy them in, substitute placeholders, and the smoke gate's MockMvc/TestClient/curl will pass without further work. **See `agents/permanent-gotchas.md` for the per-stack durable quirks** (hatchling, reflect-metadata first-import, actuator path mismatch, `--use-minimal-apis` removal, `<Program>` partial-class, port-3001 for Nest).
+
 Based on `target_stack.api`:
 
-- `dotnet-minimal-api`: `dotnet new webapi --use-minimal-apis -o apps/api-new`
-- `spring-boot-3`: use start.spring.io API (see legacy-analyzer or instruct user; offer to provide curl command)
-- `nestjs`: `npm i -g @nestjs/cli` then `nest new apps/api-new` (use the `--package-manager npm --skip-git --skip-install` flags then `npm install` afterward to keep state.json consistent)
-- `fastapi`: create `apps/api-new/` with `pyproject.toml` + `app/main.py` skeleton
+- **`dotnet-minimal-api`**: `dotnet new webapi -o apps/api-new`. Do **not** pass `--use-minimal-apis` (the flag was removed; minimal API is default since .NET 8). Apply the snippet from `templates/permanent-gotchas/dotnet/Program-additions.cs` to `Program.cs` — CORS, `/health`, and the `public partial class Program { }` line that `WebApplicationFactory<Program>` needs. If the team prefers PascalCase consistency, pass `-n ApiNew` to force matching project/assembly/namespace names (otherwise hyphenated paths split assembly name from namespace; see permanent-gotchas).
 
-Add a `/health` endpoint that returns `200 OK` so deployment smoke tests work immediately.
+- **`spring-boot-3`**: fetch a skeleton from `start.spring.io` with `web,actuator` and an **explicit `packageName`** (Initializr silently strips hyphens from `artifactId` otherwise — see permanent-gotchas):
+
+  ```bash
+  curl -G https://start.spring.io/starter.tgz \
+    -d type=maven-project -d language=java \
+    -d javaVersion=21 -d packaging=jar \
+    -d groupId=com.example -d artifactId=api-new -d name=api-new \
+    -d packageName=com.example.apinew \
+    -d dependencies=web,actuator \
+    | tar -xzf - -C apps/api-new
+  ```
+
+  Use `starter.tgz` (Windows boxes don't need unzip). Copy `templates/permanent-gotchas/spring-boot/HealthController.java` and `CorsConfig.java` into `src/main/java/<packageDir>/`, replacing `PACKAGE_PLACEHOLDER` with the actual base package (matches the `packageName` above). Actuator's `/actuator/health` does **not** match the smoke gate's `/health` — the explicit `HealthController` bridges that.
+
+- **`nestjs`**: `npm i -g @nestjs/cli && nest new apps/api-new --package-manager npm --skip-git --skip-install && cd apps/api-new && npm install`. On locked-down boxes substitute `npx @nestjs/cli new apps/api-new`. Replace `apps/api-new/src/main.ts` with `templates/permanent-gotchas/nestjs/main.ts` — it preserves the `reflect-metadata` first-import requirement, enables CORS, and binds to **3001** (Nest's default 3000 collides with Next.js dev). Add a `/health` route to the generated `app.controller.ts`: `@Get('health') health() { return { status: 'UP' }; }`.
+
+- **`fastapi`**: create `apps/api-new/` and drop in the files from `templates/permanent-gotchas/fastapi/`:
+  - `pyproject.toml` — substitute `name = "..."` if the team picked a different project name; **both `only-include` blocks are load-bearing** (see permanent-gotchas — hatchling editable installs).
+  - `app/__init__.py` (empty)
+  - `app/main.py` — CORS, `/health`, and a `lifespan` context manager (the deprecated `@app.on_event("startup")` is removed in FastAPI 0.121+).
+
+  Then `cd apps/api-new && pip install -e ".[dev]"`. If the team picked local-password-store auth, `templates/permanent-gotchas/fastapi/security.py` is also dropped in by `/web-modernize:auth` later — see that skill's prescription.
 
 ### DB scaffold
 
@@ -116,7 +163,7 @@ Run this sub-step **after** the framework CLI / API skeleton creation, **before*
 
 #### `karma-jasmine` (UI: Angular)
 
-1. Angular CLI's `ng new` already installs karma + jasmine and writes `karma.conf.js` and `tsconfig.spec.json`. Verify both exist.
+1. Verify that `karma.conf.js` and `tsconfig.spec.json` exist (older Angular versions had `ng new` generate them automatically). If `karma.conf.js` is missing (Angular 18+ in some configurations no longer generates it), install Karma manually: `npm i -D karma karma-jasmine karma-chrome-launcher karma-coverage jasmine-core @types/jasmine`, then run `npx karma init karma.conf.js` (accept defaults) or write a minimal `karma.conf.js`. Karma itself is on Angular's long deprecation runway — for greenfield Angular migrations the team should consider `other: web-test-runner` or `other: vitest` in §12 instead.
 2. Add `coverageReporter` to `karma.conf.js`:
    ```js
    coverageReporter: { dir: require('path').join(__dirname, './coverage/'), reporters: [{ type: 'html' }, { type: 'text-summary' }, { type: 'json-summary' }] }
@@ -127,35 +174,28 @@ Run this sub-step **after** the framework CLI / API skeleton creation, **before*
 
 #### `pytest` (API: FastAPI)
 
-1. Edit `pyproject.toml`:
-   - Add `pytest`, `pytest-cov`, `httpx` to `[project.optional-dependencies].dev`.
-   - Add a `[tool.pytest.ini_options]` block with `testpaths = ["tests"]`, `addopts = "-q"`.
-   - Add a `[tool.coverage.run]` block with `source = ["app"]`.
-2. Re-run `pip install -e ".[dev]"` so the new dev deps land in the environment.
-3. Create `tests/__init__.py` (empty) and `tests/conftest.py` with:
-   ```python
-   import pytest
-   from fastapi.testclient import TestClient
-   from app.main import app
+The pyproject from `templates/permanent-gotchas/fastapi/pyproject.toml` already declares pytest/httpx in `[project.optional-dependencies].dev`, `[tool.pytest.ini_options]`, and `[tool.coverage.run]`. Re-run `pip install -e ".[dev]"` so the dev deps land in the venv, then copy:
 
-   @pytest.fixture
-   def client():
-       return TestClient(app)
-   ```
-4. Write `tests/test_health.py`:
-   ```python
-   def test_health(client):
-       resp = client.get("/health")
-       assert resp.status_code == 200
-   ```
+- `templates/permanent-gotchas/fastapi/conftest.py` → `apps/api-new/tests/conftest.py`
+- `templates/permanent-gotchas/fastapi/test_health.py` → `apps/api-new/tests/test_health.py`
+
+Create an empty `apps/api-new/tests/__init__.py` alongside.
 
 #### `xunit` (API: .NET minimal API)
 
-1. From the scaffold parent: `dotnet new xunit -o tests/<ProjectName>.Tests`, then `dotnet add tests/<ProjectName>.Tests reference apps/api-new/<ProjectName>.csproj`.
-2. In the test project, `dotnet add package coverlet.collector` and `dotnet add package Microsoft.AspNetCore.Mvc.Testing`.
-3. Make `Program.cs` discoverable for `WebApplicationFactory<Program>` by adding `public partial class Program { }` at the bottom of `Program.cs` (or use a `[assembly: InternalsVisibleTo]` attribute).
-4. Write `tests/<ProjectName>.Tests/HealthTests.cs` using `WebApplicationFactory<Program>` to assert `GET /health` returns 200.
-5. Add a Makefile target or document `dotnet test --collect:"XPlat Code Coverage"` as the coverage command.
+**Run all commands from the repo root** (not from `apps/`). Substitute the real project name (the directory under `apps/`) for `<project>` below — e.g., `api-new`:
+
+1. `dotnet new xunit -o tests/<project>.Tests` (xUnit v2 — well-tested with `coverlet.collector` / VSTest). For teams targeting **.NET 10** and willing to adopt the newer Microsoft Testing Platform, use `dotnet new xunit3 -o tests/<project>.Tests` instead; in that case coverage is collected via `Microsoft.Testing.Extensions.CodeCoverage` rather than `coverlet.collector`. Default to v2 unless the team has explicitly opted in.
+2. `dotnet add tests/<project>.Tests reference apps/<project>/<project>.csproj`
+3. In the test project: `dotnet add tests/<project>.Tests package coverlet.collector` and `dotnet add tests/<project>.Tests package Microsoft.AspNetCore.Mvc.Testing`.
+4. Make `Program.cs` discoverable for `WebApplicationFactory<Program>` by adding `public partial class Program { }` at the bottom of `apps/<project>/Program.cs` — required on .NET 8/9 because top-level statements declare `Program` as `internal`, so the test project can't reference it. (Alternative: `[assembly: InternalsVisibleTo("<project>.Tests")]` in Program.cs; the partial-class line is the documented Microsoft pattern.)
+5. Create a solution file so `dotnet build` / `dotnet test` at repo root work without args:
+   ```
+   dotnet new sln -n <project>
+   dotnet sln add apps/<project>/<project>.csproj tests/<project>.Tests/<project>.Tests.csproj
+   ```
+6. Write `tests/<project>.Tests/HealthTests.cs` using `WebApplicationFactory<Program>` to assert `GET /health` returns 200.
+7. Document `dotnet test --collect:"XPlat Code Coverage"` as the coverage command (or add a Makefile target).
 
 #### `nunit` / `mstest` (API: .NET minimal API alternates)
 
@@ -164,12 +204,12 @@ Same as `xunit` but `dotnet new nunit` or `dotnet new mstest`. The `WebApplicati
 #### `junit5` (API: Spring Boot)
 
 1. `start.spring.io` output already includes `spring-boot-starter-test` which brings JUnit 5. Verify.
-2. Add JaCoCo to `pom.xml`:
+2. Add the latest JaCoCo Maven plugin to `pom.xml`. JaCoCo gates on the bytecode version of the classes being analyzed — see `agents/permanent-gotchas.md` for why pinning to an old version (e.g., `0.8.12`) silently breaks coverage on classes compiled with current JDKs. Resolve the current version from Maven Central (`org.jacoco:jacoco-maven-plugin`) at scaffold time; do not hardcode here. Shape:
    ```xml
    <plugin>
      <groupId>org.jacoco</groupId>
      <artifactId>jacoco-maven-plugin</artifactId>
-     <version>0.8.12</version>
+     <version><!-- latest from Maven Central --></version>
      <executions>
        <execution><goals><goal>prepare-agent</goal></goals></execution>
        <execution><id>report</id><phase>test</phase><goals><goal>report</goal></goals></execution>
@@ -177,7 +217,9 @@ Same as `xunit` but `dotnet new nunit` or `dotnet new mstest`. The `WebApplicati
    </plugin>
    ```
    (Or the Gradle equivalent: `id 'jacoco'` + `jacocoTestReport` task.)
-3. Write `src/test/java/<base-package>/HealthControllerTests.java` using `@SpringBootTest(webEnvironment = RANDOM_PORT)` + `WebTestClient` (or `@AutoConfigureMockMvc` + `MockMvc`) to assert `GET /health` returns 200.
+3. Write `src/test/java/<base-package>/HealthControllerTests.java` using **`@SpringBootTest` + `@AutoConfigureMockMvc` + `MockMvc`** to assert `GET /health` returns 200. `MockMvc` is the right default for Spring Boot 3's MVC (Tomcat) stack — `mockMvc.perform(get("/health")).andExpect(status().isOk())` works with only `spring-boot-starter-test` on the classpath.
+
+   Only use `WebTestClient` if the target is WebFlux (reactive) — it requires adding `spring-boot-starter-webflux` as a test dependency, which pulls in a reactive stack the MVC default doesn't need.
 
 #### `manual` / `other: <name>`
 
@@ -199,7 +241,7 @@ After files are written for a subsystem (including the test harness above) and *
 |---|---|---|
 | UI `react-vite-ts`, `vue3-vite`, `svelte-kit` | `<scaffold.ui.path>` | `npm install && npm run build` |
 | UI `next-app-router` | `<scaffold.ui.path>` | `npm install && npm run build` |
-| UI `angular-17` | `<scaffold.ui.path>` | `npm install && npm run build` |
+| UI `angular` | `<scaffold.ui.path>` | `npm install && npm run build` |
 | UI `custom`/other | — | record `"smoke": "n/a"`, continue |
 | API `fastapi` | `<scaffold.api.path>` | `pip install -e ".[dev]" && python -c "import app.main"` |
 | API `dotnet-minimal-api` | `<scaffold.api.path>` | `dotnet build` |
@@ -309,7 +351,31 @@ Otherwise, scan the working directory for these patterns (case-insensitive). Mat
 
 Skip these directories entirely (they are output / dependency / plugin-managed): `.git/`, `node_modules/`, `bin/`, `obj/`, `dist/`, `build/`, `out/`, `target/`, `.next/`, `.svelte-kit/`, `__pycache__/`, `.venv/`, `vendor/`, `.claude/`, `packages/`, `.idea/`, `.vscode/`, and the existing target scaffold directories (`apps/web-new/`, `apps/api-new/`, `db/`).
 
-### 2. Copy each discovered directory or file into the target's `public/`
+### 2. Size guard — prompt before copying very large asset trees
+
+**Before** issuing any `cp`, sum the byte counts of every discovered directory + file from step 1 (use Bash `du -sb` on Linux/macOS, `Get-ChildItem -Recurse | Measure-Object Length -Sum` on Windows, or read sizes via the file APIs and add). If the total is > **500 MB**, stop and prompt the user — large binary assets (especially `.psd`, `.ai`, `.mov`, `.mp4`, `.raw`, `.iso`) often shouldn't be in the migrated tree, and silently copying multi-GB of source files frequently fills the dev's disk mid-`npm install`/`pip install` with cryptic ENOSPC errors elsewhere.
+
+Print:
+
+```
+⚠ Legacy assets total <SIZE_HUMAN> across <N> directories/files. Copying
+  everything will roughly double the size of your target scaffold and may
+  fill your disk during subsequent installs.
+
+How do you want to handle this?
+  y — exclude large binary file types (.psd, .ai, .mov, .mp4, .raw, .iso)
+      (RECOMMENDED — most migrations don't need design source files in
+       the production tree; keep originals in the legacy repo as the
+       authoritative copy)
+  n — copy everything anyway
+  s — show the 10 largest files first, then ask again
+```
+
+Accept `y` / `n` / `s` (case-insensitive). `s` prints the 10 largest discovered files with size + path, then re-prompts. `y` copies but skips files whose extension matches the exclude list and records the skip count in the summary. `n` copies everything.
+
+If the total is ≤ 500 MB, skip the prompt and proceed.
+
+### 3. Copy each discovered directory or file into the target's `public/`
 
 Use the target UI's `public/` directory (typically `<scaffold.ui.path>/public/` — Vite, Next.js, Astro, SvelteKit, etc.). For Angular, use `<scaffold.ui.path>/src/assets/` instead — Angular's static asset convention differs.
 
@@ -323,13 +389,13 @@ Preserve sub-structure under the destination:
 
 Use `cp -r` (or platform-equivalent) — do **not** move or delete the source. The legacy tree is still the source-of-truth for units that haven't migrated yet.
 
-### 3. Idempotency
+### 4. Idempotency
 
 If a destination file already exists in `public/`, **skip it** and add a one-line "(exists, skipped: `<path>`)" to the summary. Do not overwrite — the team may have manually adjusted assets after a previous scaffold run.
 
 If a destination directory exists but contains different files than the source, copy only the missing ones; don't synchronize deletions.
 
-### 4. Detect absolute-URL references in the legacy CSS
+### 5. Detect absolute-URL references in the legacy CSS
 
 Grep the legacy CSS/SCSS/LESS files (use the same set this skill found in step 1 of the scan) for `url('/...')` patterns — absolute URLs starting with `/`. If any are found, print a warning naming the affected stylesheet(s) and lines:
 
@@ -353,7 +419,7 @@ agent reads this warning from the unit's notes file when planning translations.
 
 Also append the warning verbatim to `.claude/modernize/notes/__scaffold__.md` (create the file if missing) so the migration agent can read it later.
 
-### 5. Print a summary
+### 6. Print a summary
 
 ```
 ✓ Copied legacy assets to <scaffold.ui.path>/public/:
@@ -403,7 +469,24 @@ Suggested commit:
 
 ## After writing
 
-For a **full scaffold**, print:
+For a **full scaffold**, print the summary block **and** the run-the-stack instructions so the team can immediately verify the scaffold works end-to-end. Substitute the per-stack commands from this table based on `state.target_stack.ui` / `state.target_stack.api`:
+
+| UI stack | Dev command | URL |
+|---|---|---|
+| `react-vite-ts`, `vue3-vite`, `svelte-kit` | `cd apps/web-new && npm run dev` | http://localhost:5173 |
+| `next-app-router` | `cd apps/web-new && npm run dev` | http://localhost:3000 |
+| `angular` | `cd apps/web-new && npm start` | http://localhost:4200 |
+
+| API stack | Dev command | URL | Health check |
+|---|---|---|---|
+| `fastapi` | `cd apps/api-new && fastapi dev app/main.py` (or `uvicorn app.main:app --reload`) | http://localhost:8000 | `curl http://localhost:8000/health` |
+| `spring-boot-3` | `cd apps/api-new && ./mvnw spring-boot:run` (Windows: `mvnw.cmd spring-boot:run`) | http://localhost:8080 | `curl http://localhost:8080/health` |
+| `dotnet-minimal-api` | `cd apps/api-new && dotnet run` | http://localhost:5000 (or as printed in `launchSettings.json`) | `curl http://localhost:5000/health` |
+| `nestjs` | `cd apps/api-new && npm run start:dev` | http://localhost:3001 | `curl http://localhost:3001/health` |
+
+If `state.target_stack.api` is `none` or `reuse-existing`, omit the API rows. If `ui` is `custom`, fall back to a generic "start your UI dev server" line.
+
+Closing message:
 
 ```
 ✓ Scaffold complete.
@@ -412,6 +495,18 @@ For a **full scaffold**, print:
   API: <api.status> at <api.path or "(skipped)">
   DB:  <db.status>
   Assets: <count of directories copied>, <count of files skipped> (see notes/__scaffold__.md if any warnings)
+
+Run the new stack locally:
+
+  Terminal 1 — API (<api stack>, port <api port>):
+    <API dev command>
+
+  Terminal 2 — UI (<ui stack>, port <ui port>):
+    <UI dev command>
+
+Smoke-check both:
+    <API health curl>         # → {"status":"UP"}
+    open <UI URL>             # placeholder page loads
 
 Verification config updated. Edit .claude/modernize/verify.config.json if your scripts differ.
 

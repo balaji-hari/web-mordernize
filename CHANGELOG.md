@@ -2,6 +2,141 @@
 
 All notable changes to the `web-modernize` plugin are documented here. Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.8.3] - 2026-05-14
+
+Captures a class of migration gap surfaced by a real user run: ASP.NET WebForms → React migrations were producing pages with no header/footer/nav and partially-applied legacy CSS. Root cause is the same for every legacy stack — page-wrapping templates (master pages, `_Layout.cshtml`, JSP includes, ColdFusion `<cfinclude>`, Struts tiles, classic PHP `include 'header.php'`) aren't standalone content pages and so don't appear as units in `/plan`. The migrator translated content pages in isolation; chrome silently disappeared. Same shape for global stylesheets — copied to `public/` by `/scaffold` but never imported from the entry, so most rules don't load.
+
+Per the "prefer pattern-level rules over per-scenario features" principle, this release does **not** add a synthetic `__layout__` unit or a new required `migration.md` field. It adds one shape-agnostic entry to the durable-quirks catalog and one line to the migrator agent's checklist — the same rule covers Site.master today, ColdFusion includes tomorrow, anything else after that.
+
+### Added
+- **`agents/permanent-gotchas.md` — "Page-wrapping chrome and global stylesheets aren't 'units'"** — durable, shape-agnostic rule documenting the cross-cutting-chrome pattern + global-CSS wiring across 7 legacy stack families (WebForms, MVC/Razor, JSP, ColdFusion, Struts, AngularJS, classic PHP). Five-step fix: identify the wrapping template, translate to target's root layout file, import legacy stylesheets from the entry, preserve the body wrapper class, order CSS after framework defaults. Recorded in `notes/__layout__.md` so subsequent units don't redo it.
+- **`agents/unit-migrator.md` step 2b — first-unit-only chrome translation** — one line in the general algorithm. When no feature unit has been migrated yet (only `__auth__` or none), the agent translates the wrapping template + wires global CSS before the first feature unit's content lands. Skipped on subsequent units; chrome + CSS inherit automatically.
+
+### Why this is a patch, not a minor
+No schema changes, no new skills, no new templates, no new required fields, no new state shape. Two text additions to existing files. Existing migrations don't retroactively benefit (the chrome would have to be applied manually), but every migration started after this version handles it on the first feature unit.
+
+## [0.8.2] - 2026-05-14
+
+Operational hardening — five concrete failure modes a real migration team would have hit under normal use. None had bitten anyone yet, but each was reproducible against the code. None of these are version-of-framework issues; they're plugin-design quirks that wouldn't go away on their own.
+
+### Added
+- **`/web-modernize:unlock`** (`skills/unlock/SKILL.md`) — force-clears a stuck advisory lock on `state.json`. Required after a Claude session crashes while holding the lock (otherwise `/plan` and `/scaffold` are blocked for the full 10-minute TTL with no recovery path). Requires the user type `force-clear` explicitly; records the action in `state.history` for audit.
+- **Stale-lock detection in `/status`** — `skills/status/SKILL.md` §8 now distinguishes a fresh lock from an expired-but-still-recorded lock and from a current-user lock with no matching in-flight session. Each case prints the appropriate recovery hint (`/web-modernize:unlock`) instead of just saying "lock held."
+- **Asset copy size guard** in `skills/scaffold/SKILL.md` — `cp -r`-style asset copy was unbounded; legacy repos with multi-GB PSD/AI/MOV directories silently filled dev disks. Now: scaffold sums the discovered asset tree, and if > 500 MB prompts with `y` (exclude large binary extensions) / `n` (copy everything) / `s` (show 10 largest first). Threshold is intentionally generous — small projects skip the prompt entirely.
+- **Plugin-version skew warning** in `skills/next/SKILL.md`, `skills/plan/SKILL.md`, `skills/verify/SKILL.md` — every skill compares `state.plugin_version` to the running plugin's manifest version. If major/minor differ (patch differences ignored), prints a warning but **continues** the skill — refusing would block the team on its slowest updater. On successful exit, the skill bumps `state.plugin_version` to its own, so the warning self-resolves after one synchronized run.
+
+### Fixed
+- **`hooks/heartbeat.mjs` scope-narrowing** — previously scanned every `*.json` file under `units/` on every Write/Edit, parsing JSON + rewriting any `in_progress` unit's heartbeat. With 50+ units this added 200–800 ms per tool call on Windows. Worse, the hook bumped heartbeats on units claimed by **other** developers (Alice's local Writes refreshed Bob's unit), causing cross-dev misattribution after a `git pull`. Now: read `git config user.email` + `os.hostname()` once, then bump only units whose `in_flight.by` and `in_flight.host` match. Typical-case fs work drops to 0–1 file write per tool call.
+- **`/auth` seed step checks the users table exists first** — `skills/auth/SKILL.md`'s seed-dev-users step used to INSERT blind. If the team hadn't run DB migrations yet, the script failed with a cryptic SQL error, `/auth` recorded "seed convenience failed, but auth itself is migrated," bumped `state.status` to `auth_done`, and the team only discovered the missing table on their first login attempt. Now: the seed script's first action is a `SELECT 1 FROM users LIMIT 1` (or equivalent per stack); on missing table it exits with code 2 and a per-stack "run your migration tool then re-run X" message. `/auth` reads exit 2 specially, records `seed_skipped_reason: "users-table missing"` on the auth unit file, still bumps `state.status` (the code itself is fine), and prints reseed instructions in the closing block instead of credentials.
+
+### Why this is a patch, not a minor
+No state schema changes. New `/unlock` skill is additive. Behavior changes in `/auth`, `/scaffold`, `/next`, `/plan`, `/verify`, and the heartbeat hook are all warn-or-prompt; nothing refuses to run where it previously ran. Teams pull this with `/plugin uninstall && /plugin install`.
+
+## [0.8.1] - 2026-05-14
+
+Sweep-up after the 0.8.0 lean refactor. Five small leftovers where stale version numbers, inlined templates, or missing config fields contradicted the new "let `@latest` decide, durable quirks live in permanent-gotchas" architecture.
+
+### Changed
+- **`README.md`** — Node ≥ 16 row clarified: that floor is for the heartbeat hook only; scaffolded UI stacks need their own (Vite 22, Next 20.10, Angular 20.11). The §3 framework row dropped the stale "Angular 21+, Next 16+" examples in favor of "latest stable major via `@latest`".
+- **`skills/scaffold/SKILL.md`** — junit5 test-harness no longer hardcodes JaCoCo `0.8.15`; the recipe now says "use the latest JaCoCo Maven plugin" and points at `agents/permanent-gotchas.md` for the root-cause note about JDK bytecode-version compatibility. One less version to bump on a release.
+- **`skills/auth/SKILL.md`** — the `security.py` template was inlined twice (in this SKILL and in `templates/permanent-gotchas/fastapi/security.py`). Removed the inline copy; auth now points at the template. Future fixes land in one place.
+- **`templates/migration.md` §8 Constraints** — added an explicit "Framework version pin" bullet. The README claimed teams could pin via §8 but the template offered no field for it; teams had to invent the convention.
+
+### Why this is a patch, not a minor
+Pure cleanup. No new behavior, no new files. Existing scaffolds and state files are unaffected. Teams already on 0.8.0 pull this with the usual `/plugin uninstall && /plugin install` flow.
+
+## [0.8.0] - 2026-05-14
+
+Center-of-gravity shift: the plugin moves from "prescribe every framework version" to **"stateful workflow + a durable catalog of permanent quirks."** The 0.5.x–0.7.x line patched real bugs as teams hit them, but each fix pinned a specific framework version (Spring Boot 3.4.1, JaCoCo 0.8.12, Angular 17, FastAPI 0.115, …) that went stale within weeks. The recipe-version maintenance load was outpacing the actual value. This release reorganizes so framework versions are picked at scaffold time by `@latest` CLIs, while only the **durable** quirks — bugs that don't depend on a specific framework version — are catalogued in one place.
+
+Also adds two UX improvements customers asked for: run-the-stack instructions printed at the end of `/scaffold`, and pre-seeded dev users printed at the end of `/auth` so the team can log in without reverse-engineering the register payload.
+
+### Added
+- **`agents/permanent-gotchas.md`** — new read-only catalog of version-agnostic bugs/workarounds across every supported stack. Each entry documents a tool/library quirk that Claude cannot reliably discover on its own (e.g., passlib's `detect_wrap_bug` crash on bcrypt ≥4, Spring actuator's `/actuator/health` vs scaffold's `/health`, NestJS `reflect-metadata` first-import requirement, hatchling eager `default_only_include`, the `--use-minimal-apis` flag removal, Spring Initializr silent hyphen-stripping in `packageName`, Vite 7 dropping Node 18/20, `npm create svelte@latest` retirement, Svelte 5 runes, Pydantic v1→v2 rewrite map, NestJS:3000 ↔ Next:3000 port collision). Updated only when a quirk's root cause changes — not bumped for version drift.
+- **`templates/permanent-gotchas/<stack>/`** — concrete file shapes that encode the workarounds: `fastapi/{pyproject.toml,main.py,security.py,conftest.py,test_health.py}`, `spring-boot/{HealthController,CorsConfig}.java`, `dotnet/Program-additions.cs`, `nestjs/main.ts`. The scaffold skill now copies these in rather than inlining ~200 lines of code blocks per stack.
+- **Post-scaffold run-the-stack message** — `/scaffold`'s closing block now prints exact dev commands and URLs for the chosen UI + API stacks (e.g., `cd apps/api-new && fastapi dev app/main.py`, `cd apps/web-new && npm run dev`, `curl http://localhost:8000/health`). Customers no longer have to remember which framework uses `npm run dev` vs `npm start` vs `dotnet run`.
+- **`/auth` pre-seeds dev users** (when target auth is a local password store, not an IdP) — generates an idempotent seed script in the target stack's idiomatic shape (`apps/api-new/scripts/seed_dev_users.py` for FastAPI, `DevUserSeeder.java` with `@Profile("dev")` for Spring, `--seed` CLI flag for .NET, `seed-dev-users.ts` for Nest), runs it once, writes `.claude/modernize/dev-credentials.md` (gitignored), and **prints the credentials in the terminal closing block** so the team can `curl /auth/login` immediately. Scripts refuse to run when `NODE_ENV` / `ASPNETCORE_ENVIRONMENT` / `SPRING_PROFILES_ACTIVE` is `production`, and refuse to overwrite real users with `@dev.local` emails.
+
+### Changed
+- **`skills/scaffold/SKILL.md`** — UI + API recipes slimmed from ~200 lines of inline code blocks to ~50 lines of pointers into `templates/permanent-gotchas/<stack>/`. CLIs now use `@latest` exclusively; the only pinned versions remaining are Java 21 (Spring Initializr requires a numeric `javaVersion` parameter) and Node minimums per UI stack (which are durable preflight checks, not framework version pins).
+- **`skills/auth/SKILL.md`** — Finalize step's print block extended with the seeded-credentials section.
+
+### Removed
+- **`angular-17` back-compat alias in `skills/plan/SKILL.md`** — the v0.6.0 rename kept "legacy value `angular-17` is also accepted for back-compat" in the plan validator. Per the no-migration-code rule (no production users yet), that alias is dropped; teams with `state.target_stack.ui = "angular-17"` should rename the value in their state file to `angular` or re-init.
+
+### Why this is a minor bump, not major
+No `schema_version` change. The new template files are additive. The slimmed scaffold recipes describe the same final filesystem state (CORS, `/health`, `.env`, `lifespan`, `reflect-metadata` first-import, etc.) — just sourced from templates instead of inline code blocks. Removing the `angular-17` alias is breaking only for in-flight teams using that exact string, of which there are none (no production users yet).
+
+## [0.7.1] - 2026-05-14
+
+Bug fix: the `/web-modernize:auth` skill named "BCrypt" as a legacy pattern to detect, but didn't prescribe a target-side library — so when migrating local-password-store auth into FastAPI, Claude defaulted to the tutorial convention `passlib[bcrypt]`, which crashes on the very first `pwd_context.hash()` call under bcrypt ≥4.0 (`ValueError: password cannot be longer than 72 bytes`). Root cause: passlib's last release was 2020; its bcrypt-detection routine tests `_bcrypt.hashpw()` with a 73-byte secret to detect old truncation behavior, but bcrypt 4.x raises on >72 bytes instead of truncating, so passlib's init explodes before the caller's password is even seen. Passlib is effectively unmaintained.
+
+### Fixed
+- **`skills/auth/SKILL.md` — new "Password hashing — pick the right library per target stack" section** with an explicit prescription table:
+  - FastAPI: `bcrypt>=4.0` directly with 72-byte input truncation. **Explicitly forbids `passlib[bcrypt]`** with a one-line explanation of the detection-routine crash, so Claude doesn't reach for it again.
+  - Spring Boot: `BCryptPasswordEncoder` from `spring-security-crypto`.
+  - .NET minimal API: `Microsoft.AspNetCore.Identity.PasswordHasher<TUser>` or `BCrypt.Net-Next`.
+  - NestJS: `bcrypt` (npm) or `argon2`; flags `bcryptjs` as the slow pure-JS fallback to avoid.
+- **Concrete `app/auth/security.py` template for FastAPI** with safe `_prep(password)` that truncates to 72 bytes, plus a documented SHA-256 pre-hash alternative for teams that want arbitrary-length password support. Both options note their effect on legacy hash compatibility.
+
+Existing migrations whose `security.py` was generated against the old (silent) `/auth` recipe will have already crashed and likely been hand-fixed. The plugin's prescription change prevents recurrence on the next `/web-modernize:auth` run; no schema or behavior change for state in flight.
+
+## [0.7.0] - 2026-05-14
+
+Closes the "scaffold passes, app doesn't run" gap. The 0.5.x / 0.6.0 work made every recipe prescriptive and version-current; this release fixes the next-most-common failure mode — running the scaffolded app and immediately hitting CORS errors, wrong `/health` path, wrong Node version, or "where does my UI find the API?". All four are now configured at scaffold time, not left for the team to discover when their first `/web-modernize:next`-migrated unit calls the API.
+
+### Added
+- **New "Stack defaults" table** at the top of `skills/scaffold/SKILL.md` per-subsystem checklist. Single source of truth for UI dev port, Node minimum, API dev port, and the dev CORS allow-list per stack. Referenced by both the Node preflight and every API CORS recipe. The NestJS API dev port is **3001** (Nest's default is 3000, which collides with Next.js dev) — documented explicitly so teams running Next + Nest don't fight port binding.
+- **Per-UI-stack Node version preflight** — Node 22 for Vite-based stacks (`react-vite-ts`, `vue3-vite`, `svelte-kit` — Vite 7 dropped Node 18/20), 20.10 for `next-app-router`, 20.11 for `angular`. The old blanket "Node ≥ 18" check passed for stacks where it shouldn't have, leaving the scaffold to fail at the `npm install` step.
+- **"Wire to API" step in every UI scaffold** — writes `.env.example` + `.env` (or Angular's `environment.ts` pair) with the canonical API URL for the chosen API stack, plus a tiny `src/lib/api.ts` helper that the migrator can import. The team's first `fetch()` from a migrated unit has a real target.
+- **CORS + explicit `/health` in every API scaffold** — every API recipe now writes a permissive-for-dev / TODO-for-prod CORS config and an explicit `/health` endpoint at the path the smoke gate hits:
+  - **FastAPI**: prescriptive `app/main.py` template with `CORSMiddleware`, `lifespan` context manager (the deprecated `@app.on_event("startup")` is dead as of FastAPI 0.121+), and `@app.get("/health")`.
+  - **Spring Boot**: writes a `CorsConfig.java` (`WebMvcConfigurer` + `addCorsMappings`) and a `HealthController.java` (`@RestController` + `@GetMapping("/health")`). Critical — actuator's health is at `/actuator/health`, **not** `/health` where the smoke gate looks.
+  - **.NET minimal API**: `Program.cs` snippet adding `builder.Services.AddCors(...)` with the dev allow-list and `app.MapGet("/health", ...)`.
+  - **NestJS**: rewrites `main.ts` to preserve the load-bearing `import 'reflect-metadata';` as the first line (omitting it crashes Nest at startup), enables CORS via `app.enableCors`, and binds to port 3001. Adds a `@Get('health')` route to the generated `app.controller.ts`.
+
+### Why this is a minor bump
+All four items are additive — they extend recipes and add files to fresh scaffolds. Existing scaffolds (already at `state.status >= "scaffolded"`) are untouched; teams that want the new wiring can re-run `/web-modernize:scaffold --assets-only` for the asset bits or hand-apply the CORS/health snippets from the recipe. No schema change, no breaking key changes.
+
+## [0.6.0] - 2026-05-14
+
+Modernization pass on **every scaffold recipe** for staleness. The 0.5.x line proved the "vague recipe → broken scaffold" failure mode (FastAPI hatchling, .NET `--use-minimal-apis`, Spring Boot Initializr); this release applies the same scrutiny to the remaining pinned versions and CLI patterns. Driving principle, per customer feedback: **default to the latest stable major** of each target framework; teams that need an LTS pin can override via `migration.md` §8 Constraints.
+
+### Changed
+- **`angular-17` stack key renamed to `angular`** in `templates/migration.md` §3, `skills/plan/SKILL.md` preflight enum, `templates/state.schema.json` description, and `README.md`. The recipe in `skills/scaffold/SKILL.md` now runs `npx @angular/cli@latest new ...` (was `@angular/cli@17`, which pinned to a Nov-2023 release while Angular is on v21+). Plan validation accepts the legacy `angular-17` value as a back-compat alias.
+- **Spring Boot pin `bootVersion=3.4.1` → `3.5.14`** in the `start.spring.io` curl recipe (3.5 is the final 3.x minor; 3.5.14 is the latest patch). Customers needing Boot 4.x should plan for it explicitly.
+- **FastAPI dep pins** in the scaffold template: `fastapi>=0.115` → `fastapi>=0.136`, `uvicorn[standard]>=0.32` → `>=0.37`, `requires-python = ">=3.11"` → `">=3.12"`. Current FastAPI is 0.136.x and the FastAPI docs recommend Python 3.12.
+- **JaCoCo pin `0.8.13` → `0.8.15`** in the `junit5` test-harness POM snippet. 0.8.15 (May 2026) adds Java 25 support and experimental Java 26 bytecode; older versions fail on classes compiled with Java 23+.
+- **SvelteKit recipe**: `npm create svelte@latest` → `npx sv create`. The old `create-svelte` CLI was retired in favor of the new `sv` tool (ships with Svelte 5 / SvelteKit 2).
+- **Karma + Angular note**: since Angular 18 the CLI no longer guarantees a generated `karma.conf.js` in every configuration. The `karma-jasmine` test-harness recipe now includes a manual install fallback and a one-line nudge toward `other: web-test-runner` / `other: vitest` for greenfield Angular migrations, since Karma is on Angular's deprecation runway.
+- **xUnit recipe note**: added a one-line opt-in for `dotnet new xunit3` (Microsoft Testing Platform) for teams targeting **.NET 10**, with the caveat that coverage flows through `Microsoft.Testing.Extensions.CodeCoverage` rather than `coverlet.collector`. Default stays on xUnit v2 to avoid regressing the well-tested coverage path.
+
+### Why this is a minor bump and not a patch
+The `angular-17` → `angular` rename is technically a stack-key change. Existing `state.json` files with `target_stack.ui = "angular-17"` keep working (plan accepts the legacy value, and `state.schema.json` doesn't enum-constrain the field — only the description was updated), so this is additive at the schema level. No `schema_version` bump and no `/init` reset required. Teams pull the new version with `/plugin uninstall web-modernize && /plugin install web-modernize` before their next `/web-modernize:scaffold` run.
+
+## [0.5.2] - 2026-05-14
+
+Bug fix follow-up to 0.5.1: audited the **.NET minimal API** and **Spring Boot 3** scaffold recipes for the same class of "vague instruction → Claude invents broken config" issue that bit FastAPI. Found four landmines per stack; this release replaces both recipes with prescriptive, version-pinned templates.
+
+### Fixed
+- **`skills/scaffold/SKILL.md` — .NET recipe (line 85 + `xunit` section)**
+  - Dropped `--use-minimal-apis` flag (removed in .NET 9; minimal API has been the default since .NET 8). Recipe now uses `dotnet new webapi -o apps/api-new` and documents `--use-controllers` as the explicit opt-out.
+  - Documented the hyphen-vs-underscore split that `dotnet new` performs on hyphenated paths (`<AssemblyName>api-new</AssemblyName>` + `<RootNamespace>api_new</RootNamespace>`), and suggested `-n ApiNew` as an opt-in for teams that want PascalCase consistency.
+  - Resolved the ambiguous `<ProjectName>` placeholder in the xunit harness recipe with a concrete `<project>` substitution example, pinned the working directory to repo root, and added a `dotnet new sln && dotnet sln add ...` step so `dotnet test` / `dotnet build` at repo root just work.
+- **`skills/scaffold/SKILL.md` — Spring Boot recipe (line 86 + `junit5` section)**
+  - Replaced the "use start.spring.io API; offer to provide curl command" hand-wave with a literal, pinned curl recipe (Java 21, Maven, Boot 3.4.1, `web,actuator`, explicit `groupId`/`artifactId`/`packageName`, `.tgz` archive). Documents why `bootVersion` and `packageName` must be set explicitly (Initializr's hyphen-stripping `packageName` sanitization is silent and surprising).
+  - Bumped JaCoCo pin from `0.8.12` → `0.8.13` (0.8.12 fails on classes compiled with Java 23+; 0.8.13 adds Java 24 bytecode support).
+  - Switched the `junit5` health-test sample to lead with `MockMvc` + `@AutoConfigureMockMvc` (the right default for Spring Boot 3's MVC/Tomcat stack), demoted `WebTestClient` to a WebFlux-only alternate. `WebTestClient` requires `spring-boot-starter-webflux` on the classpath, which `spring-boot-starter-test` alone doesn't bring.
+
+No template/schema changes; existing in-flight migrations are unaffected. To pick up the fix, users should `/plugin uninstall web-modernize && /plugin install web-modernize` before their next `/web-modernize:scaffold` run.
+
+## [0.5.1] - 2026-05-14
+
+Bug fix: the FastAPI scaffold's generated `pyproject.toml` could fail `pip install -e ".[dev]"` on recent hatchling (notably Python 3.14) with `ValueError: Unable to determine which files to ship inside the wheel`. Hatchling's `only_include` property evaluates `default_only_include()` eagerly as the default arg to `dict.get()`, so the auto-detection raises before the configured `packages` fallback can apply — triggered whenever the project name (e.g., `api-new` → `api_new`) doesn't match the package directory (`app/`).
+
+### Fixed
+- **`skills/scaffold/SKILL.md` — FastAPI recipe** — now prescribes a concrete `pyproject.toml` template with explicit `only-include = ["app"]` on both `[tool.hatch.build.targets.wheel]` and `[tool.hatch.build.targets.editable]`, which short-circuits hatchling's failing auto-detection path. Existing scaffolds that hit the error can fix in place by adding the same two `only-include` lines to their `pyproject.toml`.
+
 ## [0.5.0] - 2026-05-13
 
 Builds on 0.4.0's execution-based gates. Those gates answer "does it run?"; this release answers "does it preserve the legacy behaviour?". The plugin now picks the test framework at `migration.md` time (with per-stack suggestions), scaffolds a working test harness with a sample test at `/scaffold` time, translates legacy unit tests to the target framework at `/migrate` / `/next` / `/retry` time, and generates additional tests to top up to the team's coverage bar (default 80%). Coverage below target is a **soft fail** — the unit still finalises, but with a `below_threshold` flag and a warning listing the uncovered regions, so a flaky coverage measurement never blocks a working migration.

@@ -23,7 +23,7 @@ After install, the plugin's commands appear under the `/web-modernize:` namespac
 | Tool | Version | Why |
 |------|---------|-----|
 | Claude Code | latest | Plugin host |
-| Node.js | ≥ 16 | The optional heartbeat hook (stale-session detection). Plugin still works without Node, just less precise about stalled migrations. |
+| Node.js | ≥ 16 | The optional heartbeat hook (stale-session detection). Plugin still works without Node, just less precise about stalled migrations. **Note:** scaffolded UI stacks have their own, higher Node minimums — Vite-based stacks need Node 22, Next.js needs 20.10, Angular needs 20.11. The ≥ 16 floor is only for the heartbeat hook itself. |
 | git | any modern version | All migration state is git-tracked |
 
 The target stack you migrate **to** decides additional tooling (Node + npm for React/Vue/Svelte targets, .NET SDK for .NET targets, JDK for Spring Boot targets, etc.). The plugin uses your local toolchain; nothing is installed cloud-side.
@@ -136,7 +136,7 @@ Commit the `.claude/modernize/` directory. That's how Alice on Monday and Bob on
 |---------|-----------|-------|
 | 1. Project identity | recommended | Just metadata — name, team, ticket |
 | 2. Source stack | AUTO | Filled by `/analyze`; override if it got something wrong |
-| 3. Target UI framework | **yes** | Pick from react-vite-ts, next-app-router, vue3-vite, angular-17, svelte-kit, or custom. Includes two optional sub-sections (legacy design system, asset directories) — fill them for high-fidelity migrations. |
+| 3. Target UI framework | **yes** | Pick from react-vite-ts, next-app-router, vue3-vite, angular, svelte-kit, or custom. Scaffolds pull the latest stable major from each CLI via `@latest` — pin via §8 Constraints if you need an older LTS line. Includes two optional sub-sections (legacy design system, asset directories) — fill them for high-fidelity migrations. |
 | 4. Target API framework | optional | Set to `none` for UI-only migrations — plan skips API work entirely |
 | 5. Database | optional | `unchanged` is the most common; set if replatforming |
 | 6. Migration strategy | **yes** | strangler-fig (default), big-bang (small apps), module-by-module |

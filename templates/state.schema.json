@@ -59,7 +59,7 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "ui": { "type": "string", "description": "e.g. react-vite-ts, next-app-router, vue3-vite, angular-17, svelte-kit" },
+        "ui": { "type": "string", "description": "e.g. react-vite-ts, next-app-router, vue3-vite, angular, svelte-kit" },
         "api": { "type": "string", "description": "e.g. dotnet-minimal-api, spring-boot-3, nestjs, fastapi, reuse-existing, none" },
         "db": { "type": "string", "description": "e.g. unchanged, schema-migrate-to-postgres, replatform-to-mongodb" }
       }

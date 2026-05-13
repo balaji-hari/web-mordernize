@@ -39,7 +39,7 @@
 
 Pick one. Add a one-line rationale.
 
-- **Framework**: <!-- react-vite-ts | next-app-router | vue3-vite | angular-17 | svelte-kit -->
+- **Framework**: <!-- react-vite-ts | next-app-router | vue3-vite | angular | svelte-kit -->
 - **Language**: <!-- TypeScript | JavaScript -->
 - **State management**: <!-- e.g., Redux Toolkit, Zustand, Pinia, NgRx, "minimal" -->
 - **Styling**: <!-- e.g., Tailwind, CSS Modules, MUI, Bootstrap -->
@@ -106,6 +106,7 @@ Auth is migrated first as a distinct phase because it touches almost every other
 - **Browser support floor**: <!-- e.g., last 2 Chrome/Edge, IE11 required, etc. -->
 - **Deployment target**: <!-- e.g., Azure App Service, AKS, on-prem IIS, AWS ECS -->
 - **CI/CD platform**:
+- **Framework version pin** (only if an LTS line is required; leave blank to track `@latest`): <!-- e.g., "Angular 18 LTS", "Spring Boot 3.4 LTS", "Node 20 LTS" -->
 - **Other constraints**:
 
 ## 9. Out of scope

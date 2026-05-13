@@ -124,13 +124,29 @@ If none, print `blockers: none.`
 
 ### 8. Lock
 
-If `state.lock` is non-null and `expires_at` is in the future, print:
+If `state.lock` is non-null, print one of:
 
+**A — fresh lock (not expired, no obvious staleness signal)**:
 ```
 advisory lock held by <lock.holder> until <lock.expires_at> (<minutes> min remaining)
 ```
 
-Otherwise omit.
+**B — expired lock** (`now > lock.expires_at`):
+```
+⚠ stale lock — held by <lock.holder>, expired <minutes> min ago
+  No active session matches this lock. Recover with:
+    /web-modernize:unlock
+```
+
+**C — current-user lock with no matching in-flight session** (the lock's `holder` matches `git config user.email` but no `units/<id>.json` has an `in_flight` block with the same `session_id`):
+```
+⚠ stale lock — held by you in a previous session (<lock.session_id>) since <lock.acquired_at>
+  No in-flight unit matches this session id, so the holder's process likely died.
+  Recover with:
+    /web-modernize:unlock
+```
+
+If `state.lock` is null, omit this section.
 
 ### 9. Recent activity (last 5)
 
