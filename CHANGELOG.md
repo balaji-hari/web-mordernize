@@ -2,6 +2,13 @@
 
 All notable changes to the `web-modernize` plugin are documented here. Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.9.3] - 2026-05-14
+
+Patch release: fixes the scaffold closing message to spell out dependency-install steps before the dev-server commands.
+
+### Fixed
+- **`skills/scaffold/SKILL.md`** — the "Run the new stack locally" closing block jumped straight to `uvicorn` / `npm run dev` without showing the install step. The scaffold's smoke-build does install once during scaffolding, but (a) a fresh shell (especially a Python venv) won't have the tools on PATH until activation, and (b) a teammate who just pulled the scaffolded skeleton from git hasn't installed at all. The closing message now prints an explicit **install / activate** line directly above every dev-server line, per stack: `npm install` for all Node UIs and NestJS, `python -m venv .venv && source .venv/bin/activate && pip install -e ".[dev]"` for FastAPI (with Windows PowerShell + Git Bash variants), `./mvnw -q -DskipTests package` for Spring Boot, `dotnet restore` for .NET. Same change applies to the `custom` UI fall-through ("install your UI dependencies, then start the dev server").
+
 ## [0.9.2] - 2026-05-14
 
 Patch release: fixes a self-inflicted version-skew warning that fired on every fresh `/web-modernize:init`.

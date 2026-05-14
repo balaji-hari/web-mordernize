@@ -480,24 +480,26 @@ Suggested commit:
 
 ## After writing
 
-For a **full scaffold**, print the summary block **and** the run-the-stack instructions so the team can immediately verify the scaffold works end-to-end. Substitute the per-stack commands from this table based on `state.target_stack.ui` / `state.target_stack.api`:
+For a **full scaffold**, print the summary block **and** the run-the-stack instructions so the team can immediately verify the scaffold works end-to-end. The closing message must include an **install/activate step before the dev command** for every terminal — the smoke-build gate already installed once during scaffolding, but a fresh terminal session (especially for Python with a venv) won't have the tools on PATH otherwise, and a teammate who just `git pull`-ed the scaffolded skeleton hasn't installed at all yet. Never print a dev command without the install/activate line directly above it.
 
-| UI stack | Dev command | URL |
-|---|---|---|
-| `react-vite-ts`, `vue3-vite`, `svelte-kit` | `cd apps/web-new && npm run dev` | http://localhost:5173 |
-| `next-app-router` | `cd apps/web-new && npm run dev` | http://localhost:3000 |
-| `angular` | `cd apps/web-new && npm start` | http://localhost:4200 |
+Substitute per-stack commands from these tables based on `state.target_stack.ui` / `state.target_stack.api`. The **Install / activate** column is what to print on the line directly before the dev command.
 
-| API stack | Dev command | URL | Health check |
+| UI stack | Install / activate | Dev command | URL |
 |---|---|---|---|
-| `fastapi` | `cd apps/api-new && fastapi dev app/main.py` (or `uvicorn app.main:app --reload`) | http://localhost:8000 | `curl http://localhost:8000/health` |
-| `spring-boot-3` | `cd apps/api-new && ./mvnw spring-boot:run` (Windows: `mvnw.cmd spring-boot:run`) | http://localhost:8080 | `curl http://localhost:8080/health` |
-| `dotnet-minimal-api` | `cd apps/api-new && dotnet run` | http://localhost:5000 (or as printed in `launchSettings.json`) | `curl http://localhost:5000/health` |
-| `nestjs` | `cd apps/api-new && npm run start:dev` | http://localhost:3001 | `curl http://localhost:3001/health` |
+| `react-vite-ts`, `vue3-vite`, `svelte-kit` | `npm install` | `npm run dev` | http://localhost:5173 |
+| `next-app-router` | `npm install` | `npm run dev` | http://localhost:3000 |
+| `angular` | `npm install` | `npm start` | http://localhost:4200 |
 
-If `state.target_stack.api` is `none` or `reuse-existing`, omit the API rows. If `ui` is `custom`, fall back to a generic "start your UI dev server" line.
+| API stack | Install / activate | Dev command | URL | Health check |
+|---|---|---|---|---|
+| `fastapi` | `python -m venv .venv && source .venv/bin/activate` *(Windows PowerShell: `.venv\Scripts\Activate.ps1`; bash-on-Windows / Git Bash: `source .venv/Scripts/activate`)*, then `pip install -e ".[dev]"` | `fastapi dev app/main.py` *(or `uvicorn app.main:app --reload`)* | http://localhost:8000 | `curl http://localhost:8000/health` |
+| `spring-boot-3` | `./mvnw -q -DskipTests package` *(Windows: `mvnw.cmd -q -DskipTests package`)* | `./mvnw spring-boot:run` *(Windows: `mvnw.cmd spring-boot:run`)* | http://localhost:8080 | `curl http://localhost:8080/health` |
+| `dotnet-minimal-api` | `dotnet restore` | `dotnet run` | http://localhost:5000 *(or as printed in `launchSettings.json`)* | `curl http://localhost:5000/health` |
+| `nestjs` | `npm install` | `npm run start:dev` | http://localhost:3001 | `curl http://localhost:3001/health` |
 
-Closing message:
+If `state.target_stack.api` is `none` or `reuse-existing`, omit the API rows. If `ui` is `custom`, fall back to a generic "install your UI dependencies, then start the dev server" line.
+
+Closing message — note the explicit "Install dependencies" line **above** every "Start" line. Always `cd` into the subsystem path first; install and dev commands both run from there:
 
 ```
 ✓ Scaffold complete.
@@ -507,12 +509,25 @@ Closing message:
   DB:  <db.status>
   Assets: <count of directories copied>, <count of files skipped> (see notes/__scaffold__.md if any warnings)
 
-Run the new stack locally:
+Run the new stack locally — open two terminals. The first time on a fresh
+clone you must install dependencies; the scaffold smoke-build installed
+once during scaffolding, but a new shell (especially Python venvs) won't
+have the tools on PATH until you activate / install again.
 
   Terminal 1 — API (<api stack>, port <api port>):
+    cd <api.path>
+    # Install dependencies (first time on this machine, or after pulling
+    # the scaffold from git):
+    <API install/activate command>
+    # Start the dev server:
     <API dev command>
 
   Terminal 2 — UI (<ui stack>, port <ui port>):
+    cd <ui.path>
+    # Install dependencies (first time on this machine, or after pulling
+    # the scaffold from git):
+    <UI install/activate command>
+    # Start the dev server:
     <UI dev command>
 
 Smoke-check both:
