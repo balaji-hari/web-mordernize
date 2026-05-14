@@ -76,6 +76,30 @@
         "db": { "$ref": "#/$defs/subsystem" }
       }
     },
+    "testing": {
+      "description": "Source of truth for which test runner /scaffold installs and which coverage bar /verify and the unit-migrator measure against. Seeded by /plan from migration.md §12.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ui_framework": { "type": "string", "description": "e.g. vitest, jest" },
+        "api_framework": { "type": "string", "description": "e.g. pytest, vitest, xunit, or 'n/a' when API is none/reuse-existing" },
+        "target_pct": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "last_aggregate_check": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "at": { "type": "string", "format": "date-time" },
+            "aggregate_pct": { "type": "integer", "minimum": 0, "maximum": 100 },
+            "target_pct": { "type": "integer", "minimum": 0, "maximum": 100 },
+            "below_threshold": { "type": "boolean" },
+            "units_below": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
     "unit_ids": {
       "description": "Ordered list of migration unit ids. Each id corresponds to .claude/modernize/units/<id>.json. The order defines the canonical plan ordering used by /web-modernize:next.",
       "type": "array",

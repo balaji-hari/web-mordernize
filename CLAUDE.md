@@ -18,7 +18,7 @@ The plugin's runtime artifacts split into two locations: this repo (plugin sourc
 .claude-plugin/
   plugin.json              # manifest — name, version, author
   marketplace.json         # self-referencing marketplace (source: "./")
-skills/<name>/SKILL.md     # one per slash command (14 total — see Slash command reference in README)
+skills/<name>/SKILL.md     # one per slash command (15 total — see Slash command reference in README)
 templates/                 # files copied into the user's repo by /init and /plan
   state.schema.json        # top-level state schema (schema_version 3)
   unit.schema.json         # per-unit object schema
