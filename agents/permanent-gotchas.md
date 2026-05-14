@@ -1,20 +1,17 @@
 ---
 description: >
-  Read-only catalog of durable, version-agnostic bugs and workarounds the
-  scaffolder and unit-migrator have encountered. Each entry documents a tool
-  or library quirk that Claude cannot reliably discover on its own (training
-  cutoff, library is abandoned, or behavior is silent/cryptic). The /scaffold
-  skill and the unit-migrator agent reference this file rather than inlining
-  fixes that age fast.
+  Read-only catalog of bugs the agent cannot reliably discover on its own —
+  first-run crashes, silently-wrong behavior, or load-bearing durable rules
+  whose root cause isn't obviously web-searchable. Everything else (version
+  bumps, well-documented deprecations, framework guides) belongs to WebSearch
+  at scaffold time, not this file.
 disable-model-invocation: true
 model: inherit
 ---
 
 # Permanent gotchas
 
-This file lists tool/library quirks that bit a previous migration. Each entry is **version-agnostic** — the underlying behavior doesn't depend on a specific framework version. Update an entry only when the quirk's root cause changes; do **not** add "X is current as of <date>" notes that go stale.
-
-Use it as a checklist when scaffolding a target or translating a unit: if the stack you're emitting code for has an entry here, encode the workaround inline. The companion `templates/permanent-gotchas/<stack>/` directory carries the concrete file shapes.
+Audit criterion: an entry stays here **only if the agent can't reach the conclusion in <30s with one WebSearch.** That usually means the bug crashes before the symptom is searchable, or the failure is silent (no error to search for). Well-documented framework changes (Pydantic v1→v2, `'use client'`, Svelte 5 runes, package renames, CLI flag deprecations) don't live here — the agent finds them on demand.
 
 ---
 
@@ -24,47 +21,33 @@ Use it as a checklist when scaffolding a target or translating a unit: if the st
 
 **Symptom:** `pip install -e ".[dev]"` fails with `ValueError: Unable to determine which files to ship inside the wheel`, even though `[tool.hatch.build.targets.wheel] packages = ["app"]` is set.
 
-**Root cause:** hatchling's `only_include` config property uses `dict.get("only-include", self.default_only_include())`. Python evaluates the default arg eagerly, so `default_only_include()` runs every time — and it raises when no directory matches the normalized project name (`api-new` → `api_new`, but the package directory is `app/`).
+**Root cause:** hatchling's `only_include` config uses `dict.get("only-include", self.default_only_include())`. Python evaluates the default arg eagerly, so `default_only_include()` runs every time — and it raises when no directory matches the normalized project name (`api-new` → `api_new`, but the package directory is `app/`).
 
-**Fix:** Set `only-include` explicitly on both wheel and editable targets:
+**Fix:** Set `only-include` explicitly on both wheel and editable targets. The redundancy is load-bearing. See `templates/permanent-gotchas/fastapi/pyproject.toml` — the only template file kept in v0.9.0, because reconstructing this from prose has bitten previous migrations.
 
-```toml
-[tool.hatch.build.targets.wheel]
-packages = ["app"]
-only-include = ["app"]
-
-[tool.hatch.build.targets.editable]
-packages = ["app"]
-only-include = ["app"]
-```
-
-The redundancy is load-bearing — both `only-include` lines are required.
-
-### `passlib[bcrypt]` is broken under bcrypt ≥4.0
+### `passlib[bcrypt]` is broken under bcrypt ≥ 4.0
 
 **Symptom:** First call to `pwd_context.hash(password)` raises `ValueError: password cannot be longer than 72 bytes`, regardless of the caller's password length.
 
-**Root cause:** Passlib (last release 2020, unmaintained) runs a one-time `detect_wrap_bug()` on first use, calling `bcrypt.hashpw` with a 73-byte test secret. bcrypt 4.x raises on >72 bytes instead of silently truncating. Passlib doesn't catch the exception → first hash call crashes.
+**Root cause:** Passlib (last release 2020, unmaintained) runs a one-time `detect_wrap_bug()` on first use, calling `bcrypt.hashpw` with a 73-byte test secret. bcrypt 4.x raises on > 72 bytes instead of silently truncating. Passlib doesn't catch the exception → first hash call crashes.
 
-**Fix:** **Never use `passlib[bcrypt]`.** Use the `bcrypt` package directly with explicit 72-byte truncation. See `templates/permanent-gotchas/fastapi/security.py` for the canonical shape.
+**Fix:** **Never use `passlib[bcrypt]` for any new Python migration.** Use the `bcrypt` package directly with explicit 72-byte truncation in a `_prep()` helper. Example skeleton (the agent should regenerate, not copy):
 
-### `@app.on_event("startup")` is removed
+```python
+import bcrypt
 
-**Symptom:** Code using `@app.on_event("startup")` / `@app.on_event("shutdown")` emits deprecation warnings on FastAPI 0.93+ and breaks on 0.121+.
+def _prep(password: str) -> bytes:
+    encoded = password.encode("utf-8")
+    return encoded[:72]  # bcrypt 4.x raises on > 72 bytes; truncating doesn't reduce entropy
 
-**Fix:** Use a `lifespan` async context manager. See `templates/permanent-gotchas/fastapi/main.py`.
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(_prep(password), bcrypt.gensalt()).decode("utf-8")
 
-### Pydantic v1 patterns don't work in v2
+def verify_password(password: str, hashed: str) -> bool:
+    return bcrypt.checkpw(_prep(password), hashed.encode("utf-8"))
+```
 
-**Symptom:** Migrated model code uses `@validator`, `class Config:`, `.dict()`, or `__fields__` and fails or behaves wrong on FastAPI ≥0.100 (which requires Pydantic v2).
-
-**Fix when translating units:** rewrite to v2:
-- `@validator` → `@field_validator`
-- `@root_validator` → `@model_validator`
-- `class Config:` → `model_config = ConfigDict(...)`
-- `.dict()` → `.model_dump()`
-- `.json()` → `.model_dump_json()`
-- `__fields__` → `model_fields`
+If the team needs arbitrary-length passwords, replace `_prep` with a SHA-256 pre-hash. Document the choice in `notes/__auth__.md`.
 
 ---
 
@@ -72,65 +55,23 @@ The redundancy is load-bearing — both `only-include` lines are required.
 
 ### Spring Boot's `/health` is at `/actuator/health`, not `/health`
 
-**Symptom:** Smoke gate (or any caller) hitting `/health` gets 404. Actuator dependency is included but path doesn't match.
+**Symptom:** Smoke gate (or any caller) hitting `/health` gets 404, even though `spring-boot-starter-actuator` is on the classpath.
 
-**Fix:** Write an explicit `@RestController` for `/health`. Don't rely on actuator matching the smoke URL. See `templates/permanent-gotchas/spring-boot/HealthController.java`.
+**Why this stays:** The smoke gate silently passes the install+build step then 404s on the health probe — easy to misread as a bug in the gate rather than a path mismatch. Once you know the rule, it's obvious; before you know it, you debug the wrong layer.
 
-### Spring Initializr silently rewrites hyphenated artifactId into the base package
+**Fix:** Write an explicit `@RestController` for `/health` rather than relying on actuator matching the smoke URL. Skeleton:
 
-**Symptom:** Calling `start.spring.io` with `artifactId=api-new` and no `packageName` produces a base package of `com.example.apinew` (hyphen stripped, lowercased). Generated `@SpringBootApplication` class lands where the team didn't expect.
+```java
+@RestController
+public class HealthController {
+    @GetMapping("/health")
+    public Map<String, String> health() {
+        return Map.of("status", "UP");
+    }
+}
+```
 
-**Fix:** Always set `packageName` explicitly in the Initializr request. Document the choice in the team's notes.
-
-### CORS is rejected by default
-
-**Symptom:** UI on `localhost:5173` (or 3000, 4200) calls API on `localhost:8080` → browser blocks with CORS error.
-
-**Fix:** Write a `@Configuration` class implementing `WebMvcConfigurer.addCorsMappings(...)` with the dev allow-list. See `templates/permanent-gotchas/spring-boot/CorsConfig.java`.
-
-### `javax.*` → `jakarta.*` package rename in Spring Boot 3
-
-**Symptom:** Legacy code copied verbatim with `import javax.persistence.Entity;` fails to compile.
-
-**Fix when translating units:** rewrite `javax.persistence.*` → `jakarta.persistence.*`, `javax.servlet.*` → `jakarta.servlet.*`, `javax.validation.*` → `jakarta.validation.*`. Spring Boot 3 dropped all `javax.*` Jakarta-EE-derived packages.
-
----
-
-## .NET / minimal API
-
-### `--use-minimal-apis` flag has been removed
-
-**Symptom:** `dotnet new webapi --use-minimal-apis -o apps/api-new` errors on .NET 9+ with "unrecognized option."
-
-**Fix:** Drop the flag. Minimal APIs are the default in `dotnet new webapi` since .NET 8. Pass `--use-controllers` only if the team explicitly wants the controller-based template.
-
-### `WebApplicationFactory<Program>` can't find `Program`
-
-**Symptom:** Test project fails to compile with "Program is inaccessible due to its protection level."
-
-**Root cause:** The top-level-statements `Program.cs` shipped by `dotnet new webapi` declares `Program` as `internal`. `WebApplicationFactory<Program>` requires it to be public.
-
-**Fix:** Add `public partial class Program { }` at the bottom of `Program.cs`. Alternative: `[assembly: InternalsVisibleTo("<TestProjectName>")]`, but the partial-class line is the documented Microsoft pattern.
-
-### Hyphenated project paths split assembly name from namespace
-
-**Symptom:** `dotnet new webapi -o apps/api-new` produces `<AssemblyName>api-new</AssemblyName>` + `<RootNamespace>api_new</RootNamespace>` (underscore-sanitized). Builds work, but test code referencing the namespace surprises authors.
-
-**Fix:** If PascalCase consistency matters, pass `-n ApiNew` (or similar) to force matching project/assembly/namespace names. Otherwise document the split.
-
-### `dotnet new webapi` does not include CORS or `/health`
-
-**Symptom:** Fresh scaffold serves nothing useful at `/health`; first cross-origin fetch from UI fails.
-
-**Fix:** Add `builder.Services.AddCors(...)` + `app.UseCors(...)` + `app.MapGet("/health", ...)` to `Program.cs`. See `templates/permanent-gotchas/dotnet/Program-additions.cs`.
-
-### xUnit v2 vs v3 coverage collector mismatch
-
-**Symptom:** `dotnet test --collect:"XPlat Code Coverage"` runs but reports zero tests or zero coverage when the test project was generated with `dotnet new xunit3`.
-
-**Root cause:** xUnit v3 uses Microsoft Testing Platform (MTP), not VSTest. `coverlet.collector` (VSTest-only) silently does nothing.
-
-**Fix:** For `xunit3` projects, use `Microsoft.Testing.Extensions.CodeCoverage` instead of `coverlet.collector`. For greenfield work on .NET 10, document the choice; for legacy compatibility default to xUnit v2.
+Put it under the project's base package so `@SpringBootApplication`'s component scan picks it up.
 
 ---
 
@@ -138,79 +79,21 @@ The redundancy is load-bearing — both `only-include` lines are required.
 
 ### `reflect-metadata` must be the first import in `main.ts`
 
-**Symptom:** `Reflect.getMetadata is not a function` at startup, or DI fails silently with `undefined` providers.
+**Symptom:** `Reflect.getMetadata is not a function` at startup, **or** silent DI failures with `undefined` providers — depends on which decorator-annotated class is parsed first.
 
-**Root cause:** Nest's DI relies on the `reflect-metadata` polyfill being loaded before any decorator-annotated class is parsed.
+**Root cause:** Nest's DI relies on the `reflect-metadata` polyfill being loaded before any decorator-annotated class is parsed. The Nest CLI puts it first; the migrator must not remove or reorder it when porting.
 
-**Fix:** Keep `import 'reflect-metadata';` as **the very first line** of `apps/api-new/src/main.ts`. The Nest CLI puts it there; the unit-migrator must not remove or reorder it. See `templates/permanent-gotchas/nestjs/main.ts`.
+**Fix:** Keep `import 'reflect-metadata';` as **the very first line** of `apps/api-new/src/main.ts`. Above every other import. Above any comment block that the migrator might re-emit at the top of the file.
 
 ### Nest default port collides with Next.js dev
 
-**Symptom:** Running Next.js (port 3000) + NestJS (also 3000 by default) → second one fails with `EADDRINUSE`.
+**Symptom:** Running Next.js (port 3000) + NestJS (also 3000 by default) → second one fails with `EADDRINUSE`, or — worse — the request hits the wrong server.
 
-**Fix:** Bind Nest to 3001 by default (`await app.listen(process.env.PORT ?? 3001)`). Document this in any UI ↔ API wiring step.
-
-### `bcryptjs` is a slow pure-JS port — avoid
-
-**Symptom:** Password hashing in NestJS is 10–30× slower than expected, blocking the event loop.
-
-**Fix:** Use `bcrypt` (the native binding) or `argon2` (faster and stronger). `bcryptjs` only exists as a fallback for environments where native modules don't build; the modern Node.js binary distributions always have native bcrypt available.
-
----
-
-## UI frameworks
-
-### Vite ≥7 dropped Node 18/20
-
-**Symptom:** `npm install` succeeds but `npm run build` fails with cryptic ESM / SyntaxError messages.
-
-**Fix:** Require **Node 22+** for any Vite-based UI scaffold (`react-vite-ts`, `vue3-vite`, `svelte-kit`).
-
-### `npm create svelte@latest` is retired
-
-**Symptom:** Command runs but prints a deprecation banner and may fail to scaffold a current SvelteKit project.
-
-**Fix:** Use `npx sv create <dir>` (the `sv` CLI from Svelte 5).
-
-### Angular CLI doesn't always generate `karma.conf.js`
-
-**Symptom:** `ng new ... --strict` on Angular 18+ produces a project without `karma.conf.js`; the `karma-jasmine` test recipe fails.
-
-**Fix:** Install Karma manually (`npm i -D karma karma-jasmine karma-chrome-launcher karma-coverage jasmine-core @types/jasmine`) and run `npx karma init` if `karma.conf.js` is missing. For greenfield Angular work, consider switching the test runner to Vitest or Web Test Runner — Karma is on Angular's deprecation runway.
-
-### Svelte 5 runes vs Svelte 4 reactivity
-
-**Symptom:** Migrated Svelte components look correct but state doesn't update / `$:` blocks don't fire.
-
-**Fix when translating units:** Use Svelte 5 runes:
-- `let count = 0` (reactive in 4) → `let count = $state(0)` (in 5)
-- `$: doubled = count * 2` → `let doubled = $derived(count * 2)`
-- `$: { sideEffect(count); }` → `$effect(() => { sideEffect(count); })`
-- `on:click` → `onclick`
-
-### Next.js: stateful components need `'use client'`
-
-**Symptom:** Build error "useState only available in client components" (or hooks/state/event handlers used in a Server Component).
-
-**Fix when translating units:** Add `'use client';` as the very first line of any component that uses hooks, state, event handlers, or browser-only APIs. Server Components are the default in App Router; the migrator must opt every interactive component out explicitly.
+**Fix:** Bind Nest to **3001** by default: `await app.listen(process.env.PORT ?? 3001);`. Reflect 3001 in every UI ↔ API wiring step (`.env.local`, dev proxy config). This isn't a version-sensitive choice — Nest's default has been 3000 for years and Next's default is unlikely to move.
 
 ---
 
 ## Cross-cutting
-
-### CORS isn't configured in any default API scaffold
-
-Every API stack's `<framework> new` / Initializr output rejects cross-origin requests by default. Every API template under `templates/permanent-gotchas/<stack>/` writes a permissive-for-dev CORS configuration with the standard dev allow-list:
-
-- `http://localhost:5173` (Vite default)
-- `http://localhost:3000` (Next.js default)
-- `http://localhost:4200` (Angular default)
-
-Tighten before any non-local deploy.
-
-### `/health` endpoint is on the team
-
-No framework's default scaffold serves `GET /health` returning 200 — the plugin's smoke gate hits this URL, so every API template writes an explicit health route.
 
 ### Page-wrapping chrome and global stylesheets aren't "units"
 
@@ -230,7 +113,7 @@ No framework's default scaffold serves `GET /health` returning 200 — the plugi
 | AngularJS 1.x | `index.html` body shell | `assets/styles/*.css` |
 | Classic PHP | `include 'header.php'` / `'footer.php'` | `assets/css/*.css` |
 
-Bundlers (Vite, Next, Angular CLI) also serve `public/` as static assets but don't auto-import stylesheets into the JS bundle. Many legacy designs cascade off a body-level wrapper class (`<body class="esh-shop">`); the new `index.html` doesn't carry it, so any rule scoped to `body.<class> ...` silently does nothing.
+Bundlers (Vite, Next, Angular CLI) serve `public/` as static assets but don't auto-import stylesheets into the JS bundle. Many legacy designs cascade off a body-level wrapper class (`<body class="esh-shop">`); the new `index.html` doesn't carry it, so any rule scoped to `body.<class> ...` silently does nothing.
 
 **Fix on the first feature unit** (before the first content page lands; subsequent units inherit the result):
 
@@ -247,8 +130,16 @@ Bundlers (Vite, Next, Angular CLI) also serve `public/` as static assets but don
 
 This rule is shape-agnostic on purpose. New legacy stacks (PHP, ColdFusion, Struts, Razor) hit the same pattern — Claude identifies the wrapping template + global CSS for whatever the team's source happens to be and applies the same five steps.
 
+### CORS and `/health` are on the agent
+
+No default API scaffold (`dotnet new webapi`, `nest new`, Spring Initializr, FastAPI from scratch) serves `GET /health` returning 200, and none configure CORS for the dev UI ports. The scaffold smoke gate hits `/health` and the dev UI hits the API cross-origin, so both must be wired up at scaffold time. The agent generates the right shape per stack — no template files for this.
+
+Standard dev allow-list: `http://localhost:5173` (Vite), `http://localhost:3000` (Next), `http://localhost:4200` (Angular). Tighten before any non-local deploy.
+
 ---
 
 ## Adding a new entry
 
-When a migration hits a bug that wasn't here and you fix it, ask: *is the root cause version-specific, or is it a permanent quirk of the tool?* Permanent quirks go here. Version-specific issues (e.g., "JaCoCo 0.8.12 breaks on Java 23") stay in the recipe and get bumped on review — not here, because they age.
+Before adding: ask whether a smart agent could reach this fix in ~30 seconds with one WebSearch. If yes, the entry doesn't belong here — leave it for the scaffold-time agent to discover. If the bug crashes before a search would naturally happen, or the symptom is silent (no error to search for), it belongs here.
+
+When something does qualify, write it **version-agnostic** — describe the root cause and the durable fix shape, not "as of <date>". Entries with embedded version numbers go stale; entries with root causes don't.

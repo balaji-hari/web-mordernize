@@ -34,7 +34,7 @@ Read `migration.md` and `analysis.json`. Then check the following REQUIRED field
 
 | Required field | Section | Allowed values |
 |----------------|---------|----------------|
-| Target UI framework | §3, "Framework" line | one of: react-vite-ts, next-app-router, vue3-vite, angular, svelte-kit, or custom |
+| Target UI framework | §3, "Framework" line | any non-empty value (no enum — the scaffold skill maps known names to recipes; unknown names fall through to "custom") |
 | Target UI language | §3, "Language" line | TypeScript or JavaScript |
 | Migration strategy | §6, "Strategy" line | strangler-fig, big-bang, module-by-module |
 | Current auth provider | §7 | any non-empty value |

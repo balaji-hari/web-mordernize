@@ -2,6 +2,32 @@
 
 All notable changes to the `web-modernize` plugin are documented here. Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.9.0] - 2026-05-14
+
+Strategic prune driven by a single criterion: **keep something in the plugin only if the agent can't discover it on its own.** That means first-run crashes, silently-wrong behavior, or load-bearing rules without a searchable symptom. Everything else — well-documented deprecations, version bumps, framework guides — leaves the plugin and is handled by the agent + WebSearch at scaffold time.
+
+Concretely: 0.8.x carried framework-specific recipes that aged out within weeks (Pydantic v1→v2 patterns, `'use client'` reminders, Svelte 5 runes, `--use-minimal-apis` removal, hyphenated `dotnet` namespace splits, Vite 7 Node 22 floor, `npm create svelte@latest` retirement, Initializr `packageName` sanitization, xUnit v3 collector mismatch, Angular `karma.conf.js` regeneration, JaCoCo Java 23 compat). Each of those is one WebSearch away. The catalog now keeps only the entries an agent provably can't reach via search — hatchling editable-install eager-eval, `passlib[bcrypt]` `detect_wrap_bug`, Spring `/actuator/health` vs `/health` smoke-gate mismatch, NestJS `reflect-metadata` first-import requirement, Nest:3001 ↔ Next:3000 collision, and the chrome + global-CSS pattern rule.
+
+No state schema changes, no removed commands, no renamed slash commands. The surface (15 skills / 15 commands / 2 agents / 2 hooks) is identical to v0.8.3. The diff is content slimming + template-file deletion. Teams on 0.8.x pull this with `/plugin marketplace update web-modernize && /plugin uninstall web-modernize && /plugin install web-modernize`, then restart Claude Code — **no `.claude/modernize/` reset required**, since `state.schema.json` is unchanged.
+
+### Removed
+- **`templates/permanent-gotchas/{dotnet,spring-boot,nestjs}/`** — eight stack-recipe template files deleted. The scaffold skill now describes the CORS / `/health` / `partial class Program` / `reflect-metadata` first-import / Nest port shape in prose; the agent regenerates the file shape at scaffold time. One exception kept: `templates/permanent-gotchas/fastapi/pyproject.toml` is the single surviving template — hatchling's eager `default_only_include` bug is the most-bit gotcha in this session's testing and reconstructing the dual-`only-include` config from prose alone is error-prone.
+- **`agents/permanent-gotchas.md` web-searchable entries** (219 → ~100 lines): dropped `--use-minimal-apis`, `npm create svelte@latest`, Pydantic v1→v2 patterns, Svelte 5 runes, Next.js `'use client'`, Vite 7 Node 22 floor, Angular karma.conf.js regeneration, Spring Initializr packageName sanitization, hyphenated dotnet namespace split, xUnit v3 / MTP collector mismatch, FastAPI `@app.on_event` deprecation, Spring Boot 3 `javax`→`jakarta` rename, NestJS `bcryptjs` performance footgun, `WebApplicationFactory<Program>` partial-class trick (now inlined in the scaffold recipe), and `dotnet new webapi` CORS/health omission (absorbed into the cross-cutting CORS note).
+- **`skills/auth/SKILL.md` per-stack hashing-library table** — agent picks the per-stack default from current docs; the one durable rule (no `passlib[bcrypt]` for Python) survives in `agents/permanent-gotchas.md`.
+- **`skills/plan/SKILL.md` UI framework enum** — §3 Target UI framework now accepts any non-empty value. The scaffold skill maps known names to recipes and falls through to `custom` for anything else; the enum at preflight time added no real safety.
+
+### Changed
+- **`README.md` workflow block** restructured so `/scaffold` and `/auth` are framed as one-time setup (steps 5–6) rather than as iterations inside the per-unit "Loop:" block. The previous framing parenthetically annotated them `(once)` but the structural placement still misled new readers.
+- **`README.md` typo callout** removed. The `Repo URL note` block at the top of the file warning readers about the `web-mordernize` repo name was noise — the install commands already use the correct repo name; no clarification needed.
+- **`skills/scaffold/SKILL.md` API recipes** rewritten to describe the per-stack CORS / `/health` / first-import / port shape in prose, with explicit pointers to the surviving `agents/permanent-gotchas.md` entries. The FastAPI recipe still references `templates/permanent-gotchas/fastapi/pyproject.toml` (the one template kept).
+- **`skills/auth/SKILL.md`** dropped the per-stack hashing-library table and the inline `security.py` copy instruction. Replacement is a single paragraph: agent picks the default per current docs; the catalog forbids `passlib`; document the choice in `notes/__auth__.md`.
+
+### Why this is a minor, not a major
+No state schema bump, no removed/renamed commands, no removed skills. Existing 0.8.x state files are forward-compatible — `schema_version` is unchanged. The "removed" entries are content inside skill files and a templates directory; nothing the plugin's runtime state depends on.
+
+### Why this is a minor, not a patch
+The removed entries change agent behavior at scaffold time (the agent now must regenerate file shapes from docs + the slimmer catalog, rather than copying from templates). A scaffold smoke test on a stack the team relied on getting from a template will exercise a different code path than on 0.8.3, even though the workflow surface is identical.
+
 ## [0.8.3] - 2026-05-14
 
 Captures a class of migration gap surfaced by a real user run: ASP.NET WebForms → React migrations were producing pages with no header/footer/nav and partially-applied legacy CSS. Root cause is the same for every legacy stack — page-wrapping templates (master pages, `_Layout.cshtml`, JSP includes, ColdFusion `<cfinclude>`, Struts tiles, classic PHP `include 'header.php'`) aren't standalone content pages and so don't appear as units in `/plan`. The migrator translated content pages in isolation; chrome silently disappeared. Same shape for global stylesheets — copied to `public/` by `/scaffold` but never imported from the entry, so most rules don't load.

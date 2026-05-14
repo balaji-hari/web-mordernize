@@ -90,24 +90,11 @@ Target API issues a `Set-Cookie` with HttpOnly + Secure + SameSite=Lax. Target U
 
 Install the IdP's SDK in the UI, configure callback route, document the IdP-side config the team needs to do (do not commit secrets).
 
-### Password hashing — pick the right library per target stack
+### Password hashing — pick the per-stack default
 
-If the legacy app stored hashed passwords locally (not via an IdP), the target API must hash them too. **Do not invent the library** — the wrong default has bitten previous migrations. Use this table:
+If the legacy app stored hashed passwords locally (not via an IdP), the target API must hash them too. The agent picks the per-stack default from current framework docs (Spring Security's `BCryptPasswordEncoder`, ASP.NET Identity's `PasswordHasher<TUser>`, Nest's `bcrypt` npm package or `argon2`, etc.). **One hard rule that overrides current docs:** `agents/permanent-gotchas.md` forbids `passlib[bcrypt]` for Python — it crashes on first hash call under bcrypt ≥ 4. For FastAPI, use the `bcrypt` package directly with explicit 72-byte truncation; that file shape lives in the gotchas catalog so the rule survives a `security.py` rewrite.
 
-| Target API stack | Library | Avoid |
-|---|---|---|
-| `fastapi` | `bcrypt>=4.0` **directly** (no wrapper). Truncate inputs to 72 bytes — bcrypt 4.x raises `ValueError` on longer secrets, and passwords above 72 bytes don't add bcrypt entropy anyway. | **Never `passlib[bcrypt]`** — passlib's last release was 2020; its bcrypt-detection routine calls `hashpw` with a 73-byte test secret on first use, which bcrypt 4.x rejects with `ValueError`, so the first hash call crashes regardless of the caller's password length. Also avoid `argon2-cffi` for new-build unless the team explicitly wants Argon2 — it's stronger but switching legacy bcrypt hashes is a separate migration. |
-| `spring-boot-3` | `org.springframework.security:spring-security-crypto` → `BCryptPasswordEncoder` | Hand-rolled MessageDigest loops, deprecated `StandardPasswordEncoder` |
-| `dotnet-minimal-api` | `Microsoft.AspNetCore.Identity.PasswordHasher<TUser>` (built-in, ASP.NET Identity) or `BCrypt.Net-Next` if matching legacy bcrypt hashes | Hand-rolled `Rfc2898DeriveBytes` loops without proper salt/iteration handling |
-| `nestjs` | `bcrypt` (the npm package) or `argon2` — both are maintained | `bcryptjs` (pure-JS port, very slow); homegrown hashing |
-
-#### Concrete `security.py` template (FastAPI)
-
-If the team picked `fastapi` and a local password store, **copy `templates/permanent-gotchas/fastapi/security.py` into `apps/api-new/app/auth/security.py`** rather than hand-writing. The template carries the canonical `_prep()` 72-byte truncation, the `bcrypt`-direct `hash_password` / `verify_password` pair, and the JWT helpers — all in one file that the migrator can import wholesale.
-
-Why the template (and not inline code here): the file is referenced by both `/scaffold` (when prescribing the FastAPI shape) and `/auth` (here). Keeping it in one place means a future fix lands once. The rule that matters at the SKILL level is the choice rule above (the per-stack hashing library table); the implementation is delegated to the template.
-
-If the team wants arbitrary-length passwords (no truncation), open the copied `security.py` and swap `_prep`'s implementation for SHA-256 pre-hash (also documented inline in the template's docstring). Document the choice in `notes/__auth__.md` — it affects whether legacy bcrypt hashes remain verifiable on first login.
+Document the chosen library in `notes/__auth__.md`. If the team wants arbitrary-length passwords (no 72-byte truncation), use SHA-256 pre-hash before `bcrypt.hashpw` and note that legacy bcrypt hashes won't verify on first login.
 
 ### Always do
 

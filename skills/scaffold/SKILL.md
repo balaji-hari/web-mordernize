@@ -78,7 +78,7 @@ Based on `migration.md §3 Framework`:
 
 1. Preflight: Node ≥ **20.10**.
 2. `npx create-next-app@latest apps/web-new --typescript --tailwind --eslint --app --no-src-dir` (adjust flags per §3 styling).
-3. **Wire to API**: write `apps/web-new/.env.local.example` + `.env.local` with `NEXT_PUBLIC_API_URL=http://localhost:<api-port>` (the `NEXT_PUBLIC_` prefix is required for client-component fetches), plus a non-public `API_URL=` alongside for server-side fetches. If the API stack is `nestjs`, use port **3001** — Nest's default 3000 collides with Next's dev port (see `agents/permanent-gotchas.md`).
+3. **Wire to API**: write `apps/web-new/.env.local.example` + `.env.local` with `NEXT_PUBLIC_API_URL=http://localhost:<api-port>` (the `NEXT_PUBLIC_` prefix is required for client-component fetches), plus a non-public `API_URL=` alongside for server-side fetches. If the API stack is `nestjs`, use port **3001** — see `agents/permanent-gotchas.md` (Nest's default 3000 collides with Next).
 
 #### `vue3-vite`
 
@@ -91,12 +91,12 @@ Based on `migration.md §3 Framework`:
 1. Preflight: Node ≥ **20.11**.
 2. `npx @angular/cli@latest new apps/web-new --routing --style=<scss|css> --strict --skip-git`.
 3. **Wire to API**: Angular doesn't read `.env`. Write `apps/web-new/src/environments/environment.ts` exporting `{ production: false, apiUrl: "http://localhost:<api-port>" }` and a `environment.production.ts` sibling with `production: true` + a placeholder prod URL. Verify `angular.json` has the production `fileReplacements` block.
-4. If §12 picked `karma-jasmine`, see `agents/permanent-gotchas.md` — Angular 18+ may not generate `karma.conf.js`; the test-harness step installs it manually.
+4. If §12 picked `karma-jasmine`, the test-harness step below installs Karma manually when `karma.conf.js` is missing from the CLI output.
 
 #### `svelte-kit`
 
 1. Preflight: Node ≥ **22**.
-2. `npx sv create apps/web-new` (the `sv` CLI). **Do not use the retired `npm create svelte@latest`** — see `agents/permanent-gotchas.md`. Pick the `minimal` template + TypeScript non-interactively.
+2. `npx sv create apps/web-new` (the `sv` CLI from Svelte 5). Pick the `minimal` template + TypeScript non-interactively.
 3. **Wire to API**: write `apps/web-new/.env.example` + `.env` with `PUBLIC_API_URL=http://localhost:<api-port>` and `apps/web-new/src/lib/api.ts` reading from `$env/static/public`.
 
 #### Custom / other
@@ -107,13 +107,18 @@ Tell the user the plugin doesn't have a recipe for this framework. Ask them to s
 
 Only run if `state.target_stack.api != "none"` AND `!= "reuse-existing"`. Otherwise set `scaffold.api = {"status": "skipped", "reason": "target API = <value>"}` and move to DB.
 
-Every API stack's `<framework> new` (or Initializr) output is missing two things the smoke gate needs: a `/health` route at that exact path, and a CORS allow-list for the UI dev ports. Don't free-hand either — the durable templates under `templates/permanent-gotchas/<stack>/` carry both. Copy them in, substitute placeholders, and the smoke gate's MockMvc/TestClient/curl will pass without further work. **See `agents/permanent-gotchas.md` for the per-stack durable quirks** (hatchling, reflect-metadata first-import, actuator path mismatch, `--use-minimal-apis` removal, `<Program>` partial-class, port-3001 for Nest).
+Every API stack's `<framework> new` (or Initializr) output is missing two things the smoke gate needs: a `/health` route at that exact path and a CORS allow-list for the UI dev ports. The agent writes both at scaffold time, generating the right shape per stack from current framework docs. **Read `agents/permanent-gotchas.md` first** — its entries (hatchling editable installs, `reflect-metadata` first-import, Spring actuator `/health` mismatch, Nest:3001 vs Next:3000, CORS allow-list) are the load-bearing rules that the agent must honor regardless of what current docs suggest.
 
 Based on `target_stack.api`:
 
-- **`dotnet-minimal-api`**: `dotnet new webapi -o apps/api-new`. Do **not** pass `--use-minimal-apis` (the flag was removed; minimal API is default since .NET 8). Apply the snippet from `templates/permanent-gotchas/dotnet/Program-additions.cs` to `Program.cs` — CORS, `/health`, and the `public partial class Program { }` line that `WebApplicationFactory<Program>` needs. If the team prefers PascalCase consistency, pass `-n ApiNew` to force matching project/assembly/namespace names (otherwise hyphenated paths split assembly name from namespace; see permanent-gotchas).
+- **`dotnet-minimal-api`**: `dotnet new webapi -o apps/api-new`. Then write to `Program.cs`:
+  - `builder.Services.AddCors(...)` + `app.UseCors(...)` with the dev allow-list from the Stack defaults table below.
+  - `app.MapGet("/health", () => Results.Ok(new { status = "UP" }));`
+  - `public partial class Program { }` at the bottom — required for `WebApplicationFactory<Program>` in the test project, because top-level statements declare `Program` as `internal`.
 
-- **`spring-boot-3`**: fetch a skeleton from `start.spring.io` with `web,actuator` and an **explicit `packageName`** (Initializr silently strips hyphens from `artifactId` otherwise — see permanent-gotchas):
+  Resolve current CLI flags from `dotnet new webapi --help` if the agent is unsure; do not assume any pre-.NET-8 flags survive.
+
+- **`spring-boot-3`**: fetch a skeleton from `start.spring.io` with `web,actuator` and an **explicit `packageName`** in the request (Initializr otherwise strips hyphens silently from `artifactId` and the generated base package surprises the team):
 
   ```bash
   curl -G https://start.spring.io/starter.tgz \
@@ -125,16 +130,23 @@ Based on `target_stack.api`:
     | tar -xzf - -C apps/api-new
   ```
 
-  Use `starter.tgz` (Windows boxes don't need unzip). Copy `templates/permanent-gotchas/spring-boot/HealthController.java` and `CorsConfig.java` into `src/main/java/<packageDir>/`, replacing `PACKAGE_PLACEHOLDER` with the actual base package (matches the `packageName` above). Actuator's `/actuator/health` does **not** match the smoke gate's `/health` — the explicit `HealthController` bridges that.
+  Use `starter.tgz` (Windows boxes don't need unzip). Then under `src/main/java/<packageDir>/` write:
+  - A `HealthController` with `@RestController` + `@GetMapping("/health")` returning `Map.of("status", "UP")`. Actuator's `/actuator/health` does **not** match the smoke gate's `/health` — `agents/permanent-gotchas.md` explains why.
+  - A `CorsConfig` `@Configuration` class implementing `WebMvcConfigurer.addCorsMappings(...)` with the dev allow-list.
 
-- **`nestjs`**: `npm i -g @nestjs/cli && nest new apps/api-new --package-manager npm --skip-git --skip-install && cd apps/api-new && npm install`. On locked-down boxes substitute `npx @nestjs/cli new apps/api-new`. Replace `apps/api-new/src/main.ts` with `templates/permanent-gotchas/nestjs/main.ts` — it preserves the `reflect-metadata` first-import requirement, enables CORS, and binds to **3001** (Nest's default 3000 collides with Next.js dev). Add a `/health` route to the generated `app.controller.ts`: `@Get('health') health() { return { status: 'UP' }; }`.
+- **`nestjs`**: `npm i -g @nestjs/cli && nest new apps/api-new --package-manager npm --skip-git --skip-install && cd apps/api-new && npm install`. On locked-down boxes substitute `npx @nestjs/cli new apps/api-new`. Then rewrite `apps/api-new/src/main.ts` so that:
+  - `import 'reflect-metadata';` is the **very first line** (above every other import) — see `agents/permanent-gotchas.md`.
+  - `app.enableCors({ origin: [<dev allow-list>], credentials: true })` is called before `app.listen`.
+  - `app.listen(process.env.PORT ?? 3001)` binds to 3001, not Nest's default 3000 (which collides with Next.js).
 
-- **`fastapi`**: create `apps/api-new/` and drop in the files from `templates/permanent-gotchas/fastapi/`:
-  - `pyproject.toml` — substitute `name = "..."` if the team picked a different project name; **both `only-include` blocks are load-bearing** (see permanent-gotchas — hatchling editable installs).
-  - `app/__init__.py` (empty)
-  - `app/main.py` — CORS, `/health`, and a `lifespan` context manager (the deprecated `@app.on_event("startup")` is removed in FastAPI 0.121+).
+  Add a `/health` route to the generated `app.controller.ts`: `@Get('health') health() { return { status: 'UP' }; }`.
 
-  Then `cd apps/api-new && pip install -e ".[dev]"`. If the team picked local-password-store auth, `templates/permanent-gotchas/fastapi/security.py` is also dropped in by `/web-modernize:auth` later — see that skill's prescription.
+- **`fastapi`**: create `apps/api-new/` and:
+  - Drop in `templates/permanent-gotchas/fastapi/pyproject.toml` (the only template the plugin still ships — see permanent-gotchas hatchling entry for why). Substitute `name = "..."` if the team picked a different project name; **both `only-include` blocks are load-bearing**.
+  - Write `app/__init__.py` (empty).
+  - Write `app/main.py` with CORS middleware against the dev allow-list, a `GET /health` returning `{"status": "UP"}`, and a `lifespan` async context manager (no `@app.on_event` — that's deprecated and removed in current FastAPI).
+
+  Then `cd apps/api-new && pip install -e ".[dev]"`.
 
 ### DB scaffold
 
@@ -174,21 +186,20 @@ Run this sub-step **after** the framework CLI / API skeleton creation, **before*
 
 #### `pytest` (API: FastAPI)
 
-The pyproject from `templates/permanent-gotchas/fastapi/pyproject.toml` already declares pytest/httpx in `[project.optional-dependencies].dev`, `[tool.pytest.ini_options]`, and `[tool.coverage.run]`. Re-run `pip install -e ".[dev]"` so the dev deps land in the venv, then copy:
+The pyproject from `templates/permanent-gotchas/fastapi/pyproject.toml` already declares pytest/httpx in `[project.optional-dependencies].dev`, `[tool.pytest.ini_options]`, and `[tool.coverage.run]`. Re-run `pip install -e ".[dev]"` so the dev deps land in the venv. Then write:
 
-- `templates/permanent-gotchas/fastapi/conftest.py` → `apps/api-new/tests/conftest.py`
-- `templates/permanent-gotchas/fastapi/test_health.py` → `apps/api-new/tests/test_health.py`
-
-Create an empty `apps/api-new/tests/__init__.py` alongside.
+- `apps/api-new/tests/__init__.py` (empty)
+- `apps/api-new/tests/conftest.py` — exports a `client` fixture wrapping the FastAPI app in `httpx.AsyncClient` (or the sync `TestClient`) bound to the in-process ASGI transport.
+- `apps/api-new/tests/test_health.py` — single test that calls `client.get("/health")` and asserts `200` + `{"status": "UP"}`.
 
 #### `xunit` (API: .NET minimal API)
 
 **Run all commands from the repo root** (not from `apps/`). Substitute the real project name (the directory under `apps/`) for `<project>` below — e.g., `api-new`:
 
-1. `dotnet new xunit -o tests/<project>.Tests` (xUnit v2 — well-tested with `coverlet.collector` / VSTest). For teams targeting **.NET 10** and willing to adopt the newer Microsoft Testing Platform, use `dotnet new xunit3 -o tests/<project>.Tests` instead; in that case coverage is collected via `Microsoft.Testing.Extensions.CodeCoverage` rather than `coverlet.collector`. Default to v2 unless the team has explicitly opted in.
+1. `dotnet new xunit -o tests/<project>.Tests` (default to xUnit v2 + `coverlet.collector` / VSTest unless the team has explicitly opted into xUnit v3 / Microsoft Testing Platform).
 2. `dotnet add tests/<project>.Tests reference apps/<project>/<project>.csproj`
 3. In the test project: `dotnet add tests/<project>.Tests package coverlet.collector` and `dotnet add tests/<project>.Tests package Microsoft.AspNetCore.Mvc.Testing`.
-4. Make `Program.cs` discoverable for `WebApplicationFactory<Program>` by adding `public partial class Program { }` at the bottom of `apps/<project>/Program.cs` — required on .NET 8/9 because top-level statements declare `Program` as `internal`, so the test project can't reference it. (Alternative: `[assembly: InternalsVisibleTo("<project>.Tests")]` in Program.cs; the partial-class line is the documented Microsoft pattern.)
+4. Make `Program.cs` discoverable for `WebApplicationFactory<Program>` by adding `public partial class Program { }` at the bottom of `apps/<project>/Program.cs`. (This is also done in the API scaffold step — if both ran, leave the single line in place.)
 5. Create a solution file so `dotnet build` / `dotnet test` at repo root work without args:
    ```
    dotnet new sln -n <project>
@@ -204,7 +215,7 @@ Same as `xunit` but `dotnet new nunit` or `dotnet new mstest`. The `WebApplicati
 #### `junit5` (API: Spring Boot)
 
 1. `start.spring.io` output already includes `spring-boot-starter-test` which brings JUnit 5. Verify.
-2. Add the latest JaCoCo Maven plugin to `pom.xml`. JaCoCo gates on the bytecode version of the classes being analyzed — see `agents/permanent-gotchas.md` for why pinning to an old version (e.g., `0.8.12`) silently breaks coverage on classes compiled with current JDKs. Resolve the current version from Maven Central (`org.jacoco:jacoco-maven-plugin`) at scaffold time; do not hardcode here. Shape:
+2. Add the latest JaCoCo Maven plugin to `pom.xml`. Resolve the current version from Maven Central (`org.jacoco:jacoco-maven-plugin`) at scaffold time — do not hardcode a version, since JaCoCo gates on the bytecode version of analyzed classes and stale pins silently break coverage on newer JDKs. Shape:
    ```xml
    <plugin>
      <groupId>org.jacoco</groupId>

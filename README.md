@@ -2,8 +2,6 @@
 
 A Claude Code plugin that guides software teams through migrating legacy web applications — ASP.NET WebForms / MVC, Java JSP / Struts / Spring MVC, AngularJS 1.x, classic PHP, ColdFusion, jQuery-spaghetti, and similar — to a modern stack of the team's choosing. The plugin handles the workflow: analysis, plan generation, target scaffolding, auth migration, then unit-by-unit feature porting with verification. State is held in a git-tracked JSON ledger, so migrations span days and multiple developers without losing context.
 
-> **Repo URL note**: this repo is named `web-mordernize` (typo). The plugin itself is correctly named **`web-modernize`** (no typo). The install commands below use both — the repo name for the marketplace, the plugin name for installation. We're keeping the repo name as-is to avoid breaking links in flight.
-
 ---
 
 ## Install
@@ -54,35 +52,37 @@ If the new release bumps `state.schema.json` `schema_version`, this plugin does 
 
 ## The workflow
 
-Once installed, every legacy repo follows the same shape:
+Once installed, every legacy repo follows the same shape. **Steps 1–6 are one-time setup; step 7 is the per-unit loop.**
 
 ```
-1. /web-modernize:init       ← bootstrap scaffolding in this repo
-2. /web-modernize:analyze    ← detect source stack and auto-fill migration.md §2
-3. (edit migration.md)       ← team fills target framework, strategy, auth, acceptance criteria
-4. /web-modernize:plan       ← generate plan.md and unit list
-5. Loop:
-     /web-modernize:scaffold              (once)
-     /web-modernize:auth                  (once)
-     /web-modernize:next                  ← auto-pick the next eligible unit
-     /web-modernize:migrate <unit-id>     ← OR explicitly pick a named unit (e.g., one assigned in standup)
-     /web-modernize:verify                (after each unit, or batch)
-   Until /web-modernize:status reports "complete".
+One-time setup:
+  1. /web-modernize:init       ← bootstrap scaffolding in this repo
+  2. /web-modernize:analyze    ← detect source stack and auto-fill migration.md §2
+  3. (edit migration.md)       ← team fills target framework, strategy, auth, acceptance criteria
+  4. /web-modernize:plan       ← generate plan.md and unit list
+  5. /web-modernize:scaffold   ← create target project skeleton (UI / optional API / DB) + copy legacy assets
+  6. /web-modernize:auth       ← migrate authentication as the first slice (every feature unit depends on it)
 
-   /next and /migrate <unit-id> do the same translation work — only unit
-   selection differs. Use /next if you want the plugin to pick the next
-   eligible pending unit; use /migrate <unit-id> when the team has already
-   decided who takes what (standup, ticket assignment).
+Per-unit loop:
+  7. Loop until /web-modernize:status reports "complete":
+       /web-modernize:next                  ← auto-pick the next eligible unit
+       /web-modernize:migrate <unit-id>     ← OR explicitly pick a named unit (e.g., one assigned in standup)
+       /web-modernize:verify                ← after each unit, or batch
+
+     /next and /migrate <unit-id> do the same translation work — only unit
+     selection differs. Use /next if you want the plugin to pick the next
+     eligible pending unit; use /migrate <unit-id> when the team has already
+     decided who takes what (standup, ticket assignment).
 
 Failure recovery (any time after a /next or /migrate):
-     /web-modernize:rollback --unit <id>   ← revert one unit's files via git
-     /web-modernize:retry <id> [--with-prompt="…"]   ← re-attempt a failed unit
+  /web-modernize:rollback --unit <id>   ← revert one unit's files via git
+  /web-modernize:retry <id> [--with-prompt="…"]   ← re-attempt a failed unit
 
 Multi-developer sync (anytime after others push):
-     /web-modernize:sync           ← merge latest state.json from origin
+  /web-modernize:sync           ← merge latest state.json from origin
 
 Reporting (anytime after /plan):
-     /web-modernize:report [--format=md|json|html]
+  /web-modernize:report [--format=md|json|html]
 ```
 
 Concretely, after step 1 your repo will contain:
