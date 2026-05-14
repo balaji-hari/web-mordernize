@@ -16,6 +16,18 @@ A Claude Code plugin that guides software teams through migrating legacy web app
 
 After install, the plugin's commands appear under the `/web-modernize:` namespace. Type `/` in Claude Code and start typing `web-modernize` to discover them.
 
+#### Install a specific version
+
+To pin to a specific release (e.g., `v0.9.0`) instead of the latest commit on `main`, append `#<tag>` to the marketplace add command. The marketplace is then locked to that ref and `/plugin install` resolves the plugin from it:
+
+```sh
+# Pin to v0.9.0:
+/plugin marketplace add balaji-hari/web-mordernize#v0.9.0
+/plugin install web-modernize
+```
+
+You can also pin to a branch or commit SHA (`#main`, `#e4d01c6`) using the same syntax. To switch versions later, remove the marketplace first (`/plugin marketplace remove web-modernize`) and re-add it pointing at the new ref. There is no `/plugin install web-modernize@<version>` form — the marketplace ref is the version selector.
+
 ### Requirements
 
 | Tool | Version | Why |
@@ -43,6 +55,26 @@ Claude Code caches plugin contents, so a `git pull` on this repo is not enough �
 ```
 
 Without the restart, skills picked up at the next slash-command invocation will reflect the new SKILL.md content, but hooks (e.g., `hooks/heartbeat.mjs`) are loaded once at session start and stay cached until you restart. If `/web-modernize:status` shows stale heartbeats after an update, that's the most likely cause.
+
+#### If `/plugin install` still gives you the old version
+
+Claude Code stores marketplace plugins in a per-user cache directory and resolves files from there rather than re-fetching on every install. When a reinstall surprises you with the previous version's behavior, clear the cache before reinstalling:
+
+```sh
+# macOS / Linux:
+rm -rf ~/.claude/plugins/cache
+/plugin install web-modernize
+
+# Windows (PowerShell):
+Remove-Item -Recurse -Force "$env:USERPROFILE\.claude\plugins\cache"
+/plugin install web-modernize
+
+# Windows (cmd):
+rmdir /s /q "%USERPROFILE%\.claude\plugins\cache"
+/plugin install web-modernize
+```
+
+Orphaned cache entries are normally garbage-collected after about a week, but the safest reset when you suspect cache staleness is to delete the directory and reinstall. Restart Claude Code afterwards (step 3 above) so hooks reload from the freshly fetched copy.
 
 The currently installed version is shown in your Claude Code plugin list (and in `.claude-plugin/plugin.json` of this repo). Bumping `plugin.json` `version` is what tells Claude Code an update is available — see [CHANGELOG.md](./CHANGELOG.md) for what changes between versions.
 
