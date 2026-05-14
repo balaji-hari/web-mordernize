@@ -54,12 +54,12 @@ Copy the contents of `${CLAUDE_PLUGIN_ROOT}/templates/migration.md` verbatim.
 
 ### 2. `.claude/modernize/state.json`
 
-Write a minimal valid state.json. Use the current ISO-8601 UTC timestamp for `created_at` and `updated_at`. Capture the git remote URL (`git config --get remote.origin.url`, or empty string if no remote) and the current HEAD commit short SHA (`git rev-parse --short HEAD`, or empty string if no commits yet).
+Write a minimal valid state.json. Use the current ISO-8601 UTC timestamp for `created_at` and `updated_at`. Capture the git remote URL (`git config --get remote.origin.url`, or empty string if no remote) and the current HEAD commit short SHA (`git rev-parse --short HEAD`, or empty string if no commits yet). Read the running plugin's version from `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json` and write that into `plugin_version` — do NOT hardcode a literal version here, or every fresh init will trigger a version-skew warning on the next skill run.
 
 ```json
 {
   "schema_version": 3,
-  "plugin_version": "0.3.0",
+  "plugin_version": "<RUNNING_PLUGIN_VERSION>",
   "repo": {
     "remote": "<GIT_REMOTE_OR_EMPTY>",
     "root_commit": "<GIT_SHORT_SHA_OR_EMPTY>"

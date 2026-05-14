@@ -2,6 +2,13 @@
 
 All notable changes to the `web-modernize` plugin are documented here. Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.9.2] - 2026-05-14
+
+Patch release: fixes a self-inflicted version-skew warning that fired on every fresh `/web-modernize:init`.
+
+### Fixed
+- **`skills/init/SKILL.md`** — `plugin_version` in the initial `state.json` was a hardcoded literal (`"0.3.0"`), so every freshly initialized repo got stamped with a stale version and tripped the skew warning (`State written by: 0.3.0 / Running version: 0.9.x`) on the very next skill run. The init skill now reads the running plugin's version from `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json` (the same pattern `next`/`plan`/`verify` already use for the skew check) and writes that into state. Existing `state.json` files keep self-healing the way they already do — on the next successful `/next`, `/plan`, or `/verify` run, `state.plugin_version` is bumped to the running version and the warning stops.
+
 ## [0.9.1] - 2026-05-14
 
 Documentation + schema cleanup patch surfaced by an audit pass. No behavior change for users on 0.9.0.
