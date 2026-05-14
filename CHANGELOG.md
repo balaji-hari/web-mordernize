@@ -2,6 +2,18 @@
 
 All notable changes to the `web-modernize` plugin are documented here. Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.9.1] - 2026-05-14
+
+Documentation + schema cleanup patch surfaced by an audit pass. No behavior change for users on 0.9.0.
+
+### Removed
+- **`docs/v0.9.0-strategic-audit.md`** — paused-discussion artifact captured before v0.9.0 shipped. The decisions it deferred are now committed to `main` and recorded in the 0.9.0 changelog entry; the file itself was unreferenced.
+
+### Fixed
+- **`CLAUDE.md`** — corrected the stale "14 total" skills comment to "15 total" (the `/web-modernize:unlock` skill added in v0.8.2 was never reflected here).
+- **`README.md` slash-command table** — added the missing `/web-modernize:unlock` row. The skill has shipped since v0.8.2 and is referenced from `/web-modernize:status` as the recovery path for stuck locks, but it never made it into the user-facing reference table.
+- **`templates/state.schema.json`** — declared the `testing` top-level block (`ui_framework`, `api_framework`, `target_pct`, `last_aggregate_check`). `/web-modernize:plan` has been writing this block since v0.4.0 and `/scaffold` + `/verify` have been reading it; the schema's `additionalProperties: false` meant validating an in-the-wild `state.json` against the schema would have rejected it. Additive — no `schema_version` bump, existing 0.9.0 state files validate as-is.
+
 ## [0.9.0] - 2026-05-14
 
 Strategic prune driven by a single criterion: **keep something in the plugin only if the agent can't discover it on its own.** That means first-run crashes, silently-wrong behavior, or load-bearing rules without a searchable symptom. Everything else — well-documented deprecations, version bumps, framework guides — leaves the plugin and is handled by the agent + WebSearch at scaffold time.
