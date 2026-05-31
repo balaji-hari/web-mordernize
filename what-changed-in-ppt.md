@@ -143,3 +143,76 @@ Open in PowerPoint to confirm:
 - **Skill descriptions in slide 9 table** — kept leadership-friendly plain English instead of the new packed technical format (which is the right format for Claude's matcher, but too dense for an executive read).
 
 These omissions are conservative on purpose — the goal was to surface the v0.10.0 deltas without rewriting parts of the deck that still tell the right story.
+
+---
+
+# Demo-readiness pass — added Slide 7 "Risk, Safety, and Reversibility"
+
+Preparing the deck for a live leadership demo (mixed engineering + business audience). The deck argues "plugin is better than plain Claude prompting," but the existing slides scatter risk/safety claims across slides 3, 6, and 9. For a leadership audience — especially business leaders new to AI-generated code — the natural question *"what if the AI gets it wrong?"* needed a single slide that answered it head-on.
+
+User-confirmed scope: this single change only. Skipped were a quantified-value/ROI slide (user opted for qualitative only) and a demo-flow narrative slide (deferred). The closing slide's pilot CTA was also left as-is.
+
+## Deck shape
+
+| | Before (v0.10.0 demo-ready pass) | After |
+|---|---|---|
+| Total slides | 11 | **12** (+1) |
+| Page-counter format | `XX / 11` | `XX / 12` |
+| Footer / version stamps | v0.10.0 | v0.10.0 (no plugin version bump — deck-only change) |
+
+## Slide-by-slide diff
+
+### Slide 7 — Risk, Safety, and Reversibility  (NEW)
+
+**Brand-new slide.** Inserted between Slide 6 (Plugin vs Raw Claude Code) and the former Slide 7 (NL + Frameworks). Placement rationale: Slide 6 just told the audience the plugin is better than raw prompting; the natural follow-up — *"OK, but is it safe?"* — is most pressing at exactly that moment.
+
+**Layout:** three-column card grid with a 2-line bottom takeaway band.
+
+**Content (3 cards, qualitative claims aligned to existing plugin features):**
+
+1. **"Nothing is one-way"** (cobalt accent) — covers `/rollback`, two-step `/abandon`, git-tracked actions, per-unit notes.
+2. **"Nothing ships unverified"** (teal accent) — covers `/verify` as a hard gate, `failure.diagnostic_history`, `/retry --with-prompt`.
+3. **"Nothing is hidden"** (green accent) — covers state-in-git, `/status`, per-unit file split, commit-per-developer auditability.
+
+**Bottom takeaway band (navy):**
+- Headline: *"Every AI-generated change is reviewable, reversible, and auditable"*
+- Subline (italic, teal): *"Not a one-way bet on the model getting it right the first time."*
+
+**Why for leadership:** answers the safety question directly with a unified narrative pulled from real plugin features. Each claim maps to a concrete slash command or state artifact (auditable in `git log`, etc.) — nothing speculative.
+
+### Slides 8 – 12 — renumbered
+
+Each subsequent slide bumped by one. No content changes.
+
+| Old slide | Old function name | New slide | New function name |
+|---|---|---|---|
+| 7 — NL + Pluggable Frameworks | `slide_07_extensibility` | 8 | `slide_08_extensibility` |
+| 8 — Sprint and PI Planning | `slide_08_planning` | 9 | `slide_09_planning` |
+| 9 — 15 Skills | `slide_09_commands` | 10 | `slide_10_commands` |
+| 10 — Agents · Hooks · Templates · Framework Library | `slide_10_inventory` | 11 | `slide_11_inventory` |
+| 11 — Closing | `slide_11_closing` | 12 | `slide_12_closing` |
+
+Each renamed function's `page_num` argument updated; subtitle of the new Slide 10 (skills table) updated to reference "see slide 8" instead of "see slide 7" so the cross-reference to NL routing still points at the right slide.
+
+### Global elements
+
+- **`page_chrome()`** page-counter format changed from `XX / 11` → `XX / 12`.
+- **`build()`** orchestrator updated to call all 12 slides in the new order with corrected log lines.
+- **`FOOTER_TEXT`** unchanged — `v0.10.0` is still correct (no plugin version bump for a deck-only refresh).
+
+## Verification
+
+Run `python build_presentation.py`; confirm the script prints `[1/12]` through `[12/12]` with the new Slide 7 at position 7. Open the rendered `.pptx` in PowerPoint and check:
+1. 12 slides total.
+2. Page-counter on every chromed slide reads `XX / 12`.
+3. Slide 7 renders three card columns (Nothing is one-way / unverified / hidden) and the 2-line takeaway band without overflow.
+4. Slide 10 (15 Skills) subtitle says "see slide 8" (referring to the renumbered NL + Frameworks slide).
+5. Slides 1–6 and 8–12 are byte-identical in content to their pre-change selves (only renumbered chrome).
+
+## What was deliberately NOT done in this pass
+
+- **No quantified-value / ROI slide.** User-confirmed: qualitative claims only.
+- **No demo-flow narrative slide.** Considered but not requested in this pass; could be added later as a Slide 12 (between Inventory and Closing) when the live demo flow stabilises.
+- **No reorder** of existing slides — the narrative arc still holds.
+- **No tightening of the closing slide's pilot CTA.** Left for a later pass.
+- **No plugin version bump.** This is a deck-only refresh; `plugin.json` stays at `0.10.0` and no new tag is created.

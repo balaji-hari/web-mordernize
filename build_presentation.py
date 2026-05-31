@@ -123,7 +123,7 @@ def page_chrome(slide, title, subtitle=None, page_num=None):
              size=9, color=SLATE, anchor=MSO_ANCHOR.MIDDLE)
     if page_num is not None:
         add_text(slide, 12.30, 7.24, 0.85, 0.24,
-                 f"{page_num:02d}  /  11",
+                 f"{page_num:02d}  /  12",
                  size=9, color=SLATE, font=FONT_HEADER,
                  anchor=MSO_ANCHOR.MIDDLE, align=PP_ALIGN.RIGHT)
 
@@ -640,16 +640,87 @@ def slide_05_execution(prs):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Slide 7 — Natural Language + Pluggable Framework Library  (NEW in v0.10.0)
+# Slide 7 — Risk, Safety, and Reversibility
 # ══════════════════════════════════════════════════════════════════════════════
 
-def slide_07_extensibility(prs):
+def slide_07_risk_safety(prs):
+    slide = blank_slide(prs)
+    page_chrome(
+        slide,
+        "Risk, Safety, and Reversibility",
+        "What if the AI gets it wrong?  —  every change is reviewable, reversible, and auditable",
+        page_num=7,
+    )
+
+    cards = [
+        ("Nothing is one-way",
+         "Every action is recorded in git — the team can see who did what, "
+         "when, with what input. One command  (/rollback --unit <id>)  "
+         "reverts a single unit cleanly. Destructive commands  "
+         "(/abandon --hard)  require a two-step confirmation; no "
+         "accidental wipes. Per-unit notes capture the why alongside "
+         "the what."),
+        ("Nothing ships unverified",
+         "/verify is a hard gate — lint + type-check + tests must pass "
+         "before a unit transitions from migrated to verified. Failed "
+         "units record diagnostics in failure.diagnostic_history for "
+         "review. /retry --with-prompt re-attempts with human-supplied "
+         "guidance; the prior attempt's diagnostic is never lost."),
+        ("Nothing is hidden",
+         "All state lives in git as JSON — auditable, diffable, "
+         "code-reviewable. /status shows real-time who's working on "
+         "what; stale sessions surface automatically. Per-unit file "
+         "split means each developer's work appears as its own commit; "
+         "nothing hides in a merge."),
+    ]
+
+    # 3-column card grid (re-uses card_grid_3x2's left-accent visual pattern,
+    # but 3-across instead of 3x2)
+    card_w = 4.04
+    card_h = 4.85
+    gap_x = 0.20
+    left_margin = 0.40
+    top_y = 1.30
+    accent_colors = [COBALT, TEAL, GREEN]
+
+    for i, (title, body) in enumerate(cards):
+        x = left_margin + i * (card_w + gap_x)
+        color = accent_colors[i]
+        # Card body
+        add_rect(slide, x, top_y, card_w, card_h, fill=WHITE,
+                 line=color, line_w=0.75)
+        # Left accent strip
+        add_rect(slide, x, top_y, 0.10, card_h, fill=color)
+        # Title
+        add_text(slide, x + 0.25, top_y + 0.20, card_w - 0.40, 0.55,
+                 title, size=15, bold=True, color=color)
+        # Body
+        add_text(slide, x + 0.25, top_y + 0.85, card_w - 0.40, card_h - 1.05,
+                 body, size=12, color=INK)
+
+    # Bottom takeaway band
+    add_rect(slide, 0.40, 6.40, 12.533, 0.75, fill=NAVY)
+    add_text(slide, 0.50, 6.42, 12.333, 0.36,
+             "Every AI-generated change is reviewable, reversible, and auditable",
+             size=15, bold=True, color=WHITE, font=FONT_HEADER,
+             align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+    add_text(slide, 0.50, 6.78, 12.333, 0.34,
+             "Not a one-way bet on the model getting it right the first time.",
+             size=12, italic=True, color=TEAL,
+             align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Slide 8 — Natural Language + Pluggable Framework Library  (NEW in v0.10.0)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def slide_08_extensibility(prs):
     slide = blank_slide(prs)
     page_chrome(
         slide,
         "Natural Language  &  Pluggable Framework Library",
         "Two improvements in v0.10.0 that make the plugin easier to use and easier to extend",
-        page_num=7,
+        page_num=8,
     )
 
     # ─── LEFT HALF: Natural-Language Routing ──────────────────────
@@ -792,16 +863,16 @@ def slide_07_extensibility(prs):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Slide 8 — Built for Sprint & PI Planning
+# Slide 9 — Built for Sprint & PI Planning
 # ══════════════════════════════════════════════════════════════════════════════
 
-def slide_08_planning(prs):
+def slide_09_planning(prs):
     slide = blank_slide(prs)
     page_chrome(
         slide,
         "Built for Sprint and PI Planning",
         "The plugin speaks backlog, dependencies, sprints, and burndown natively",
-        page_num=8,
+        page_num=9,
     )
 
     pairings = [
@@ -953,16 +1024,16 @@ def slide_06_advantages(prs):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Slide 9 — The 15 Skills (Slash Commands)
+# Slide 10 — The 15 Skills (Slash Commands)
 # ══════════════════════════════════════════════════════════════════════════════
 
-def slide_09_commands(prs):
+def slide_10_commands(prs):
     slide = blank_slide(prs)
     page_chrome(
         slide,
         "The 15 Skills  (Slash Commands)",
-        "Each skill is exposed as a slash command — or auto-fires from plain English (see slide 7)",
-        page_num=9,
+        "Each skill is exposed as a slash command — or auto-fires from plain English (see slide 8)",
+        page_num=10,
     )
 
     headers = ["Command", "What It Does (Plain English)"]
@@ -995,16 +1066,16 @@ def slide_09_commands(prs):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Slide 10 — Agents · Hooks · Templates · Framework Library
+# Slide 11 — Agents · Hooks · Templates · Framework Library
 # ══════════════════════════════════════════════════════════════════════════════
 
-def slide_10_inventory(prs):
+def slide_11_inventory(prs):
     slide = blank_slide(prs)
     page_chrome(
         slide,
         "Agents · Hooks · Templates · Framework Library",
         "Every other custom artifact built into the plugin — one English sentence each",
-        page_num=10,
+        page_num=11,
     )
 
     add_text(slide, 0.40, 1.30, 12.5, 0.32,
@@ -1068,10 +1139,10 @@ def slide_10_inventory(prs):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Slide 11 — Closing / Next Step
+# Slide 12 — Closing / Next Step
 # ══════════════════════════════════════════════════════════════════════════════
 
-def slide_11_closing(prs):
+def slide_12_closing(prs):
     slide = blank_slide(prs)
     add_rect(slide, 0, 0, 13.333, 7.5, fill=NAVY)
     add_rect(slide, 0, 0, 13.333, 0.07, fill=TEAL)
@@ -1126,18 +1197,19 @@ def slide_11_closing(prs):
 def build():
     prs = new_prs()
 
-    print("Building 11-slide leadership deck (v0.10.0)...")
-    slide_01_title(prs);            print("  [1/11] Title")
-    slide_02_intro(prs);            print("  [2/11] What is web-modernize")
-    slide_03_need(prs);             print("  [3/11] Why we need it")
-    slide_04_analyze(prs);          print("  [4/11] From legacy codebase to migration backlog")
-    slide_05_execution(prs);        print("  [5/11] From backlog to migrated units")
-    slide_06_advantages(prs);       print("  [6/11] What the plugin adds to Claude Code")
-    slide_07_extensibility(prs);    print("  [7/11] Natural language + pluggable framework library (NEW)")
-    slide_08_planning(prs);         print("  [8/11] Built for sprint and PI planning")
-    slide_09_commands(prs);         print("  [9/11] 15 skills (slash commands)")
-    slide_10_inventory(prs);        print("  [10/11] Agents, hooks, templates, framework library")
-    slide_11_closing(prs);          print("  [11/11] Closing / next step")
+    print("Building 12-slide leadership deck (v0.10.0)...")
+    slide_01_title(prs);            print("  [1/12] Title")
+    slide_02_intro(prs);            print("  [2/12] What is web-modernize")
+    slide_03_need(prs);             print("  [3/12] Why we need it")
+    slide_04_analyze(prs);          print("  [4/12] From legacy codebase to migration backlog")
+    slide_05_execution(prs);        print("  [5/12] From backlog to migrated units")
+    slide_06_advantages(prs);       print("  [6/12] What the plugin adds to Claude Code")
+    slide_07_risk_safety(prs);      print("  [7/12] Risk, safety, and reversibility (NEW)")
+    slide_08_extensibility(prs);    print("  [8/12] Natural language + pluggable framework library")
+    slide_09_planning(prs);         print("  [9/12] Built for sprint and PI planning")
+    slide_10_commands(prs);         print("  [10/12] 15 skills (slash commands)")
+    slide_11_inventory(prs);        print("  [11/12] Agents, hooks, templates, framework library")
+    slide_12_closing(prs);          print("  [12/12] Closing / next step")
 
     out = r"C:\1\web-mordernize\web-modernize-presentation.pptx"
     prs.save(out)
