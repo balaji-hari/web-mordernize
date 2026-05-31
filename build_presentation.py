@@ -1,0 +1,1148 @@
+"""
+build_presentation.py
+Generates web-modernize-presentation.pptx — a 10-slide leadership deck.
+Run: python build_presentation.py
+"""
+
+from pptx import Presentation
+from pptx.util import Inches, Pt
+from pptx.dml.color import RGBColor
+from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
+from pptx.enum.shapes import MSO_SHAPE
+
+
+# ── Slide geometry (16:9 widescreen) ────────────────────────────────────────
+SLIDE_W = Inches(13.333)
+SLIDE_H = Inches(7.5)
+
+# ── Brand palette ───────────────────────────────────────────────────────────
+NAVY    = RGBColor(0x0D, 0x1B, 0x2A)
+COBALT  = RGBColor(0x1A, 0x56, 0xDB)
+TEAL    = RGBColor(0x00, 0xC2, 0xCB)
+WHITE   = RGBColor(0xFA, 0xFB, 0xFC)
+SLATE   = RGBColor(0x6B, 0x72, 0x80)
+INK     = RGBColor(0x1F, 0x29, 0x37)
+GREEN   = RGBColor(0x10, 0xB9, 0x81)
+AMBER   = RGBColor(0xF5, 0x9E, 0x0B)
+RED     = RGBColor(0xEF, 0x44, 0x44)
+LIGHT_B = RGBColor(0xEB, 0xF2, 0xFF)
+LIGHT_G = RGBColor(0xF4, 0xF6, 0xF8)
+BAND_BG = RGBColor(0xE6, 0xEC, 0xF2)
+
+FONT_BODY        = "Calibri"
+FONT_MONO        = "Consolas"
+FONT_HEADER      = "Segoe UI Semibold"   # slide titles, section banners, table headers
+FONT_HEADER_LIGHT = "Segoe UI Light"     # hero wordmarks on title/closing slides
+
+FOOTER_TEXT = "web-modernize v0.10.0   ·   Balaji Harikrishnan   ·   Cognizant   ·   May 2026"
+
+
+# ── Low-level helpers ───────────────────────────────────────────────────────
+
+def new_prs():
+    prs = Presentation()
+    prs.slide_width  = SLIDE_W
+    prs.slide_height = SLIDE_H
+    return prs
+
+
+def blank_slide(prs):
+    return prs.slides.add_slide(prs.slide_layouts[6])
+
+
+def add_rect(slide, l, t, w, h, fill=None, line=None, line_w=None):
+    shape = slide.shapes.add_shape(
+        MSO_SHAPE.RECTANGLE,
+        Inches(l), Inches(t), Inches(w), Inches(h)
+    )
+    if fill is None:
+        shape.fill.background()
+    else:
+        shape.fill.solid()
+        shape.fill.fore_color.rgb = fill
+    if line is None:
+        shape.line.fill.background()
+    else:
+        shape.line.color.rgb = line
+        shape.line.width = Pt(line_w if line_w else 0.75)
+    shape.shadow.inherit = False
+    return shape
+
+
+def add_text(slide, l, t, w, h, text, *, size=14, bold=False, italic=False,
+             color=INK, font=FONT_BODY, align=PP_ALIGN.LEFT,
+             anchor=MSO_ANCHOR.TOP):
+    box = slide.shapes.add_textbox(Inches(l), Inches(t), Inches(w), Inches(h))
+    tf = box.text_frame
+    tf.word_wrap = True
+    tf.margin_left = Inches(0.05)
+    tf.margin_right = Inches(0.05)
+    tf.margin_top = Inches(0.02)
+    tf.margin_bottom = Inches(0.02)
+    tf.vertical_anchor = anchor
+    p = tf.paragraphs[0]
+    p.alignment = align
+    r = p.add_run()
+    r.text = text
+    r.font.name = font
+    r.font.size = Pt(size)
+    r.font.bold = bold
+    r.font.italic = italic
+    r.font.color.rgb = color
+    return box
+
+
+def add_arrow_right(slide, l, t, w, h, fill=COBALT):
+    shape = slide.shapes.add_shape(
+        MSO_SHAPE.RIGHT_ARROW,
+        Inches(l), Inches(t), Inches(w), Inches(h)
+    )
+    shape.fill.solid()
+    shape.fill.fore_color.rgb = fill
+    shape.line.fill.background()
+    shape.shadow.inherit = False
+    return shape
+
+
+# ── Page chrome (header band + footer) ──────────────────────────────────────
+
+def page_chrome(slide, title, subtitle=None, page_num=None):
+    add_rect(slide, 0, 0, 13.333, 7.5, fill=LIGHT_G)
+    add_rect(slide, 0, 0, 13.333, 1.05, fill=NAVY)
+    # Finer left accent strip — refined feel
+    add_rect(slide, 0, 0, 0.06, 1.05, fill=TEAL)
+    # Title uses Segoe UI Semibold; the weight is already built into the face, no bold flag needed.
+    add_text(slide, 0.30, 0.10, 12.8, 0.55, title,
+             size=26, color=WHITE, font=FONT_HEADER,
+             anchor=MSO_ANCHOR.MIDDLE)
+    if subtitle:
+        add_text(slide, 0.30, 0.62, 12.8, 0.36, subtitle,
+                 size=12, italic=True, color=TEAL)
+    add_rect(slide, 0, 7.22, 13.333, 0.28, fill=BAND_BG)
+    add_text(slide, 0.30, 7.24, 10.8, 0.24, FOOTER_TEXT,
+             size=9, color=SLATE, anchor=MSO_ANCHOR.MIDDLE)
+    if page_num is not None:
+        add_text(slide, 12.30, 7.24, 0.85, 0.24,
+                 f"{page_num:02d}  /  11",
+                 size=9, color=SLATE, font=FONT_HEADER,
+                 anchor=MSO_ANCHOR.MIDDLE, align=PP_ALIGN.RIGHT)
+
+
+# ── Table helper ────────────────────────────────────────────────────────────
+
+def add_table(slide, l, t, w, h, headers, rows, *,
+              col_ratios, header_size=12, body_size=11,
+              mono_col0=False, header_fill=COBALT,
+              alt_fill=LIGHT_B, row_height=None):
+    ncols = len(headers)
+    nrows = len(rows) + 1
+
+    table_shape = slide.shapes.add_table(
+        nrows, ncols, Inches(l), Inches(t), Inches(w), Inches(h)
+    )
+    tbl = table_shape.table
+
+    total_emu = Inches(w)
+    for i, ratio in enumerate(col_ratios):
+        tbl.columns[i].width = int(total_emu * ratio)
+
+    if row_height is not None:
+        for i in range(nrows):
+            tbl.rows[i].height = Inches(row_height)
+
+    def style(cell, text, *, bold=False, fill=None, fg=INK,
+              font=FONT_BODY, size=body_size, align=PP_ALIGN.LEFT,
+              italic=False, anchor=MSO_ANCHOR.MIDDLE):
+        cell.text = ""
+        if fill is not None:
+            cell.fill.solid()
+            cell.fill.fore_color.rgb = fill
+        cell.vertical_anchor = anchor
+        cell.margin_left = Inches(0.08)
+        cell.margin_right = Inches(0.08)
+        cell.margin_top = Inches(0.02)
+        cell.margin_bottom = Inches(0.02)
+        p = cell.text_frame.paragraphs[0]
+        p.alignment = align
+        r = p.add_run()
+        r.text = text
+        r.font.name = font
+        r.font.size = Pt(size)
+        r.font.bold = bold
+        r.font.italic = italic
+        r.font.color.rgb = fg
+
+    for ci, hdr in enumerate(headers):
+        style(tbl.cell(0, ci), hdr, fill=header_fill,
+              fg=WHITE, size=header_size, font=FONT_HEADER)
+
+    for ri, row in enumerate(rows):
+        bg = WHITE if ri % 2 == 0 else alt_fill
+        for ci, val in enumerate(row):
+            font = FONT_MONO if (mono_col0 and ci == 0) else FONT_BODY
+            color = COBALT if (mono_col0 and ci == 0) else INK
+            bold = mono_col0 and ci == 0
+            style(tbl.cell(ri + 1, ci), str(val),
+                  fill=bg, fg=color, font=font, size=body_size,
+                  bold=bold)
+
+    return tbl
+
+
+# ── Card grid helper (used by Need + Planning slides) ───────────────────────
+
+def card_grid_3x2(slide, top_y, cards, accent_color):
+    """Render 6 cards in a 3x2 grid. cards = [(title, body), ...]."""
+    card_w = 4.04
+    card_h = 2.45
+    gap_x = 0.20
+    gap_y = 0.20
+    left_margin = 0.40
+
+    for i, (title, body) in enumerate(cards):
+        row = i // 3
+        col = i % 3
+        x = left_margin + col * (card_w + gap_x)
+        y = top_y + row * (card_h + gap_y)
+        # Card
+        add_rect(slide, x, y, card_w, card_h, fill=WHITE,
+                 line=accent_color, line_w=0.75)
+        # Left accent strip
+        add_rect(slide, x, y, 0.08, card_h, fill=accent_color)
+        # Title
+        add_text(slide, x + 0.22, y + 0.18, card_w - 0.34, 0.50,
+                 title, size=14, bold=True, color=accent_color)
+        # Body
+        add_text(slide, x + 0.22, y + 0.70, card_w - 0.34, card_h - 0.85,
+                 body, size=12, color=INK)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Slide 1 — Title
+# ══════════════════════════════════════════════════════════════════════════════
+
+def slide_01_title(prs):
+    slide = blank_slide(prs)
+    add_rect(slide, 0, 0, 13.333, 7.5, fill=NAVY)
+    add_rect(slide, 0, 0, 13.333, 0.07, fill=TEAL)
+    add_rect(slide, 0, 7.43, 13.333, 0.07, fill=TEAL)
+    add_rect(slide, 0, 0, 0.14, 7.5, fill=TEAL)
+
+    # Hero wordmark — Segoe UI Light at large size reads as elegant, not chunky
+    add_text(slide, 0.5, 2.0, 12.333, 1.5, "web-modernize",
+             size=72, color=WHITE, font=FONT_HEADER_LIGHT,
+             align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+
+    # Slightly wider teal rule, centred
+    add_rect(slide, 4.42, 3.55, 4.50, 0.04, fill=TEAL)
+
+    add_text(slide, 0.5, 3.75, 12.333, 0.55,
+             "AI-Guided Legacy Web Application Migration",
+             size=22, color=WHITE, font=FONT_HEADER, align=PP_ALIGN.CENTER)
+    add_text(slide, 0.5, 4.35, 12.333, 0.45,
+             "A Claude Code Plugin for Enterprise Teams",
+             size=15, italic=True, color=TEAL, align=PP_ALIGN.CENTER)
+
+    add_text(slide, 0.5, 6.55, 12.333, 0.35,
+             "Balaji Harikrishnan   ·   Cognizant   ·   May 2026   ·   v0.10.0",
+             size=12, color=SLATE, font=FONT_HEADER, align=PP_ALIGN.CENTER)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Slide 2 — What is web-modernize?  (plain English + technical)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def slide_02_intro(prs):
+    slide = blank_slide(prs)
+    page_chrome(
+        slide,
+        "What is  web-modernize?",
+        "A Claude Code plugin that gives software teams a structured workflow for modernizing legacy web applications",
+        page_num=2,
+    )
+
+    # ─── IN PLAIN ENGLISH section ─────────────────────────────────
+    add_rect(slide, 0.40, 1.20, 12.533, 0.40, fill=TEAL)
+    add_text(slide, 0.55, 1.22, 12.333, 0.36,
+             "OVERVIEW   —   what the plugin does",
+             size=13, color=WHITE, font=FONT_HEADER,
+             anchor=MSO_ANCHOR.MIDDLE)
+
+    # Description card
+    plain_text = (
+        "web-modernize is a Claude Code plugin that developers install from "
+        "the marketplace onto their own machine. It is used to modernize "
+        "old web applications: the plugin reads a legacy application built "
+        "in older technology (like ASP.NET, Java JSP, or AngularJS), then "
+        "helps the team rewrite it  —  one page or feature at a time  —  "
+        "into a modern framework (like React, Next.js, or Angular). "
+        "Developers stay in control of every decision. The plugin handles "
+        "the time-consuming translation work."
+    )
+    add_rect(slide, 0.40, 1.70, 12.533, 1.20, fill=WHITE,
+             line=COBALT, line_w=0.75)
+    add_text(slide, 0.60, 1.75, 12.133, 1.10, plain_text,
+             size=13, color=INK,
+             align=PP_ALIGN.LEFT, anchor=MSO_ANCHOR.MIDDLE)
+
+    # Outcome chips
+    chips = [
+        "Migrates feature by feature, not all at once",
+        "Visible to leadership at every step",
+        "Team-scale workflow, not individual prompting",
+    ]
+    chip_w = 4.00
+    chip_gap = 0.20
+    total = chip_w * 3 + chip_gap * 2
+    chip_start = (13.333 - total) / 2
+    for i, txt in enumerate(chips):
+        x = chip_start + i * (chip_w + chip_gap)
+        add_rect(slide, x, 3.00, chip_w, 0.50, fill=COBALT)
+        add_text(slide, x + 0.10, 3.02, chip_w - 0.20, 0.46,
+                 txt, size=12, bold=True, color=WHITE,
+                 align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+
+    # ─── UNDER THE HOOD section ───────────────────────────────────
+    add_rect(slide, 0.40, 3.65, 12.533, 0.40, fill=NAVY)
+    add_text(slide, 0.55, 3.67, 12.333, 0.36,
+             "TECHNICAL OVERVIEW   —   components and architecture",
+             size=13, color=WHITE, font=FONT_HEADER,
+             anchor=MSO_ANCHOR.MIDDLE)
+
+    # 2 x 2 grid of technical cards
+    tech_cards = [
+        ("Plugin Host",
+         "Runs inside Claude Code (Anthropic's official AI coding tool). "
+         "Installs via the standard  /plugin install  command  —  no "
+         "separate infrastructure, no servers."),
+        ("What It Adds",
+         "15 skills exposed as slash commands  ·  3 AI agents (analyzer, "
+         "migrator, gotchas catalog)  ·  2 automation hooks  ·  8 "
+         "schema-validated templates copied into the team's repo."),
+        ("State and Concurrency",
+         "All migration state lives in git as JSON. Per-unit file split "
+         "(schema v3) lets 20+ developers migrate different units in "
+         "parallel  —  zero merge conflicts by design."),
+        ("Stacks Supported",
+         "17 source stacks (ASP.NET WebForms/MVC/Core, Java JSP/Struts/"
+         "Spring, AngularJS, Vue 2, jQuery, PHP, ColdFusion, Rails, "
+         "Django, WordPress, ExtJS, classic ASP)  →  14 modern targets "
+         "(React/Next/Vue 3/Angular/SvelteKit/Astro/Nuxt/Remix + "
+         ".NET / Spring Boot / Nest / FastAPI / Express / Hono). Any "
+         "other stack drops into a 3-question follow-up; migration "
+         "continues."),
+    ]
+    card_w = 6.16
+    card_h = 1.18
+    gap_x = 0.20
+    gap_y = 0.10
+    base_x = 0.40
+    base_y = 4.15
+
+    for i, (title, body) in enumerate(tech_cards):
+        row = i // 2
+        col = i % 2
+        x = base_x + col * (card_w + gap_x)
+        y = base_y + row * (card_h + gap_y)
+        # Card
+        add_rect(slide, x, y, card_w, card_h, fill=WHITE,
+                 line=NAVY, line_w=0.75)
+        # Navy title strip
+        add_rect(slide, x, y, card_w, 0.32, fill=NAVY)
+        add_text(slide, x + 0.15, y + 0.02, card_w - 0.30, 0.30,
+                 title, size=12, bold=True, color=WHITE,
+                 align=PP_ALIGN.LEFT, anchor=MSO_ANCHOR.MIDDLE)
+        # Body
+        add_text(slide, x + 0.15, y + 0.38, card_w - 0.30, card_h - 0.45,
+                 body, size=11, color=INK,
+                 align=PP_ALIGN.LEFT, anchor=MSO_ANCHOR.TOP)
+
+    # Takeaway strip
+    add_rect(slide, 0.40, 6.78, 12.533, 0.36, fill=COBALT)
+    add_text(slide, 0.50, 6.80, 12.333, 0.32,
+             "Installed in minutes from the marketplace.  "
+             "The team has a working, end-to-end migration workflow the same day.",
+             size=11, bold=True, color=WHITE,
+             align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Slide 3 — Why We Need It
+# ══════════════════════════════════════════════════════════════════════════════
+
+def slide_03_need(prs):
+    slide = blank_slide(prs)
+    page_chrome(
+        slide,
+        "Why We Need This Plugin",
+        "Ad-hoc AI prompting and one-off tooling don't scale to enterprise modernization — six things the plugin adds",
+        page_num=3,
+    )
+
+    advantages = [
+        ("Enforced consistency across the team",
+         "One workflow, one set of conventions, one quality bar. Every "
+         "developer produces the same shape of output instead of inventing "
+         "their own prompt style."),
+        ("Durable progress ledger in git",
+         "Who did what, what is done, what is left — all tracked. Direct "
+         "prompting forgets everything when the session ends; the plugin "
+         "remembers across days and developers."),
+        ("Project context captured once, used everywhere",
+         "Legacy stack, target stack, conventions, and constraints live in "
+         "migration.md. No re-explaining the project on every prompt to "
+         "every developer."),
+        ("Verification gate that cannot be skipped",
+         "Every unit must pass lint, type-check, and tests before it counts "
+         "as done. Quality is enforced by the workflow, not remembered "
+         "by the developer."),
+        ("Team-aware coordination at scale",
+         "Backlog, real-time kanban, per-unit git layout, deterministic "
+         "merge rules. 20+ developers can migrate in parallel without "
+         "colliding or duplicating work."),
+        ("Built-in rollback and audit trail",
+         "Every attempt, failure, and retry is recorded. One command "
+         "(/rollback) reverts a unit cleanly. Direct prompting leaves you "
+         "stranded when something breaks in production."),
+    ]
+
+    card_grid_3x2(slide, top_y=1.30, cards=advantages, accent_color=COBALT)
+
+    # Closing pitch strip
+    add_rect(slide, 0.40, 6.75, 12.533, 0.40, fill=NAVY)
+    add_text(slide, 0.50, 6.78, 12.333, 0.34,
+             "The plugin turns  'ask Claude to migrate this'  into a repeatable, "
+             "auditable, team-scale engineering process.",
+             size=12, bold=True, color=WHITE, align=PP_ALIGN.CENTER,
+             anchor=MSO_ANCHOR.MIDDLE)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Slide 4 — From Legacy Codebase to Migration Backlog
+# ══════════════════════════════════════════════════════════════════════════════
+
+def slide_04_analyze(prs):
+    slide = blank_slide(prs)
+    page_chrome(
+        slide,
+        "From Legacy Codebase to Migration Backlog",
+        "Two plugin commands  —  /analyze  and  /plan  —  produce a sized, prioritised backlog",
+        page_num=4,
+    )
+
+    # Three-phase flow at the top
+    box_w, box_h = 3.70, 1.20
+    arrow_w, arrow_h = 0.80, 0.50
+    flow_y = 1.30
+    xs = [0.32, 4.82, 9.32]  # box left positions
+
+    phase_titles = [
+        ("Legacy Codebase", "Untouched.\nRead-only inspection."),
+        ("Pre-filled  migration.md", "Auto-detected stack +\nteam-edited targets."),
+        ("Migration Backlog", "Sized, prioritised,\nready for sprint planning."),
+    ]
+    for i, (title, sub) in enumerate(phase_titles):
+        x = xs[i]
+        # Box
+        fill_c = NAVY if i == 1 else COBALT
+        add_rect(slide, x, flow_y, box_w, box_h, fill=fill_c)
+        add_text(slide, x + 0.10, flow_y + 0.15, box_w - 0.20, 0.40,
+                 title, size=14, bold=True, color=WHITE,
+                 align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+        add_text(slide, x + 0.10, flow_y + 0.55, box_w - 0.20, 0.60,
+                 sub, size=11, italic=True, color=WHITE,
+                 align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+
+    # Arrows between boxes
+    arrow_labels = ["/analyze", "/plan"]
+    arrow_xs = [4.05, 8.55]
+    for i, (ax, label) in enumerate(zip(arrow_xs, arrow_labels)):
+        add_arrow_right(slide, ax, flow_y + 0.35, arrow_w, arrow_h, fill=TEAL)
+        add_text(slide, ax - 0.05, flow_y + 0.93, arrow_w + 0.10, 0.30,
+                 label, size=12, bold=True, color=TEAL,
+                 font=FONT_MONO, align=PP_ALIGN.CENTER,
+                 anchor=MSO_ANCHOR.MIDDLE)
+
+    # Three explanatory cards underneath
+    cards_y = 2.85
+    cards_h = 3.85
+    card_w = 4.04
+    gap = 0.20
+    left = 0.40
+
+    phase_cards = [
+        ("Step 1  —  /analyze (automatic)", COBALT, [
+            "Reads every legacy file (never modifies them).",
+            "Detects framework, version, and build tooling.",
+            "Identifies entry points and key dependencies.",
+            "Pre-fills migration.md §2  (Source Stack)  for you.",
+            "Writes analysis.json — a structured inventory you can audit.",
+        ]),
+        ("Step 2  —  Edit migration.md (team)", TEAL, [
+            "Choose target UI framework  (React, Next, Vue, Angular, Svelte).",
+            "Choose target API framework  —  or 'none' for UI-only migrations.",
+            "Pick migration strategy  (strangler-fig, big-bang, module-by-module).",
+            "Declare current and target auth provider.",
+            "Set acceptance criteria  —  these drive /verify's pass/fail bar.",
+        ]),
+        ("Step 3  —  /plan (automatic)", GREEN, [
+            "Validates that migration.md is complete and consistent.",
+            "Generates plan.md  —  a full, reviewable migration plan.",
+            "Seeds the unit backlog  —  one item per page or feature.",
+            "Re-runnable: edit migration.md and re-run /plan anytime.",
+            "History is preserved across re-plans  (by unit id).",
+        ]),
+    ]
+
+    for i, (title, color, bullets) in enumerate(phase_cards):
+        x = left + i * (card_w + gap)
+        # Card border
+        add_rect(slide, x, cards_y, card_w, cards_h, fill=WHITE,
+                 line=color, line_w=0.75)
+        # Title strip
+        add_rect(slide, x, cards_y, card_w, 0.55, fill=color)
+        add_text(slide, x + 0.10, cards_y + 0.05, card_w - 0.20, 0.45,
+                 title, size=13, color=WHITE, font=FONT_HEADER,
+                 align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+        # Bullets
+        bullet_y = cards_y + 0.70
+        for bullet in bullets:
+            add_text(slide, x + 0.20, bullet_y, 0.20, 0.30,
+                     "▸", size=12, bold=True, color=color)
+            add_text(slide, x + 0.42, bullet_y, card_w - 0.55, 0.55,
+                     bullet, size=11, color=INK)
+            bullet_y += 0.60
+
+    # Bottom takeaway strip
+    add_rect(slide, 0.40, 6.78, 12.533, 0.36, fill=NAVY)
+    add_text(slide, 0.50, 6.80, 12.333, 0.32,
+             "All artifacts  (migration.md, analysis.json, plan.md, units/*.json)  "
+             "live in git  —  auditable, versioned, never lost to a laptop.",
+             size=11, bold=True, color=WHITE,
+             align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Slide 5 — From Backlog to Migrated Units
+# ══════════════════════════════════════════════════════════════════════════════
+
+def slide_05_execution(prs):
+    slide = blank_slide(prs)
+    page_chrome(
+        slide,
+        "From Backlog to Migrated Units",
+        "Set up once with  /scaffold  and  /auth.  Then the team migrates in parallel with  /next  and  /migrate.",
+        page_num=5,
+    )
+
+    # ─── SETUP section banner ─────────────────────────────────────
+    add_rect(slide, 0.40, 1.30, 12.533, 0.42, fill=SLATE)
+    add_text(slide, 0.55, 1.32, 12.333, 0.38,
+             "SETUP   —   one developer runs   /scaffold   then   /auth",
+             size=13, color=WHITE, font=FONT_HEADER,
+             anchor=MSO_ANCHOR.MIDDLE)
+
+    # 3-box linear flow (mirrors slide 3 geometry)
+    box_w, box_h = 3.70, 1.10
+    arrow_w, arrow_h = 0.80, 0.40
+    flow_y = 1.92
+    xs = [0.32, 4.82, 9.32]
+
+    setup_states = [
+        ("Backlog Ready",   "From  /plan.\nUnits sized S / M / L / XL."),
+        ("Target Scaffold", "Modern app skeleton.\nLegacy assets copied in."),
+        ("Auth Working",    "Login migrated first.\nEvery feature depends on it."),
+    ]
+    for i, (title, sub) in enumerate(setup_states):
+        x = xs[i]
+        # Middle box highlighted to draw the eye to the in-progress state
+        fill_c = NAVY if i == 1 else COBALT
+        add_rect(slide, x, flow_y, box_w, box_h, fill=fill_c)
+        add_text(slide, x + 0.10, flow_y + 0.10, box_w - 0.20, 0.40,
+                 title, size=14, bold=True, color=WHITE,
+                 align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+        add_text(slide, x + 0.10, flow_y + 0.50, box_w - 0.20, 0.55,
+                 sub, size=10, italic=True, color=WHITE,
+                 align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+
+    # Arrows between setup boxes
+    arrow_labels = ["/scaffold", "/auth"]
+    arrow_xs = [4.05, 8.55]
+    for ax, label in zip(arrow_xs, arrow_labels):
+        add_arrow_right(slide, ax, flow_y + 0.35, arrow_w, arrow_h, fill=TEAL)
+        add_text(slide, ax - 0.05, flow_y + 0.78, arrow_w + 0.10, 0.30,
+                 label, size=11, bold=True, color=TEAL,
+                 font=FONT_MONO, align=PP_ALIGN.CENTER,
+                 anchor=MSO_ANCHOR.MIDDLE)
+
+    # ─── PARALLEL MIGRATION section banner ────────────────────────
+    add_rect(slide, 0.40, 3.40, 12.533, 0.42, fill=TEAL)
+    add_text(slide, 0.55, 3.42, 12.333, 0.38,
+             "PARALLEL MIGRATION   —   each developer runs   /next   or   /migrate   then   /verify   on a different unit",
+             size=13, color=WHITE, font=FONT_HEADER,
+             anchor=MSO_ANCHOR.MIDDLE)
+
+    # 5 dev cards in a row — each developer migrates a different unit at the same time
+    dev_cards = [
+        ("Dev A", "HomePage",         "/migrate  →  /verify"),
+        ("Dev B", "PaymentProcessor", "/migrate  →  /verify"),
+        ("Dev C", "OrderList",        "/migrate  →  /verify"),
+        ("Dev D", "Dashboard",        "/migrate  →  /verify"),
+        ("Dev E", "ProfileEditor",    "/migrate  →  /verify"),
+    ]
+    # Single corporate accent — distinction between developers comes from labels
+    # and unit names, not rainbow colors.
+    card_w = 2.43
+    card_h = 2.40
+    gap = 0.13
+    cards_y = 4.00
+    left = 0.40
+
+    for i, (dev, unit, cmd) in enumerate(dev_cards):
+        x = left + i * (card_w + gap)
+        color = COBALT
+        # Card body
+        add_rect(slide, x, cards_y, card_w, card_h, fill=WHITE,
+                 line=color, line_w=0.75)
+        # Top color strip
+        add_rect(slide, x, cards_y, card_w, 0.45, fill=color)
+        add_text(slide, x + 0.10, cards_y + 0.04, card_w - 0.20, 0.40,
+                 dev, size=13, color=WHITE, font=FONT_HEADER,
+                 align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+        # "migrating" label
+        add_text(slide, x + 0.10, cards_y + 0.60, card_w - 0.20, 0.30,
+                 "migrating", size=10, italic=True, color=SLATE,
+                 align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+        # Unit name
+        add_text(slide, x + 0.10, cards_y + 0.95, card_w - 0.20, 0.55,
+                 unit, size=13, bold=True, color=NAVY,
+                 align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+        # Command at bottom
+        add_rect(slide, x + 0.12, cards_y + 1.70, card_w - 0.24, 0.50,
+                 fill=LIGHT_B, line=color, line_w=0.5)
+        add_text(slide, x + 0.12, cards_y + 1.72, card_w - 0.24, 0.46,
+                 cmd, size=10, bold=True, color=color,
+                 font=FONT_MONO, align=PP_ALIGN.CENTER,
+                 anchor=MSO_ANCHOR.MIDDLE)
+
+    # "Same time" indicator below cards
+    add_text(slide, 0.40, 6.48, 12.533, 0.26,
+             "/verify enforces lint + type-check + tests before a unit is marked done.  Per-unit git files mean zero merge conflicts in parallel.",
+             size=11, italic=True, color=SLATE,
+             align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+
+    # ─── Takeaway strip ───────────────────────────────────────────
+    add_rect(slide, 0.40, 6.78, 12.533, 0.36, fill=NAVY)
+    add_text(slide, 0.50, 6.80, 12.333, 0.32,
+             "Setup is sequential and short.  Migration is parallel and scales with team size.",
+             size=11, bold=True, color=WHITE,
+             align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Slide 7 — Natural Language + Pluggable Framework Library  (NEW in v0.10.0)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def slide_07_extensibility(prs):
+    slide = blank_slide(prs)
+    page_chrome(
+        slide,
+        "Natural Language  &  Pluggable Framework Library",
+        "Two improvements in v0.10.0 that make the plugin easier to use and easier to extend",
+        page_num=7,
+    )
+
+    # ─── LEFT HALF: Natural-Language Routing ──────────────────────
+    add_rect(slide, 0.40, 1.30, 6.16, 0.42, fill=COBALT)
+    add_text(slide, 0.55, 1.32, 6.00, 0.38,
+             "TALK TO IT NATURALLY   —   no slash commands required",
+             size=12, color=WHITE, font=FONT_HEADER,
+             anchor=MSO_ANCHOR.MIDDLE)
+
+    # Description
+    add_rect(slide, 0.40, 1.78, 6.16, 0.95, fill=WHITE,
+             line=COBALT, line_w=0.75)
+    add_text(slide, 0.55, 1.83, 5.86, 0.87,
+             "Every skill's description now packs intent phrases + a "
+             "lifecycle anchor. Claude's native skill matcher routes "
+             "plain-English requests to the right command — developers "
+             "stop memorising 15 slash commands.",
+             size=11, color=INK, anchor=MSO_ANCHOR.MIDDLE)
+
+    # Examples table — "you type → skill fires"
+    nl_examples = [
+        ("“what's next”",            "/next"),
+        ("“let's plan it”",          "/plan"),
+        ("“where are we”",           "/status"),
+        ("“migrate the login page”", "/migrate"),
+        ("“stuck lock”",             "/unlock"),
+        ("“start over”",             "/abandon"),
+    ]
+    ex_y = 2.85
+    ex_h = 0.35
+    # Header
+    add_rect(slide, 0.40, ex_y, 3.20, ex_h, fill=NAVY)
+    add_text(slide, 0.50, ex_y + 0.02, 3.00, ex_h - 0.04,
+             "You type", size=11, color=WHITE, font=FONT_HEADER,
+             anchor=MSO_ANCHOR.MIDDLE)
+    add_rect(slide, 3.60, ex_y, 2.96, ex_h, fill=NAVY)
+    add_text(slide, 3.70, ex_y + 0.02, 2.76, ex_h - 0.04,
+             "Skill that fires", size=11, color=WHITE, font=FONT_HEADER,
+             anchor=MSO_ANCHOR.MIDDLE)
+    for i, (utterance, skill) in enumerate(nl_examples):
+        y = ex_y + ex_h + i * ex_h
+        bg = WHITE if i % 2 == 0 else LIGHT_B
+        add_rect(slide, 0.40, y, 3.20, ex_h, fill=bg)
+        add_text(slide, 0.50, y + 0.02, 3.00, ex_h - 0.04,
+                 utterance, size=11, color=INK, italic=True,
+                 anchor=MSO_ANCHOR.MIDDLE)
+        add_rect(slide, 3.60, y, 2.96, ex_h, fill=bg)
+        add_text(slide, 3.70, y + 0.02, 2.76, ex_h - 0.04,
+                 skill, size=11, color=COBALT, bold=True,
+                 font=FONT_MONO, anchor=MSO_ANCHOR.MIDDLE)
+
+    # ─── RIGHT HALF: Pluggable Framework Library ──────────────────
+    add_rect(slide, 6.77, 1.30, 6.16, 0.42, fill=TEAL)
+    add_text(slide, 6.92, 1.32, 6.00, 0.38,
+             "PLUGGABLE FRAMEWORKS   —   drop a file, get a new stack",
+             size=12, color=WHITE, font=FONT_HEADER,
+             anchor=MSO_ANCHOR.MIDDLE)
+
+    # Description
+    add_rect(slide, 6.77, 1.78, 6.16, 0.95, fill=WHITE,
+             line=TEAL, line_w=0.75)
+    add_text(slide, 6.92, 1.83, 5.86, 0.87,
+             "31 frameworks/<name>.md files — one per supported "
+             "stack — hold the recipes /scaffold, /auth, and "
+             "legacy-analyzer all read on demand. Adding a new "
+             "framework is a one-file drop-in.",
+             size=11, color=INK, anchor=MSO_ANCHOR.MIDDLE)
+
+    # 4 capability badges — what comes from the framework library
+    badges = [
+        ("17",  "Legacy source stacks auto-detected"),
+        ("14",  "Modern targets with full scaffold recipes"),
+        ("1",   "File to add a brand-new framework"),
+        ("0",   "Plugin code changes needed for the new framework"),
+    ]
+    badge_w = 2.95
+    badge_h = 0.85
+    badge_gap = 0.10
+    badge_start_x = 6.77
+    badge_start_y = 2.85
+    for i, (number, label) in enumerate(badges):
+        row = i // 2
+        col = i % 2
+        x = badge_start_x + col * (badge_w + badge_gap)
+        y = badge_start_y + row * (badge_h + badge_gap)
+        add_rect(slide, x, y, badge_w, badge_h, fill=WHITE,
+                 line=TEAL, line_w=0.75)
+        # Big number on the left
+        add_rect(slide, x, y, 0.80, badge_h, fill=TEAL)
+        add_text(slide, x, y, 0.80, badge_h,
+                 number, size=28, color=WHITE, font=FONT_HEADER,
+                 align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+        # Label on the right
+        add_text(slide, x + 0.90, y + 0.05, badge_w - 1.00, badge_h - 0.10,
+                 label, size=10, color=INK, anchor=MSO_ANCHOR.MIDDLE)
+
+    # ─── UNKNOWN-TECH PATH — runs full width across the lower section ─
+    add_rect(slide, 0.40, 4.85, 12.53, 0.42, fill=NAVY)
+    add_text(slide, 0.55, 4.87, 12.30, 0.38,
+             "UNKNOWN-TECH PATH   —   when the framework isn't in the library yet",
+             size=12, color=WHITE, font=FONT_HEADER,
+             anchor=MSO_ANCHOR.MIDDLE)
+
+    # Three-step flow showing what happens with an unknown framework
+    box_w, box_h = 3.95, 1.40
+    arrow_w, arrow_h = 0.40, 0.40
+    flow_y = 5.36
+    box_xs = [0.40, 4.69, 8.98]
+    flow_titles = [
+        ("Source unknown?",
+         "/analyze shows the raw evidence (file extensions, "
+         "library refs, build files) and asks you to name the stack. "
+         "Migration continues with the user-supplied name."),
+        ("Target unknown?",
+         "/scaffold asks 3 questions: scaffold command, test "
+         "framework, verify commands. Answers persist in "
+         "verify.config.json so retries don't re-ask."),
+        ("Auth unknown?",
+         "/auth skips the prebuilt password-hashing template, "
+         "defers to permanent-gotchas + OWASP guidance. Auth "
+         "migration completes; the team supplies code."),
+    ]
+    for i, (title, body) in enumerate(flow_titles):
+        x = box_xs[i]
+        add_rect(slide, x, flow_y, box_w, box_h, fill=WHITE,
+                 line=NAVY, line_w=0.75)
+        add_rect(slide, x, flow_y, box_w, 0.32, fill=NAVY)
+        add_text(slide, x + 0.10, flow_y + 0.02, box_w - 0.20, 0.30,
+                 title, size=12, bold=True, color=WHITE,
+                 anchor=MSO_ANCHOR.MIDDLE)
+        add_text(slide, x + 0.12, flow_y + 0.40, box_w - 0.24, box_h - 0.48,
+                 body, size=10, color=INK, anchor=MSO_ANCHOR.TOP)
+
+    # ─── Takeaway strip ───────────────────────────────────────────
+    add_rect(slide, 0.40, 6.92, 12.533, 0.24, fill=COBALT)
+    add_text(slide, 0.50, 6.93, 12.333, 0.22,
+             "Friendlier to onboarding.  Quieter when the right answer is obvious.  Never stuck on an unsupported stack.",
+             size=11, bold=True, color=WHITE,
+             align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Slide 8 — Built for Sprint & PI Planning
+# ══════════════════════════════════════════════════════════════════════════════
+
+def slide_08_planning(prs):
+    slide = blank_slide(prs)
+    page_chrome(
+        slide,
+        "Built for Sprint and PI Planning",
+        "The plugin speaks backlog, dependencies, sprints, and burndown natively",
+        page_num=8,
+    )
+
+    pairings = [
+        ("/plan  =  Sprint or PI planning input",
+         "Auto-generates the full migration backlog. One estimable item per page "
+         "or feature — ready for sizing, prioritisation, and assignment."),
+        ("Each unit  =  one estimable backlog item",
+         "Sized S / M / L / XL by file count and complexity. Discrete and "
+         "independently testable, with a clear definition of done "
+         "(/verify must pass). XL units become epics — teams decompose "
+         "them into sprint-sized work during PI planning."),
+        ("Dependencies built in",
+         "/plan declares which units depend on which — a natural sequencing "
+         "input for sprint commitment and PI iteration goals."),
+        ("Standup-friendly coordination",
+         "Teams pick assignments at standup, just like any sprint. Behind "
+         "the scenes the plugin stores each unit's progress in its own "
+         "file — so two developers on different units never collide in git."),
+        ("/status  =  real-time team kanban",
+         "Read-only view showing pending, in-flight, blocked, and done units "
+         "across the whole team. Refreshes on every git pull."),
+        ("/report  =  burndown and ETA",
+         "Run /report whenever you need a burndown chart, velocity trend, "
+         "or completion ETA — perfect for sprint reviews and PI demos. "
+         "Numbers come from the team's actual git history, not a "
+         "spreadsheet someone has to maintain."),
+    ]
+
+    card_grid_3x2(slide, top_y=1.30, cards=pairings, accent_color=COBALT)
+
+    # Bottom Scaled Agile banner
+    add_rect(slide, 0.40, 6.75, 12.533, 0.40, fill=NAVY)
+    add_text(slide, 0.50, 6.78, 12.333, 0.34,
+             "Designed for Scaled Agile  —  multiple feature teams in one ART "
+             "can migrate different units in the same PI without colliding.",
+             size=12, bold=True, color=WHITE, align=PP_ALIGN.CENTER,
+             anchor=MSO_ANCHOR.MIDDLE)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Slide 6 — What the Plugin Adds to Claude Code (before / after)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def slide_06_advantages(prs):
+    slide = blank_slide(prs)
+    page_chrome(
+        slide,
+        "What the Plugin Adds to Claude Code",
+        "Every developer already has Claude Code — here is what changes when you add web-modernize",
+        page_num=6,
+    )
+
+    # 3-column before / after comparison
+    headers = [
+        "Category",
+        "Without the plugin   (raw Claude Code)",
+        "With   web-modernize",
+    ]
+    rows = [
+        ("Setup ergonomics",
+         "Developer hand-edits a config file: which target framework? which strategy? which auth? Easy to miss a field, no validation until later.",
+         "/analyze walks the team through every required choice with stack-aware recommendations — pick from a list, the plugin writes the config."),
+        ("Tool discovery",
+         "Developer memorises slash commands or hunts through docs — 'what was the command to retry a failed unit again?'",
+         "Type plain English — 'what's next', 'let's plan', 'stuck lock' — and the right skill auto-fires. No memorisation."),
+        ("Defining the work",
+         "Each developer decides what to migrate next based on chat or a shared doc — no sized backlog.",
+         "/plan generates a sized, dependency-ordered backlog — every unit is estimable and assignable."),
+        ("Project context",
+         "Re-explain the legacy stack, target stack, and conventions on every prompt and every new session.",
+         "Captured once in migration.md — every command reads it automatically, every developer stays aligned."),
+        ("Team coordination",
+         "20+ developers prompting in parallel produce merge conflicts and silently duplicated work.",
+         "Per-unit git files mean Alice and Bob's work touch zero shared files — conflict-free by design."),
+        ("Quality assurance",
+         "Verification is whatever the developer remembers to run — lint, types, tests can be skipped.",
+         "/verify enforces lint, type-check, and tests as a hard gate before a unit is marked done."),
+        ("Failure recovery",
+         "A failed migration leaves broken files behind — recovery is manual git surgery, no audit trail.",
+         "/rollback reverts a unit cleanly in one command; /retry preserves every diagnostic for review."),
+        ("Leadership reporting",
+         "Progress lives in chat and spreadsheets — burndown is manual, ETA is a guess, risks are anecdotal.",
+         "/report generates burndown, velocity, and ETA from git state — always accurate, no upkeep."),
+    ]
+
+    table_l, table_t = 0.40, 1.30
+    table_w, table_h = 12.533, 5.40
+
+    ncols = 3
+    nrows = len(rows) + 1
+    col_ratios = [0.18, 0.41, 0.41]
+    col_widths = [table_w * r for r in col_ratios]
+    col_xs = [table_l]
+    for cw in col_widths[:-1]:
+        col_xs.append(col_xs[-1] + cw)
+    row_h = table_h / nrows
+
+    # Header row
+    for ci, hdr in enumerate(headers):
+        # Header colors: category = navy, without = slate-ish, with = cobalt (winner)
+        if ci == 0:
+            fill = NAVY
+        elif ci == 1:
+            fill = SLATE
+        else:
+            fill = COBALT
+        add_rect(slide, col_xs[ci], table_t, col_widths[ci], row_h, fill=fill)
+        add_text(slide, col_xs[ci] + 0.10, table_t + 0.04,
+                 col_widths[ci] - 0.20, row_h - 0.08, hdr,
+                 size=13, color=WHITE, font=FONT_HEADER,
+                 align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+
+    # Data rows
+    for ri, row in enumerate(rows):
+        y = table_t + row_h * (ri + 1)
+        category, without_txt, with_txt = row
+        alt = (ri % 2 == 1)
+
+        # Category column
+        cat_bg = WHITE if not alt else LIGHT_G
+        add_rect(slide, col_xs[0], y, col_widths[0], row_h, fill=cat_bg)
+        add_text(slide, col_xs[0] + 0.12, y + 0.05,
+                 col_widths[0] - 0.24, row_h - 0.10, category,
+                 size=12, bold=True, color=NAVY,
+                 anchor=MSO_ANCHOR.MIDDLE)
+
+        # "Without" column — muted gray fill
+        without_bg = LIGHT_G if not alt else BAND_BG
+        add_rect(slide, col_xs[1], y, col_widths[1], row_h, fill=without_bg)
+        add_text(slide, col_xs[1] + 0.15, y + 0.08,
+                 col_widths[1] - 0.30, row_h - 0.16, without_txt,
+                 size=11, color=SLATE, anchor=MSO_ANCHOR.MIDDLE)
+
+        # "With" column — cobalt-tinted, emphasised
+        with_bg = LIGHT_B
+        add_rect(slide, col_xs[2], y, col_widths[2], row_h,
+                 fill=with_bg, line=COBALT, line_w=0.75)
+        add_text(slide, col_xs[2] + 0.15, y + 0.08,
+                 col_widths[2] - 0.30, row_h - 0.16, with_txt,
+                 size=11, color=INK, anchor=MSO_ANCHOR.MIDDLE)
+
+    # Bottom takeaway strip
+    add_rect(slide, 0.40, 6.78, 12.533, 0.36, fill=NAVY)
+    add_text(slide, 0.50, 6.80, 12.333, 0.32,
+             "Same Claude Code engine.  Structured workflow on top.  "
+             "Every advantage above maps to a concrete plugin feature.",
+             size=11, bold=True, color=WHITE,
+             align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Slide 9 — The 15 Skills (Slash Commands)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def slide_09_commands(prs):
+    slide = blank_slide(prs)
+    page_chrome(
+        slide,
+        "The 15 Skills  (Slash Commands)",
+        "Each skill is exposed as a slash command — or auto-fires from plain English (see slide 7)",
+        page_num=9,
+    )
+
+    headers = ["Command", "What It Does (Plain English)"]
+    rows = [
+        ("/init",      "Sets up the migration workspace inside the legacy repository."),
+        ("/analyze",   "Auto-detects the legacy technology stack and inventories every component."),
+        ("/plan",      "Validates the config and generates the full migration backlog — one item per page or feature."),
+        ("/scaffold",  "Creates the blank modern application skeleton and copies legacy images, fonts, and assets."),
+        ("/auth",      "Migrates login and authentication first, because every feature depends on it."),
+        ("/next",      "Picks the next available unit from the backlog and migrates it automatically."),
+        ("/migrate",   "Migrates a specific unit by name — used when standup assigns work."),
+        ("/verify",    "Runs lint, type-check, and unit tests on a migrated unit before it is declared done."),
+        ("/retry",     "Re-attempts a failed unit, optionally with team-supplied corrective guidance."),
+        ("/rollback",  "Reverts a single unit back to its original state in one git command."),
+        ("/sync",      "Merges teammates' parallel progress into the local copy with deterministic rules."),
+        ("/report",    "Generates a stakeholder report — burndown, ETA, risk — in Markdown, JSON, or HTML."),
+        ("/status",    "Shows a real-time dashboard of every unit, owner, and blocker (read-only)."),
+        ("/unlock",    "Force-clears a stuck advisory lock left behind by a crashed session."),
+        ("/abandon",   "Formally drops a unit or resets the workspace — requires two-step confirmation."),
+    ]
+
+    add_table(
+        slide, 0.40, 1.30, 12.533, 5.75,
+        headers, rows,
+        col_ratios=[0.18, 0.82],
+        header_size=13, body_size=11,
+        mono_col0=True,
+        row_height=0.36,
+    )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Slide 10 — Agents · Hooks · Templates · Framework Library
+# ══════════════════════════════════════════════════════════════════════════════
+
+def slide_10_inventory(prs):
+    slide = blank_slide(prs)
+    page_chrome(
+        slide,
+        "Agents · Hooks · Templates · Framework Library",
+        "Every other custom artifact built into the plugin — one English sentence each",
+        page_num=10,
+    )
+
+    add_text(slide, 0.40, 1.30, 12.5, 0.32,
+             "3 AI Agents   (specialised AIs that read your code, translate it, and steer around known pitfalls)",
+             size=15, color=COBALT, font=FONT_HEADER)
+    add_table(
+        slide, 0.40, 1.65, 12.533, 1.45,
+        ["Agent", "What It Does"],
+        [
+            ("legacy-analyzer",
+             "Read-only AI agent that inspects the legacy codebase and produces a structured stack inventory."),
+            ("unit-migrator",
+             "Core migration engine that translates one page or feature from legacy code to the modern target stack."),
+            ("permanent-gotchas",
+             "Curated read-only catalog of bugs the AI cannot reliably discover on its own — first-run crashes and silent failures."),
+        ],
+        col_ratios=[0.22, 0.78],
+        header_size=12, body_size=11,
+        mono_col0=True,
+        row_height=0.31,
+    )
+
+    add_text(slide, 0.40, 3.20, 12.5, 0.32,
+             "2 Automation Hooks",
+             size=15, color=COBALT, font=FONT_HEADER)
+    add_table(
+        slide, 0.40, 3.55, 12.533, 1.10,
+        ["Hook", "What It Does"],
+        [
+            ("hooks.json",
+             "Registers the heartbeat to fire automatically after every file save during migration work."),
+            ("heartbeat.mjs",
+             "Stamps each developer's in-progress unit in real time so the team can detect stalled work."),
+        ],
+        col_ratios=[0.22, 0.78],
+        header_size=12, body_size=11,
+        mono_col0=True,
+        row_height=0.31,
+    )
+
+    add_text(slide, 0.40, 4.75, 12.5, 0.32,
+             "9 Templates  +  31 Framework Files",
+             size=15, color=COBALT, font=FONT_HEADER)
+    add_table(
+        slide, 0.40, 5.10, 12.533, 2.05,
+        ["Artifact", "What It Does"],
+        [
+            ("migration.md",                          "The team-editable configuration: target stack, strategy, auth, acceptance criteria."),
+            ("migration-interview.json",              "Declarative question catalog driving /analyze's interactive setup interview (new in v0.10.0)."),
+            ("frameworks/<name>.md  ×31",             "One file per supported framework — detection signals, scaffold recipe, test framework, auth notes (new in v0.10.0)."),
+            ("state.schema.json  +  unit.schema.json", "Schemas for the workflow ledger and per-unit state — one JSON file per unit, conflict-free in git."),
+            ("plan.md  +  report.md  +  notes-template.md", "Templates for the auto-generated plan, stakeholder reports, and per-unit design notes."),
+            ("verify.config.json",                    "Per-stack lint, type-check, and test commands used by /verify."),
+            ("permanent-gotchas/fastapi/pyproject.toml", "Reference asset that bypasses a known FastAPI install gotcha automatically."),
+        ],
+        col_ratios=[0.34, 0.66],
+        header_size=12, body_size=10,
+        mono_col0=True,
+        row_height=0.28,
+    )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Slide 11 — Closing / Next Step
+# ══════════════════════════════════════════════════════════════════════════════
+
+def slide_11_closing(prs):
+    slide = blank_slide(prs)
+    add_rect(slide, 0, 0, 13.333, 7.5, fill=NAVY)
+    add_rect(slide, 0, 0, 13.333, 0.07, fill=TEAL)
+    add_rect(slide, 0, 7.43, 13.333, 0.07, fill=TEAL)
+    add_rect(slide, 0, 0, 0.14, 7.5, fill=TEAL)
+
+    chips = [
+        "AI translates · You approve",
+        "20+ developers · Zero conflicts",
+        "Full visibility · Every sprint",
+    ]
+    chip_w = 3.6
+    chip_gap = 0.30
+    total = chip_w * 3 + chip_gap * 2
+    chip_start = (13.333 - total) / 2
+    for i, text in enumerate(chips):
+        x = chip_start + i * (chip_w + chip_gap)
+        add_rect(slide, x, 1.20, chip_w, 0.55, fill=COBALT)
+        add_text(slide, x + 0.05, 1.22, chip_w - 0.10, 0.51,
+                 text, size=13, color=WHITE, font=FONT_HEADER,
+                 align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+
+    add_text(slide, 0.7, 2.20, 11.933, 2.0,
+             "web-modernize turns a multi-year legacy rewrite\n"
+             "into a measurable, sprint-by-sprint delivery\n"
+             "with safety nets at every step.",
+             size=26, color=WHITE, font=FONT_HEADER,
+             align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+
+    add_rect(slide, 1.0, 4.55, 11.333, 1.50, fill=COBALT)
+    add_text(slide, 1.0, 4.65, 11.333, 0.45,
+             "Next Step", size=18, color=WHITE, font=FONT_HEADER,
+             align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+    add_text(slide, 1.2, 5.15, 11.0, 0.85,
+             "Pilot the plugin on one legacy application this sprint.\n"
+             "Run  /web-modernize:analyze  and see your full migration scope in minutes.",
+             size=15, color=WHITE,
+             align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+
+    add_text(slide, 0.5, 6.30, 12.333, 0.35,
+             "Balaji Harikrishnan   ·   balaji.harikrishnan@cognizant.com",
+             size=13, color=WHITE, align=PP_ALIGN.CENTER)
+    add_text(slide, 0.5, 6.70, 12.333, 0.32,
+             "web-modernize v0.10.0   ·   github.com/balaji-hari/web-mordernize",
+             size=11, italic=True, color=SLATE, align=PP_ALIGN.CENTER)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Build
+# ══════════════════════════════════════════════════════════════════════════════
+
+def build():
+    prs = new_prs()
+
+    print("Building 11-slide leadership deck (v0.10.0)...")
+    slide_01_title(prs);            print("  [1/11] Title")
+    slide_02_intro(prs);            print("  [2/11] What is web-modernize")
+    slide_03_need(prs);             print("  [3/11] Why we need it")
+    slide_04_analyze(prs);          print("  [4/11] From legacy codebase to migration backlog")
+    slide_05_execution(prs);        print("  [5/11] From backlog to migrated units")
+    slide_06_advantages(prs);       print("  [6/11] What the plugin adds to Claude Code")
+    slide_07_extensibility(prs);    print("  [7/11] Natural language + pluggable framework library (NEW)")
+    slide_08_planning(prs);         print("  [8/11] Built for sprint and PI planning")
+    slide_09_commands(prs);         print("  [9/11] 15 skills (slash commands)")
+    slide_10_inventory(prs);        print("  [10/11] Agents, hooks, templates, framework library")
+    slide_11_closing(prs);          print("  [11/11] Closing / next step")
+
+    out = r"C:\1\web-mordernize\web-modernize-presentation.pptx"
+    prs.save(out)
+    print(f"\nSaved: {out}")
+
+
+if __name__ == "__main__":
+    build()

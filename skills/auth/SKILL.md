@@ -1,12 +1,5 @@
 ---
-description: >
-  Migrates the application's authentication as a distinct first slice, because
-  almost every feature unit depends on knowing who the user is. Reads the
-  current and target auth providers from migration.md §7, wires up login/logout/
-  session-refresh in the target stack, and records the design in
-  notes/__auth__.md. Creates or updates the synthetic __auth__ unit file at
-  .claude/modernize/units/__auth__.json. Runs after /web-modernize:scaffold
-  and before any /web-modernize:next.
+description: "Migrate authentication as the first slice — wires up login/logout/session-refresh, seeds dev users, reads stack-specific auth notes from frameworks/<api>.md. Use when state.status is 'scaffolded'. Triggers: 'migrate auth', 'do auth first', 'set up login on the new side', 'wire up authentication', 'auth migration'."
 disable-model-invocation: false
 ---
 
@@ -90,11 +83,15 @@ Target API issues a `Set-Cookie` with HttpOnly + Secure + SameSite=Lax. Target U
 
 Install the IdP's SDK in the UI, configure callback route, document the IdP-side config the team needs to do (do not commit secrets).
 
-### Password hashing — pick the per-stack default
+### Password hashing — read the per-stack notes from the framework file
 
-If the legacy app stored hashed passwords locally (not via an IdP), the target API must hash them too. The agent picks the per-stack default from current framework docs (Spring Security's `BCryptPasswordEncoder`, ASP.NET Identity's `PasswordHasher<TUser>`, Nest's `bcrypt` npm package or `argon2`, etc.). **One hard rule that overrides current docs:** `agents/permanent-gotchas.md` forbids `passlib[bcrypt]` for Python — it crashes on first hash call under bcrypt ≥ 4. For FastAPI, use the `bcrypt` package directly with explicit 72-byte truncation; that file shape lives in the gotchas catalog so the rule survives a `security.py` rewrite.
+If the legacy app stored hashed passwords locally (not via an IdP), the target API must hash them too.
 
-Document the chosen library in `notes/__auth__.md`. If the team wants arbitrary-length passwords (no 72-byte truncation), use SHA-256 pre-hash before `bcrypt.hashpw` and note that legacy bcrypt hashes won't verify on first login.
+1. Try to Read `${CLAUDE_PLUGIN_ROOT}/frameworks/<state.target_stack.api>.md` and look for its `## Auth notes` section. That section names the per-stack default library (e.g., `bcrypt` for FastAPI with explicit 72-byte truncation, `BCryptPasswordEncoder` for Spring Boot, `PasswordHasher<TUser>` for .NET, `bcrypt` npm for NestJS / Express / Hono).
+2. **Always also Read `agents/permanent-gotchas.md`** for cross-cutting rules — bcrypt 72-byte truncation, `passlib[bcrypt]` ban for Python, CSRF defaults, etc. These are load-bearing regardless of stack and override any contrary guidance from current framework docs.
+3. **If the framework file does NOT exist** (unknown target API), do NOT block. Skip the prebuilt code template entirely; instruct the user (in the closing message) to consult `agents/permanent-gotchas.md` and OWASP password-storage guidance, then proceed with the rest of the auth migration. Record this in `units/__auth__.json.tests.notes`: `"auth template skipped — unsupported API stack <name>; user implemented per permanent-gotchas + OWASP."`
+
+Document the chosen library (or the deferred-to-user note) in `notes/__auth__.md`. If the team wants arbitrary-length passwords (no 72-byte truncation), use SHA-256 pre-hash before `bcrypt.hashpw` and note that legacy bcrypt hashes won't verify on first login.
 
 ### Always do
 

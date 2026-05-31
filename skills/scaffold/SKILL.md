@@ -1,10 +1,5 @@
 ---
-description: >
-  Creates the target project skeleton (UI, optional API, optional DB migrations
-  directory) per the target stack in migration.md. Each subsystem is tracked
-  independently in state.json.scaffold so partial completion is safe to resume.
-  Does NOT migrate any features — just lays down the empty modern project so
-  /web-modernize:auth and /web-modernize:next have somewhere to write to.
+description: "Create the target project skeleton (UI/API/DB) by reading frameworks/<name>.md recipes and copying legacy assets into public/. Use when state.status is 'planned'. Triggers: 'scaffold the new project', 'create the target app', 'set up the new codebase', 'let's scaffold', 'build the skeleton'."
 disable-model-invocation: false
 ---
 
@@ -41,112 +36,82 @@ If `--assets-only`, skip directly to "Copy legacy assets" below; do not run the 
 
 Process each subsystem in order: UI → API → DB. For each, set `state.json.scaffold.<subsystem>` to `{"status": "in_progress", "path": "...", "started_at": "..."}` before starting. **Before flipping the subsystem to `"status": "done"`, run the smoke-build gate** (see "Smoke-build the subsystem" below). If smoke-build fails, leave `status` as `in_progress` and stop — do not advance to the next subsystem. This makes resume-after-interruption straightforward and guarantees a subsystem only reaches `done` when its skeleton actually installs and builds.
 
-### Stack defaults (used by Node preflight, CORS allow-list, dev proxy)
+### Stack defaults (cross-cutting; per-framework details live in frameworks/*.md)
 
-These defaults drive the per-stack Node check, the API CORS allow-list, and the UI dev-server proxy. Override per `migration.md §8 Constraints` if a team has port collisions or stricter origin rules.
+Dev port, Node minimum, and the per-stack scaffold recipe are stored in each `frameworks/<name>.md` (`role: target-ui` or `role: target-api`). The scaffold skill reads them on demand — do not duplicate them in this skill.
 
-| UI stack | Dev port | Node minimum | Env-var file (UI) | API base URL var |
-|---|---|---|---|---|
-| `react-vite-ts`, `vue3-vite`, `svelte-kit` | 5173 | 22 | `apps/web-new/.env.example` | `VITE_API_URL` |
-| `next-app-router` | 3000 | 20.10 | `apps/web-new/.env.local.example` | `NEXT_PUBLIC_API_URL` |
-| `angular` | 4200 | 20.11 | `src/environments/environment.ts` | `apiUrl` (TS field) |
+The shared dev CORS allow-list (used by every API scaffold) is:
+- `http://localhost:5173` (Vite-based UIs)
+- `http://localhost:3000` (Next.js)
+- `http://localhost:4200` (Angular)
 
-| API stack | Dev port | CORS allow-list (dev) |
-|---|---|---|
-| `fastapi` | 8000 | `http://localhost:5173`, `http://localhost:3000`, `http://localhost:4200` |
-| `spring-boot-3` | 8080 | same |
-| `dotnet-minimal-api` | 5000 | same |
-| `nestjs` | **3001** | same (Nest's default is 3000 — bump to 3001 so Next.js UIs don't collide) |
-
-Every API scaffold below writes a permissive-for-dev / locked-down-for-prod CORS configuration using this allow-list, and every UI scaffold writes the corresponding `.env.example` (or Angular `environment.ts`) so the team can immediately call the new API. The smoke-build gate also reads the Node minimum from this table — failing fast with a friendly message beats a downstream `npm install` error.
+Every API scaffold must write a permissive-for-dev / locked-down-for-prod CORS configuration using this allow-list, and every UI scaffold must write the API base URL into the UI's env file (the exact var name + file path is in the UI framework's `## Scaffold > Wire to API` section).
 
 ### UI scaffold
 
-Based on `migration.md §3 Framework`:
-
-> Use **`@latest`** for every CLI below — `npm create vite@latest`, `npx create-next-app@latest`, `npx @angular/cli@latest`, `npx sv create`. Do not pin majors in this file; let the team's `migration.md §8 Constraints` say if an LTS line is required. Node minimums come from the Stack defaults table.
-
-#### `react-vite-ts`
-
-1. Preflight: Node ≥ **22**.
-2. `npm create vite@latest apps/web-new -- --template react-ts && cd apps/web-new && npm install`.
-3. Install libraries per §3 "State management" + "Styling" (no version pins; `npm install` picks current).
-4. Replace `apps/web-new/src/App.tsx` with a placeholder reading `Legacy app migration in progress — managed by web-modernize plugin`.
-5. **Wire to API** (skip if `state.target_stack.api == "none"`): write `apps/web-new/.env.example` + `.env` with `VITE_API_URL=http://localhost:<api-port>` (port from Stack defaults), and `apps/web-new/src/lib/api.ts` exporting `export const API_URL = import.meta.env.VITE_API_URL;`. The migrator imports `API_URL` when porting fetch calls.
-
-#### `next-app-router`
-
-1. Preflight: Node ≥ **20.10**.
-2. `npx create-next-app@latest apps/web-new --typescript --tailwind --eslint --app --no-src-dir` (adjust flags per §3 styling).
-3. **Wire to API**: write `apps/web-new/.env.local.example` + `.env.local` with `NEXT_PUBLIC_API_URL=http://localhost:<api-port>` (the `NEXT_PUBLIC_` prefix is required for client-component fetches), plus a non-public `API_URL=` alongside for server-side fetches. If the API stack is `nestjs`, use port **3001** — see `agents/permanent-gotchas.md` (Nest's default 3000 collides with Next).
-
-#### `vue3-vite`
-
-1. Preflight: Node ≥ **22**.
-2. `npm create vite@latest apps/web-new -- --template vue-ts`. Install Vue Router + Pinia if §3 state management says so.
-3. **Wire to API**: same `.env` + `src/lib/api.ts` pattern as `react-vite-ts`.
-
-#### `angular`
-
-1. Preflight: Node ≥ **20.11**.
-2. `npx @angular/cli@latest new apps/web-new --routing --style=<scss|css> --strict --skip-git`.
-3. **Wire to API**: Angular doesn't read `.env`. Write `apps/web-new/src/environments/environment.ts` exporting `{ production: false, apiUrl: "http://localhost:<api-port>" }` and a `environment.production.ts` sibling with `production: true` + a placeholder prod URL. Verify `angular.json` has the production `fileReplacements` block.
-4. If §12 picked `karma-jasmine`, the test-harness step below installs Karma manually when `karma.conf.js` is missing from the CLI output.
-
-#### `svelte-kit`
-
-1. Preflight: Node ≥ **22**.
-2. `npx sv create apps/web-new` (the `sv` CLI from Svelte 5). Pick the `minimal` template + TypeScript non-interactively.
-3. **Wire to API**: write `apps/web-new/.env.example` + `.env` with `PUBLIC_API_URL=http://localhost:<api-port>` and `apps/web-new/src/lib/api.ts` reading from `$env/static/public`.
-
-#### Custom / other
-
-Tell the user the plugin doesn't have a recipe for this framework. Ask them to scaffold manually, then confirm completion so the plugin can record `scaffold.ui.status = "done"` and move on.
+1. Read `state.target_stack.ui` from `state.json` (or `migration.md §3 Framework` if state hasn't yet recorded it).
+2. Try to Read `${CLAUDE_PLUGIN_ROOT}/frameworks/<state.target_stack.ui>.md`.
+3. **If the file exists**: Verify its frontmatter `role: target-ui`. Read its `## Scaffold` section. Preflight Node ≥ the version stated in its `## Dev server` table. Run the scaffold command (substituting `<api-port>` from the matching API framework's `## Dev server` table, if any). Wire the env file per the framework's `### Wire to API` block. Then proceed to the Test harness step.
+4. **If the file does NOT exist** (unknown target UI): run the **Unknown-target follow-up** below, then proceed.
 
 ### API scaffold
 
 Only run if `state.target_stack.api != "none"` AND `!= "reuse-existing"`. Otherwise set `scaffold.api = {"status": "skipped", "reason": "target API = <value>"}` and move to DB.
 
-Every API stack's `<framework> new` (or Initializr) output is missing two things the smoke gate needs: a `/health` route at that exact path and a CORS allow-list for the UI dev ports. The agent writes both at scaffold time, generating the right shape per stack from current framework docs. **Read `agents/permanent-gotchas.md` first** — its entries (hatchling editable installs, `reflect-metadata` first-import, Spring actuator `/health` mismatch, Nest:3001 vs Next:3000, CORS allow-list) are the load-bearing rules that the agent must honor regardless of what current docs suggest.
+1. Read `state.target_stack.api`.
+2. Try to Read `${CLAUDE_PLUGIN_ROOT}/frameworks/<state.target_stack.api>.md`.
+3. **If the file exists**: Verify its frontmatter `role: target-api`. Read its `## Scaffold` section and execute it. The file's `## Scaffold` section already encodes the per-stack `/health`, CORS, port, and load-bearing rules (e.g., `reflect-metadata` first-import for Nest, `only-include` for FastAPI hatchling, `partial class Program` for .NET). **Also read `agents/permanent-gotchas.md`** — its entries are cross-cutting rules the agent must honor regardless of what current docs suggest.
+4. **If the file does NOT exist** (unknown target API): run the **Unknown-target follow-up** below, then proceed.
 
-Based on `target_stack.api`:
+### Unknown-target follow-up
 
-- **`dotnet-minimal-api`**: `dotnet new webapi -o apps/api-new`. Then write to `Program.cs`:
-  - `builder.Services.AddCors(...)` + `app.UseCors(...)` with the dev allow-list from the Stack defaults table below.
-  - `app.MapGet("/health", () => Results.Ok(new { status = "UP" }));`
-  - `public partial class Program { }` at the bottom — required for `WebApplicationFactory<Program>` in the test project, because top-level statements declare `Program` as `internal`.
+When `frameworks/<name>.md` is missing for either UI or API target, the plugin doesn't have a built-in recipe — but the scaffold lifecycle continues. Ask the user via `AskUserQuestion` (three single-select prompts in sequence; record each answer in `verify.config.json` for retry idempotency):
 
-  Resolve current CLI flags from `dotnet new webapi --help` if the agent is unsure; do not assume any pre-.NET-8 flags survive.
+1. **Scaffold command** — *"I don't have a built-in recipe for `<name>`. Paste the shell command to scaffold a new project, or pick a fallback."*
+   - Options: paste-command (Other / free text), `manual` (you'll scaffold yourself; I'll proceed once you confirm completion), `abort` (stop scaffold; rerun with a supported target).
+2. **Test framework** — *"What test runner should the scaffold install?"*
+   - Options: `vitest`, `jest`, `pytest`, `manual` (you'll set it up). Free text via Other for anything else.
+3. **Verify commands** — *"What lint / typecheck / test commands should /verify run for this stack?"*
+   - Three follow-up free-text fields. Defaults from `verify.config.json` are offered as starting points.
 
-- **`spring-boot-3`**: fetch a skeleton from `start.spring.io` with `web,actuator` and an **explicit `packageName`** in the request (Initializr otherwise strips hyphens silently from `artifactId` and the generated base package surprises the team):
+Persist answers to `.claude/modernize/verify.config.json` under a new top-level key per subsystem:
+```json
+{
+  "ui_root": "apps/web-new",
+  "api_root": "apps/api-new",
+  "custom_recipes": {
+    "<framework-name>": {
+      "scaffold_command": "<user input>",
+      "test_framework": "<user input>",
+      "verify_commands": { "lint": "...", "typecheck": "...", "test": "..." }
+    }
+  }
+}
+```
 
-  ```bash
-  curl -G https://start.spring.io/starter.tgz \
-    -d type=maven-project -d language=java \
-    -d javaVersion=21 -d packaging=jar \
-    -d groupId=com.example -d artifactId=api-new -d name=api-new \
-    -d packageName=com.example.apinew \
-    -d dependencies=web,actuator \
-    | tar -xzf - -C apps/api-new
-  ```
+On retry/re-run, the scaffold skill first checks `verify.config.json.custom_recipes.<name>` before re-prompting — if present, reuse the saved values silently.
 
-  Use `starter.tgz` (Windows boxes don't need unzip). Then under `src/main/java/<packageDir>/` write:
-  - A `HealthController` with `@RestController` + `@GetMapping("/health")` returning `Map.of("status", "UP")`. Actuator's `/actuator/health` does **not** match the smoke gate's `/health` — `agents/permanent-gotchas.md` explains why.
-  - A `CorsConfig` `@Configuration` class implementing `WebMvcConfigurer.addCorsMappings(...)` with the dev allow-list.
+**Optionally** offer to save a stub `frameworks/<name>.md` at `.claude/modernize/frameworks/<name>.md` (under the user's repo, not the plugin) so future migrations of the same stack inherit the recipe. Use a minimal template:
+```markdown
+---
+name: <name>
+display_name: <user-supplied display name>
+role: target-ui  # or target-api
+---
 
-- **`nestjs`**: `npm i -g @nestjs/cli && nest new apps/api-new --package-manager npm --skip-git --skip-install && cd apps/api-new && npm install`. On locked-down boxes substitute `npx @nestjs/cli new apps/api-new`. Then rewrite `apps/api-new/src/main.ts` so that:
-  - `import 'reflect-metadata';` is the **very first line** (above every other import) — see `agents/permanent-gotchas.md`.
-  - `app.enableCors({ origin: [<dev allow-list>], credentials: true })` is called before `app.listen`.
-  - `app.listen(process.env.PORT ?? 3001)` binds to 3001, not Nest's default 3000 (which collides with Next.js).
+## Scaffold
+```sh
+<user's scaffold command>
+```
 
-  Add a `/health` route to the generated `app.controller.ts`: `@Get('health') health() { return { status: 'UP' }; }`.
+## Test framework
+<user's test framework>
 
-- **`fastapi`**: create `apps/api-new/` and:
-  - Drop in `templates/permanent-gotchas/fastapi/pyproject.toml` (the only template the plugin still ships — see permanent-gotchas hatchling entry for why). Substitute `name = "..."` if the team picked a different project name; **both `only-include` blocks are load-bearing**.
-  - Write `app/__init__.py` (empty).
-  - Write `app/main.py` with CORS middleware against the dev allow-list, a `GET /health` returning `{"status": "UP"}`, and a `lifespan` async context manager (no `@app.on_event` — that's deprecated and removed in current FastAPI).
+## Dev server
+<best-guess from verify.config.json>
+```
 
-  Then `cd apps/api-new && pip install -e ".[dev]"`.
+After running the scaffold command (or recording `manual` and waiting for user confirmation), proceed to the Test harness step.
 
 ### DB scaffold
 

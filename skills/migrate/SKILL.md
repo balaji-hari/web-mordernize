@@ -1,11 +1,5 @@
 ---
-description: >
-  Migrates a specifically named unit, bypassing /web-modernize:next's automatic
-  selection. The escape hatch for senior developers who want to jump to a
-  specific page/controller/component. Blocks by default when the unit's
-  depends_on are not all migrated/verified; pass --force to override and let
-  the shared migration agent stub missing dep imports with TODO comments.
-  For retrying a previously failed unit, prefer /web-modernize:retry.
+description: "Migrate a specifically named unit, bypassing automatic selection. Optional --force skips dependency checks. Use when state.status is 'auth_done' or 'in_progress' AND the user names a unit. Triggers: 'migrate <unit>', 'do the login page', 'translate <component>', 'migrate the OrderController', 'work on <name>'."
 disable-model-invocation: false
 ---
 

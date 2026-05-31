@@ -84,19 +84,20 @@ If the new release bumps `state.schema.json` `schema_version`, this plugin does 
 
 ## The workflow
 
-Once installed, every legacy repo follows the same shape. **Steps 1–6 are one-time setup; step 7 is the per-unit loop.**
+Once installed, every legacy repo follows the same shape. **Steps 1–5 are one-time setup; step 6 is the per-unit loop.**
 
 ```
 One-time setup:
   1. /web-modernize:init       ← bootstrap scaffolding in this repo
-  2. /web-modernize:analyze    ← detect source stack and auto-fill migration.md §2
-  3. (edit migration.md)       ← team fills target framework, strategy, auth, acceptance criteria
-  4. /web-modernize:plan       ← generate plan.md and unit list
-  5. /web-modernize:scaffold   ← create target project skeleton (UI / optional API / DB) + copy legacy assets
-  6. /web-modernize:auth       ← migrate authentication as the first slice (every feature unit depends on it)
+  2. /web-modernize:analyze    ← detect source stack AND interactively fill migration.md
+                                  target choices (§3 UI, §4 API, §6 strategy, §7 auth, §12 testing)
+                                  via stack-aware AskUserQuestion prompts
+  3. /web-modernize:plan       ← generate plan.md and unit list
+  4. /web-modernize:scaffold   ← create target project skeleton (UI / optional API / DB) + copy legacy assets
+  5. /web-modernize:auth       ← migrate authentication as the first slice (every feature unit depends on it)
 
 Per-unit loop:
-  7. Loop until /web-modernize:status reports "complete":
+  6. Loop until /web-modernize:status reports "complete":
        /web-modernize:next                  ← auto-pick the next eligible unit
        /web-modernize:migrate <unit-id>     ← OR explicitly pick a named unit (e.g., one assigned in standup)
        /web-modernize:verify                ← after each unit, or batch
@@ -158,6 +159,58 @@ Commit the `.claude/modernize/` directory. That's how Alice on Monday and Bob on
 | `/web-modernize:status` | Print progress dashboard | Anytime — read-only |
 | `/web-modernize:unlock` | Force-clear a stuck advisory lock on `state.json` (requires typing `force-clear`) | When a Claude session crashed holding the lock and `/plan` or `/scaffold` is blocked |
 | `/web-modernize:abandon` | Two-step destructive reset (`--soft`, `--hard`, `--unit <id>`) | When you need to start over or formally drop a unit |
+
+---
+
+## Talk to it naturally
+
+You don't have to memorize the 15 slash-command names above. Every skill's `description:` field includes trigger phrases and lifecycle anchors that Claude Code's native skill auto-invocation uses to route plain-English requests to the right command.
+
+Examples of utterances that route reliably:
+
+| You type | Skill fired |
+|---|---|
+| *"start a migration"* / *"set up the project"* | `/web-modernize:init` |
+| *"analyze the codebase"* / *"detect framework"* / *"walk me through setup"* | `/web-modernize:analyze` |
+| *"let's plan it"* / *"create the plan"* | `/web-modernize:plan` |
+| *"scaffold the new project"* / *"build the skeleton"* | `/web-modernize:scaffold` |
+| *"what's next"* / *"continue"* / *"keep going"* | `/web-modernize:next` |
+| *"where are we"* / *"show status"* / *"progress"* | `/web-modernize:status` |
+| *"migrate the OrderController"* / *"do the login page"* | `/web-modernize:migrate <name>` |
+| *"verify"* / *"run tests"* / *"is it passing"* | `/web-modernize:verify` |
+| *"retry"* / *"try again"* | `/web-modernize:retry <id>` |
+| *"rollback the LoginPage"* / *"undo this unit"* | `/web-modernize:rollback --unit <id>` |
+| *"stuck lock"* / *"unlock"* | `/web-modernize:unlock` |
+| *"generate a report for leadership"* | `/web-modernize:report` |
+| *"sync state"* / *"after git pull"* | `/web-modernize:sync` |
+| *"start over"* / *"wipe everything"* | `/web-modernize:abandon` |
+
+The lifecycle anchor (`Use when state.status is X`) in each description disambiguates adjacent skills — *"let's plan"* fires `/plan` only when `state.status` is `analyzed`; otherwise Claude picks the next-best match (often `/status` or `/next`).
+
+Slash commands still work for muscle memory; NL routing is purely additive.
+
+---
+
+## Adding a new framework
+
+The plugin's framework knowledge lives in `frameworks/<name>.md` — one file per source or target stack. Adding a new framework is a **one-file drop-in**, no other edits required.
+
+The currently-shipped set covers 17 source legacy stacks and 14 modern target stacks (8 UI + 6 API). For unsupported tech, the plugin's unknown-tech path takes over: the interview asks the user to specify what stack their app is (with free-text), and `/scaffold` asks for a scaffold command, test framework, and verify commands the first time it hits an unknown target. Answers persist in `verify.config.json` so retries don't re-ask.
+
+To add a framework (e.g., `phoenix-elixir` as a target API):
+
+1. Create `frameworks/phoenix-elixir.md` with frontmatter:
+   ```yaml
+   ---
+   name: phoenix-elixir
+   display_name: Phoenix (Elixir)
+   role: target-api  # or target-ui, or source
+   ---
+   ```
+2. Fill in the standard sections: `## Scaffold` (shell command), `## Test framework`, `## Auth notes`, `## Dev server` (table with port + dev command + URL + health check), `## Recommendation context` (optional, for the interview's source-stack-aware recommendations).
+3. Reinstall the plugin and the new framework is immediately available — `/scaffold` reads the file when a user picks `phoenix-elixir` as their target API, `legacy-analyzer` reads it for source detection if `role: source`.
+
+For source frameworks, also include a `## Detection` section listing strong and weak signals (file paths, library references, build files) the `legacy-analyzer` agent looks for.
 
 ---
 
@@ -331,7 +384,7 @@ A: Yes — first-class case. In `migration.md`, set §4 Target API framework to 
 A: You can, but `/web-modernize:plan` will overwrite it on next run. Better to edit `migration.md` (the source) and regenerate. If you need a per-unit override (e.g., move one unit to a different phase, change its dependencies, or mark it skipped), edit the per-unit file at `.claude/modernize/units/<id>.json` directly — the plugin honors manual edits.
 
 **Q: What if my target framework isn't in the dropdown for §3?**
-A: Pick `custom` and tell `/web-modernize:scaffold` you'll scaffold manually. After scaffolding by hand, mark `state.scaffold.ui.status = "done"` and continue.
+A: Pick "Other" in the interview and type any name. `/scaffold` will run an unknown-target follow-up — ask for the scaffold command, test framework, and verify commands — then continue normally. To make the framework first-class so the next migration of the same stack uses recipes instead of follow-ups, drop a `frameworks/<name>.md` file in the plugin directory (see "Adding a new framework" above).
 
 **Q: My team uses GitLab / Bitbucket, not GitHub. Does this still work?**
 A: Yes for the plugin itself — git host doesn't matter. The marketplace install is via GitHub today; teams behind GHE / GitLab need to clone this repo internally and use `/plugin marketplace add` with the local clone path.
@@ -340,7 +393,7 @@ A: Yes for the plugin itself — git host doesn't matter. The marketplace instal
 A: Not concurrently — `.claude/modernize/` is a single workspace. If you need to migrate two distinct legacy apps living in the same repo, treat each as a separate working directory (different `migration.md`, different `.claude/modernize/`).
 
 **Q: How do I add a new framework to detection?**
-A: Edit `agents/legacy-analyzer.md` — add a row to the framework-recognition table with signals. PR welcome.
+A: Drop a new `frameworks/<name>.md` file with `role: source` and a `## Detection` section listing strong/weak signals (file paths, library references, build files). See "Adding a new framework" above. PR welcome.
 
 **Q: Can I commit `.claude/modernize/notes/` selectively (e.g., keep some private)?**
 A: They're git-tracked by default. If a unit's notes contain something sensitive (credentials, internal links), redact in the notes file or use `.gitignore` to exclude that specific file. The plugin never reads anything from notes — only writes — so excluding from git is safe.

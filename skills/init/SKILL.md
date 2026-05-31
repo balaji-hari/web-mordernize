@@ -1,11 +1,5 @@
 ---
-description: >
-  Bootstraps a legacy web app repository for migration with the web-modernize plugin.
-  Copies the migration.md template to the repo root, creates .claude/modernize/
-  with an initial state.json plus an empty units/ directory, seeds the notes/
-  directory, and patches .gitignore. Safe to run multiple times — refuses to
-  overwrite existing files. Run this once per legacy repo as the very first
-  command in the modernization workflow.
+description: "Start a brand-new modernization in this repo: create migration.md and the .claude/modernize/ scaffolding. Use when no .claude/modernize/ directory exists. Triggers: 'start a migration', 'set up the project', 'modernize this app', 'begin', 'bootstrap modernize'."
 disable-model-invocation: false
 ---
 
@@ -107,17 +101,19 @@ Print this exact summary to the user, substituting actual file paths:
 ✓ web-modernize initialized (schema v3)
 
 Created:
-  - migration.md                          ← target choices go here AFTER /analyze
+  - migration.md                          ← target choices filled via /analyze interview
   - .claude/modernize/state.json
   - .claude/modernize/units/              (per-unit state will land here)
   - .claude/modernize/notes/              (per-unit design notes)
   - .claude/modernize/verify.config.json
 
 Next steps:
-  1. Run /web-modernize:analyze first — it auto-fills migration.md §2 (source stack).
-  2. Open migration.md and fill in sections 3, 6, 7, 10 (the REQUIRED target choices)
-     on top of the populated §2.
-  3. Run /web-modernize:plan to generate the migration plan and seed units.
+  1. Run /web-modernize:analyze — it auto-fills migration.md §2 (source stack) AND
+     interactively walks you through filling the REQUIRED target choices
+     (§3 UI framework, §4 API framework, §6 strategy, §7 auth, §12 testing) with
+     stack-aware recommendations. No manual migration.md editing required for the
+     common case.
+  2. Run /web-modernize:plan to generate the migration plan and seed units.
 ```
 
 ## Failure modes

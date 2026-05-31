@@ -5,9 +5,10 @@ description: >
   and produces a structured analysis report (primary framework, version,
   build tooling, top libraries, LOC estimate, entry points, and a rough
   dependency-graph summary). Invoked by /web-modernize:analyze. The agent is
-  framework-agnostic — it recognizes ASP.NET WebForms/MVC/Core, Java JSP/Struts/
-  Spring MVC, AngularJS 1.x, jQuery-spaghetti, classic PHP, and ColdFusion at
-  minimum; flags unknown stacks with candidate guesses.
+  framework-agnostic — it loads detection signals from frameworks/*.md (role:
+  source) at run time, so adding a new source stack means dropping a new
+  framework file, not editing this agent. Returns primary: "unknown" with raw
+  evidence when no framework's signals score above threshold.
 model: sonnet
 disallowedTools: Write, Edit, NotebookEdit
 ---
@@ -28,10 +29,14 @@ Your final message **must** be a single fenced JSON block matching this schema. 
 ```json
 {
   "analyzed_at": "<ISO-8601 UTC, e.g., 2026-05-11T14:22:00Z>",
-  "primary": "<framework key from the list below>",
+  "primary": "<framework key from frameworks/*.md, or 'unknown'>",
   "confidence": 0.0,
   "candidates": [
     { "name": "<framework key>", "confidence": 0.0 }
+  ],
+  "evidence": [
+    "<raw signal observed, e.g. 'Gemfile present at repo root'>",
+    "<another raw signal>"
   ],
   "detected_version": "<version string or null>",
   "build_tool": "<msbuild|maven|gradle|npm|yarn|pnpm|none|other>",
@@ -52,35 +57,40 @@ Your final message **must** be a single fenced JSON block matching this schema. 
 }
 ```
 
+The `evidence[]` field is **required** when `primary == "unknown"` — it's how the `/analyze` interview shows the user what was found so they can identify the stack. For confidently-detected stacks, `evidence[]` may be omitted or empty.
+
 ## Framework recognition
 
-Apply these heuristics in order. Stop at the first strong match (confidence ≥ 0.85). If only weak matches, list the top three in `candidates[]` and set `primary = "unknown"` with `confidence < 0.5`.
+Detection rules are **data-driven**, not hardcoded in this agent. Load them from `${CLAUDE_PLUGIN_ROOT}/frameworks/*.md` at run time:
 
-| Framework key | Strong signals | Weak signals |
-|---------------|----------------|--------------|
-| `aspnet-webforms` | `*.aspx`, `*.aspx.cs`, `*.ascx`, `Global.asax`, `Web.config` with `<system.web>` | `<asp:` controls in markup |
-| `aspnet-mvc` | `Controllers/*.cs` + `Views/**/*.cshtml`, `App_Start/RouteConfig.cs`, `System.Web.Mvc` in csproj | `[HttpGet]`, `[HttpPost]` |
-| `aspnet-core-mvc` | `Program.cs` calling `AddControllersWithViews`, `*.csproj` with `Microsoft.NET.Sdk.Web` | Razor pages |
-| `java-jsp` | `*.jsp`, `WEB-INF/web.xml`, `pom.xml` with `javax.servlet` | Taglibs |
-| `java-struts` | `struts-config.xml` or `struts.xml`, action classes | `*.action` mappings |
-| `java-spring-mvc` | `@Controller`, `applicationContext.xml`, `pom.xml` with `spring-webmvc` | `*.jsp` + Spring deps |
-| `java-spring-boot` | `@SpringBootApplication`, `application.properties` / `application.yml` | `spring-boot-starter-*` deps |
-| `angularjs-1` | `angular.module('foo', ...)`, `ng-controller=`, package.json with `"angular": "1.x"` | `$scope`, `$routeProvider` |
-| `jquery-spaghetti` | jQuery usage but no module pattern (no Angular, no React, no clear MVC) | `$(document).ready` everywhere |
-| `php-classic` | `*.php` with mixed HTML, no `composer.json` with Laravel/Symfony | Inline `<?php echo $var ?>` everywhere |
-| `coldfusion` | `*.cfm`, `*.cfc`, `Application.cfc` | `<cf...>` tags |
-| `vbscript-asp-classic` | `*.asp` files (not `.aspx`!) with `<%` tags | `Server.CreateObject` |
+1. `Glob` `${CLAUDE_PLUGIN_ROOT}/frameworks/*.md`.
+2. For each file, `Read` its frontmatter. Skip any file where `role:` is not `source`.
+3. Read its `## Detection` section. The bullets under "Strong signals" and "Weak signals" describe what to look for in the legacy source tree.
+4. Score each framework against the source tree:
+   - Any single strong signal that matches → confidence boost toward 0.85.
+   - Each additional strong signal stacked → confidence approaches 0.95+.
+   - Weak signals alone → confidence ≤ 0.4 (record in `candidates[]`, not as `primary`).
+5. The framework with the highest score wins. Tie-break by file modification time (newest framework file wins — represents the most-recent author intent).
+
+**Unknown path.** If no framework scores ≥ 0.5 (no strong signal matched, or weak signals alone), set `primary = "unknown"`, `confidence < 0.5`, and populate the new `evidence[]` field with the raw signals you DID find (file extensions present, library references found, build files detected). This lets `/web-modernize:analyze`'s interview phase show the user concrete evidence instead of asking them to guess what stack their app is.
+
+Example `evidence[]` entries for a Rails app (which has no framework file today):
+```json
+"evidence": [
+  "Gemfile present at repo root",
+  "app/controllers/ directory with *.rb files",
+  "config/routes.rb present",
+  "bin/rails executable present"
+]
+```
+
+Cap detection scoring at 50 files read per signal — strong signals are file-existence checks, not content searches across the whole tree.
 
 ## Entry-point heuristics by framework
 
-For each detected framework, identify the migration units that downstream skills will work on.
+Each `frameworks/<name>.md` for `role: source` contains an `## Entry-point heuristic` section describing how to enumerate units for that stack. Read it for the detected framework and apply.
 
-- **aspnet-webforms**: every `*.aspx` page is an entry point. ID = file name without extension. `kind = "page"`. Include both the markup file and its code-behind in `files`.
-- **aspnet-mvc / aspnet-core-mvc**: every controller is an entry point. ID = controller class name. `kind = "controller"`. Include the controller `.cs` and all its associated views from `Views/<ControllerName>/`.
-- **java-jsp / struts**: each top-level `.jsp` (excluding includes) is an entry point. `kind = "page"`. Include the JSP plus the action class if Struts.
-- **java-spring-mvc / spring-boot**: each `@Controller` or `@RestController` class is an entry point. `kind = "controller"`.
-- **angularjs-1**: each `angular.module().controller('FooCtrl', ...)` is an entry point. `kind = "controller"`. Include the controller JS plus its template HTML.
-- **jquery-spaghetti / php-classic**: best-effort: each top-level HTML/PHP page. `kind = "page"`.
+For `primary: "unknown"`, set `entry_points: []` and put a warning in `warnings[]`: `"Unknown stack — entry points will be supplied by the user during /analyze interview or /plan."` Downstream skills handle the empty list.
 
 Cap at 100 entry points by importance. Importance heuristic:
 1. Pages/controllers registered in routing config (route table, sitemap, web.config <routes>).
@@ -122,7 +132,9 @@ Always include if applicable:
 
 Before producing your final JSON, verify:
 - [ ] `confidence ∈ [0,1]` and reflects actual evidence weight.
-- [ ] `entry_points[]` is non-empty (unless framework is `unknown` AND no obvious entry pattern exists).
+- [ ] `primary` matches a `name:` from a `frameworks/*.md` file, OR is `"unknown"` (no in-between).
+- [ ] If `primary == "unknown"`, `evidence[]` is non-empty and lists the concrete signals observed.
+- [ ] `entry_points[]` is non-empty (unless framework is `unknown`).
 - [ ] Every file path in `entry_points[].files` actually exists.
 - [ ] `loc_estimate > 0`.
 - [ ] `top_libraries[]` is sorted by importance, not alphabetically.

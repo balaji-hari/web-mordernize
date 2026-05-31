@@ -1,13 +1,5 @@
 ---
-description: >
-  Re-attempts a unit that previously failed migration. Optionally accepts a
-  --with-prompt="…" guidance override that the model layers on top of
-  migration.md when re-attempting (e.g., "this page uses session cookies — map
-  them to localStorage tokens"). Increments the unit's retry_count, preserves
-  prior failure diagnostics in failure.diagnostic_history, and re-uses the
-  shared unit-migrator agent so the translation work stays consistent with
-  /web-modernize:next. Prefer /web-modernize:rollback first if the failed
-  attempt left target files behind that you want cleaned up.
+description: "Re-attempt a failed unit, optionally with extra guidance via --with-prompt. Use when a unit is in 'failed' status. Triggers: 'retry <unit>', 'try again', 'fix the failed unit', 'redo', 'retry the migration', 'attempt again'."
 disable-model-invocation: false
 ---
 

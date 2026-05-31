@@ -39,7 +39,7 @@
 
 Pick one. Add a one-line rationale.
 
-- **Framework**: <!-- react-vite-ts | next-app-router | vue3-vite | angular | svelte-kit -->
+- **Framework**: <!-- react-vite-ts | next-app-router | vue3-vite | angular | svelte-kit | astro | nuxt | remix | other (see frameworks/*.md or pick "Other" in /analyze interview) -->
 - **Language**: <!-- TypeScript | JavaScript -->
 - **State management**: <!-- e.g., Redux Toolkit, Zustand, Pinia, NgRx, "minimal" -->
 - **Styling**: <!-- e.g., Tailwind, CSS Modules, MUI, Bootstrap -->
@@ -66,7 +66,7 @@ List paths in the legacy tree that contain images, fonts, favicons, or other sta
 
 If your migration includes a new backend, fill this in. Otherwise set `Framework: none` and `/web-modernize:plan` will skip API work entirely.
 
-- **Framework**: <!-- dotnet-minimal-api | spring-boot-3 | nestjs | fastapi | reuse-existing | none -->
+- **Framework**: <!-- dotnet-minimal-api | spring-boot-3 | nestjs | fastapi | express | hono | reuse-existing | none -->
 - **Language**:
 - **API style**: <!-- REST | GraphQL | gRPC | tRPC -->
 - **Authentication scheme**: <!-- JWT | session-cookie | OAuth2 | OIDC -->

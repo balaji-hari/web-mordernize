@@ -1,11 +1,5 @@
 ---
-description: >
-  Runs target-stack lint, typecheck, and tests for a migrated unit (or for the
-  whole project) and records the evidence in the per-unit file
-  (.claude/modernize/units/<id>.json) plus notes/<unit-id>.md. Reads
-  verification commands from .claude/modernize/verify.config.json so the team
-  can tune to their stack. Transitions units from migrated → verified
-  (when everything passes) or back to migrated with annotations if failures.
+description: "Run lint/typecheck/tests and transition a unit from 'migrated' to 'verified'. Use when at least one unit is in 'migrated' status. Triggers: 'verify', 'run tests', 'check the migration', 'is it passing', 'verify this unit', 'run verification'."
 disable-model-invocation: false
 ---
 

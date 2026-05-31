@@ -1,0 +1,153 @@
+[
+  {
+    "id": "ui_framework",
+    "section_anchor": "## 3. Target UI framework",
+    "field_label": "Framework",
+    "question": "Which target UI framework do you want to migrate to?",
+    "header": "UI framework",
+    "framework_role": "target-ui",
+    "options": ["react-vite-ts", "next-app-router", "vue3-vite", "angular", "svelte-kit", "astro", "nuxt", "remix"],
+    "recommend_by_source": {
+      "angularjs-1": "angular",
+      "vue-2": "vue3-vite",
+      "aspnet-webforms": "react-vite-ts",
+      "aspnet-mvc": "next-app-router",
+      "aspnet-core-mvc": "next-app-router",
+      "java-jsp": "react-vite-ts",
+      "java-spring-mvc": "react-vite-ts",
+      "java-spring-boot": "react-vite-ts",
+      "java-struts": "react-vite-ts",
+      "jquery-spaghetti": "react-vite-ts",
+      "php-classic": "react-vite-ts",
+      "wordpress": "astro",
+      "coldfusion": "react-vite-ts",
+      "vbscript-asp-classic": "react-vite-ts",
+      "ruby-on-rails": "react-vite-ts",
+      "django": "react-vite-ts",
+      "extjs": "react-vite-ts",
+      "*": "react-vite-ts"
+    }
+  },
+  {
+    "id": "ui_language",
+    "section_anchor": "## 3. Target UI framework",
+    "field_label": "Language",
+    "question": "TypeScript or JavaScript?",
+    "header": "Language",
+    "options_inline": [
+      ["TypeScript", "Recommended for any new web frontend in 2026."],
+      ["JavaScript", "Smaller surface area; pick if team has no TS experience."]
+    ],
+    "default": "TypeScript"
+  },
+  {
+    "id": "api_framework",
+    "section_anchor": "## 4. Target API framework",
+    "field_label": "Framework",
+    "question": "Which target API framework? (optional — pick 'none' to skip the API side, 'reuse-existing' to keep the legacy backend)",
+    "header": "API framework",
+    "framework_role": "target-api",
+    "options": ["dotnet-minimal-api", "spring-boot-3", "nestjs", "fastapi", "express", "hono", "reuse-existing", "none"],
+    "recommend_by_source": {
+      "aspnet-webforms": "dotnet-minimal-api",
+      "aspnet-mvc": "dotnet-minimal-api",
+      "aspnet-core-mvc": "dotnet-minimal-api",
+      "java-jsp": "spring-boot-3",
+      "java-spring-mvc": "spring-boot-3",
+      "java-spring-boot": "spring-boot-3",
+      "java-struts": "spring-boot-3",
+      "django": "fastapi",
+      "ruby-on-rails": "fastapi",
+      "php-classic": "fastapi",
+      "php-laravel": "fastapi",
+      "coldfusion": "fastapi",
+      "vbscript-asp-classic": "dotnet-minimal-api",
+      "wordpress": "reuse-existing",
+      "angularjs-1": "express",
+      "jquery-spaghetti": "express",
+      "vue-2": "express",
+      "extjs": "express",
+      "*": "fastapi"
+    }
+  },
+  {
+    "id": "strategy",
+    "section_anchor": "## 6. Migration strategy",
+    "field_label": "Strategy",
+    "question": "Which migration strategy?",
+    "header": "Strategy",
+    "options_inline": [
+      ["strangler-fig", "Run legacy + new side by side; cut over route by route. Lowest risk, longest timeline."],
+      ["module-by-module", "Migrate one feature/module at a time, ship each. Good for medium apps."],
+      ["big-bang", "Cut over everything at once. Only for small apps or hard external deadlines."]
+    ],
+    "recommend_by_loc": {
+      "<5000": "big-bang",
+      "<50000": "module-by-module",
+      "*": "strangler-fig"
+    }
+  },
+  {
+    "id": "current_auth",
+    "section_anchor": "## 7. Auth provider",
+    "field_label": "Current auth provider",
+    "question": "What's the legacy app's current auth?",
+    "header": "Current auth",
+    "options_inline": [
+      ["<detected>", "Inferred from /analyze (e.g., 'ASP.NET Forms Authentication' if Web.config has <authentication mode='Forms'>)."],
+      ["Custom JWT", "Hand-rolled JWT issuance."],
+      ["Session cookie", "Server-side session with a cookie identifier."],
+      ["OIDC / SSO", "Azure AD, Okta, Auth0, Cognito, Keycloak, etc."]
+    ],
+    "recommend_by_source": {
+      "aspnet-webforms": "ASP.NET Forms Authentication",
+      "aspnet-mvc": "ASP.NET Forms Authentication",
+      "aspnet-core-mvc": "ASP.NET Core Identity",
+      "java-spring-mvc": "Spring Security",
+      "java-spring-boot": "Spring Security",
+      "ruby-on-rails": "Devise (or custom)",
+      "django": "django.contrib.auth",
+      "wordpress": "WordPress users table",
+      "*": "<detected>"
+    }
+  },
+  {
+    "id": "target_auth",
+    "section_anchor": "## 7. Auth provider",
+    "field_label": "Target auth provider",
+    "question": "What auth provider should the migrated app use?",
+    "header": "Target auth",
+    "options_inline": [
+      ["Keep current (bridge)", "Wrap the legacy provider so existing sessions keep working. Lowest user impact."],
+      ["OIDC (Azure AD / Okta / Auth0)", "Modern federated identity. Best if you can pick an IdP."],
+      ["Custom JWT", "Roll your own. Only if you have a strong reason."]
+    ]
+  },
+  {
+    "id": "ui_test_framework",
+    "section_anchor": "## 12. Testing",
+    "field_label": "UI test framework",
+    "question": "Which UI test framework?",
+    "header": "Test framework",
+    "derive_from": "ui_framework",
+    "derive_field": "test_framework",
+    "options_inline_fallback": [
+      ["vitest", "Recommended for Vite-based stacks (React/Vue/Svelte via Vite, SvelteKit, Astro, Nuxt)."],
+      ["jest", "Default for Next.js and NestJS."],
+      ["karma-jasmine", "Angular default."]
+    ]
+  },
+  {
+    "id": "coverage_target",
+    "section_anchor": "## 12. Testing",
+    "field_label": "Target coverage %",
+    "question": "Target test coverage percentage?",
+    "header": "Coverage %",
+    "options_inline": [
+      ["80", "Recommended baseline."],
+      ["70", "Looser bar — useful if the legacy app has no tests today."],
+      ["60", "Very loose — only if you accept tech debt."]
+    ],
+    "validate": "integer 0-100"
+  }
+]

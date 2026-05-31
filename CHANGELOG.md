@@ -2,6 +2,37 @@
 
 All notable changes to the `web-modernize` plugin are documented here. Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.10.0] - 2026-05-31
+
+UX overhaul shipping three coordinated changes that transform the plugin from "memorize 15 slash commands + hand-edit migration.md" into "type plain English; the plugin walks you through choices; unknown tech is a graceful path, not a dead end."
+
+### Added
+
+- **Interactive `/analyze` interview** — after auto-filling `migration.md §2` (source stack), `/analyze` now walks the user through the remaining REQUIRED sections (§3 UI, §4 API, §6 strategy, §7 auth, §12 testing) via `AskUserQuestion` prompts. Each option list is rendered from `templates/migration-interview.json`, with source-stack-aware recommendations labelled `(Recommended)` (e.g., AngularJS source → Angular target; ASP.NET WebForms → React; LOC < 5,000 → big-bang strategy). Skip-if-filled makes the interview idempotent on re-runs and respects manual edits. Bail-out via "skip the rest" is safe — `/plan`'s validation remains the safety net for unset required fields. Replaces the previous "open migration.md and fill sections 3, 6, 7, 10 by hand" closing message from `/init`.
+- **`frameworks/` directory** — 31 per-framework markdown files (17 source, 8 target-UI, 6 target-API) replacing the inline detection table in `agents/legacy-analyzer.md`, the per-stack scaffold recipes in `skills/scaffold/SKILL.md`, and the per-stack password-hashing notes in `skills/auth/SKILL.md`. Each file uses a consistent template (`## Detection` / `## Scaffold` / `## Test framework` / `## Auth notes` / `## Dev server` / `## Recommendation context`). Adding a new framework is now a one-file drop-in. Currently shipped:
+  - **Source**: aspnet-{webforms,mvc,core-mvc}, java-{jsp,struts,spring-mvc,spring-boot}, angularjs-1, vue-2, jquery-spaghetti, php-classic, coldfusion, vbscript-asp-classic, ruby-on-rails, django, wordpress, extjs.
+  - **Target UI**: react-vite-ts, next-app-router, vue3-vite, angular, svelte-kit, astro, nuxt, remix.
+  - **Target API**: dotnet-minimal-api, spring-boot-3, nestjs, fastapi, express, hono.
+- **First-class unknown-tech path** — `legacy-analyzer` now returns `primary: "unknown"` with an `evidence[]` array (raw signals observed in the source tree) when no framework rule matches. The `/analyze` interview surfaces that evidence to the user and offers an explicit free-text "specify your own" option; `state.json.source_stack.user_provided` is set to `true` and downstream skills check it. For unknown target frameworks, `/scaffold` runs a 3-question follow-up (scaffold command / test framework / verify commands) writing the answers to `verify.config.json` so retries don't re-ask. For unknown target API, `/auth` skips the prebuilt password-hashing template and defers to `agents/permanent-gotchas.md` + OWASP. End-to-end Rails → Astro now works with zero plugin recipes.
+- **`templates/migration-interview.json`** — declarative question catalog driving the new interview. Each entry has `id`, `section_anchor`, `field_label`, `options` (framework IDs resolved against `frameworks/*.md`) or `options_inline`, and optional `recommend_by_source` / `recommend_by_loc` / `derive_from` lookups.
+
+### Changed
+
+- **All 15 SKILL.md `description:` fields rewritten** to a packed format: `<one-line action>. Use when state.status is <X>. Triggers: '<phrase 1>', '<phrase 2>', '<phrase 3>'.` Leverages Claude Code's native skill auto-invocation (`disable-model-invocation: false`, already set) so plain-English utterances like *"what's next"*, *"let's plan it"*, *"where are we"*, *"stuck lock"* reliably route to the right slash command. Lifecycle anchors (`Use when state.status is X`) disambiguate adjacent skills — *"let's plan"* fires `/plan` when status is `analyzed` but routes elsewhere otherwise. No router skill added; the model does the matching, descriptions encode the rules.
+- **`agents/legacy-analyzer.md`** — inline detection table replaced with: glob `frameworks/*.md` where `role: source`, read each `## Detection` section, score signals against the source tree, return top match or `unknown + evidence`. Adding a source framework no longer requires editing this agent.
+- **`skills/scaffold/SKILL.md`** — inline UI/API recipe branches replaced with: read `frameworks/<ui>.md` / `frameworks/<api>.md` `## Scaffold` section and execute. Missing file → unknown-target 3-question follow-up. The shared dev CORS allow-list and the load-bearing cross-cutting rules (`reflect-metadata` first-import, `only-include` for FastAPI hatchling, `partial class Program` for .NET, Nest:3001 ↔ Next:3000) stay documented in the SKILL.md prose and `agents/permanent-gotchas.md`.
+- **`skills/auth/SKILL.md`** — per-stack password-hashing recipe block replaced with: read `frameworks/<api>.md` `## Auth notes`. Always also read `permanent-gotchas` for cross-cutting rules (bcrypt 72-byte truncation, passlib ban, CSRF defaults). Missing framework file → skip the stack-specific template, do not block; let the user proceed per `permanent-gotchas` + OWASP guidance.
+- **`skills/analyze/SKILL.md`** — added an Interview phase between the §2 auto-fill and the closing summary. Now writes `state.json.source_stack.user_provided` and `state.json.target_stack` (pre-populating fields `/plan` would otherwise write).
+- **`skills/init/SKILL.md`** — closing "Next steps" updated to point at `/analyze` for both detection and interactive filling, removing the "open migration.md and fill in sections 3, 6, 7, 10 by hand" line.
+
+### Why this is a minor, not a patch
+
+The three changes are all additive at the schema level (no `schema_version` bump, no removed/renamed commands, no removed skills). But each is large enough in surface area — 31 new framework files, a new interview catalog, a refactor of three skills + one agent, all 15 description: fields rewritten — that bundling them as a patch would understate the impact. Teams pull this with `/plugin uninstall web-modernize && /plugin install web-modernize`; no `.claude/modernize/` reset required.
+
+### Why this is a minor, not a major
+
+No state-schema change. No removed commands, no removed skills, no renamed slash commands. The new `state.json.source_stack.user_provided` field is optional / additive — existing state files validate as-is. Existing migrations keep working without re-running `/analyze`.
+
 ## [0.9.3] - 2026-05-14
 
 Patch release: fixes the scaffold closing message to spell out dependency-install steps before the dev-server commands.

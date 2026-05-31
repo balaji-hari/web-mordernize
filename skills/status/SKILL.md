@@ -1,10 +1,5 @@
 ---
-description: >
-  Prints a progress dashboard for the web-modernize migration. Read-only and safe
-  to run at any time. Shows current workflow phase, counts of pending/in-progress/
-  migrated/verified units, what is currently in flight (and by whom), the next
-  unit /web-modernize:next would pick, and any blockers or stale sessions.
-  Iterates per-unit files under .claude/modernize/units/.
+description: "Show progress, in-flight units, blockers, and the recommended next command. Read-only. Use any time. Triggers: 'where are we', 'show status', 'progress', 'how's the migration going', 'what's the state', 'dashboard', 'migration status'."
 disable-model-invocation: false
 ---
 

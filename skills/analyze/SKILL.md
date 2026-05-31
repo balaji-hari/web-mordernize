@@ -1,10 +1,5 @@
 ---
-description: >
-  Inspects the legacy source tree, detects the primary framework and version,
-  builds a file inventory and rough dependency graph, and fills section 2 of
-  migration.md (source stack). Writes .claude/modernize/analysis.json with the
-  full detection payload. Run after /web-modernize:init and after the user has
-  partially filled migration.md (sections 3-7 may still be empty at this point).
+description: "Detect the legacy source stack, fill migration.md §2, and interactively walk the user through filling target choices (§3 UI, §4 API, §6 strategy, §7 auth, §12 testing) via AskUserQuestion with stack-aware recommendations. Use when state.status is 'initialized' (first run) or 'analyzed' (re-run to fill gaps). Triggers: 'analyze the codebase', 'what stack is this', 'detect framework', 'configure the migration', 'walk me through setup'."
 disable-model-invocation: false
 ---
 
@@ -23,27 +18,17 @@ You are the **analyze** skill. Your job is to detect what the team is migrating 
 
 Delegate the heavy lifting to the `legacy-analyzer` subagent (defined at `${CLAUDE_PLUGIN_ROOT}/agents/legacy-analyzer.md`). Invoke it with a prompt like:
 
-> Analyze the legacy web application in the current working directory. Report: primary framework + version + confidence; build tool / package manager; top 5 libraries; approximate LOC; entry points (pages/controllers/components); rough dependency graph (which files import which). Format the report as JSON matching the schema in {{TEMPLATE_PATH}}. Skip `.git/`, `node_modules/`, `bin/`, `obj/`, `dist/`, `build/`, `.claude/`.
+> Analyze the legacy web application in the current working directory. Report: primary framework + version + confidence; build tool / package manager; top 5 libraries; approximate LOC; entry points (pages/controllers/components); rough dependency graph (which files import which). Load detection rules from `${CLAUDE_PLUGIN_ROOT}/frameworks/*.md` files where `role: source`. If no rule matches, return `primary: "unknown"` with the `evidence[]` array populated. Format the report as JSON matching the schema in the agent's own preamble. Skip `.git/`, `node_modules/`, `bin/`, `obj/`, `dist/`, `build/`, `.claude/`.
 
 Run the subagent, then validate the JSON it returns. If invalid, fix obvious errors and ask the subagent to retry once.
 
 ## Frameworks to recognize
 
-Detection signals (non-exhaustive — add more in legacy-analyzer.md):
+Detection rules are **data-driven** — the plugin ships one file per known framework at `${CLAUDE_PLUGIN_ROOT}/frameworks/<name>.md` with `role: source`. Adding a new source framework means dropping a new file in `frameworks/`, not editing this skill or the legacy-analyzer agent.
 
-| Framework key | Signals |
-|---------------|---------|
-| `aspnet-webforms` | `*.aspx`, `*.aspx.cs`, `*.ascx`, `Web.config`, `Global.asax`, `System.Web.UI` |
-| `aspnet-mvc` | `Controllers/`, `*.cshtml`, `App_Start/RouteConfig.cs`, `System.Web.Mvc` |
-| `aspnet-core-mvc` | `Program.cs` with `AddControllersWithViews`, `*.cshtml`, `Startup.cs` |
-| `java-jsp` | `*.jsp`, `web.xml`, `WEB-INF/`, `pom.xml` or `build.gradle` |
-| `java-struts` | `struts-config.xml`, `*.action`, JSP + Struts taglibs |
-| `java-spring-mvc` | `@Controller` annotations, `applicationContext.xml`, `pom.xml` with `spring-webmvc` |
-| `angularjs-1` | `angular.module(...)` in JS, `ng-*` directives in HTML, `package.json` with `angular@1.x` |
-| `jquery-spaghetti` | jQuery usage but no framework module pattern |
-| `php-classic` | `*.php` files with mixed HTML, no Laravel/Symfony markers |
-| `coldfusion` | `*.cfm`, `*.cfc`, `Application.cfc` |
-| `unknown` | confidence < 0.5 → write `candidates[]` with the top 3 guesses |
+To see the currently-supported set, `Glob` `${CLAUDE_PLUGIN_ROOT}/frameworks/*.md` and filter by frontmatter `role: source`.
+
+For frameworks the plugin doesn't have a file for (e.g., Phoenix, Grails, Wicket): `legacy-analyzer` returns `primary: "unknown"` with `evidence[]` listing the raw signals found, and the **Interview phase** below surfaces those signals to the user with a free-text "specify your own" option.
 
 ## Output 1: `.claude/modernize/analysis.json`
 
@@ -52,9 +37,10 @@ Write a complete payload. Schema:
 ```json
 {
   "analyzed_at": "<ISO timestamp>",
-  "primary": "<framework key>",
+  "primary": "<framework key from frameworks/*.md name:, or 'unknown'>",
   "confidence": 0.0,
   "candidates": [{ "name": "...", "confidence": 0.0 }],
+  "evidence": ["<raw signal, required when primary == 'unknown'>"],
   "detected_version": "<string or null>",
   "build_tool": "<msbuild|maven|gradle|npm|yarn|none|...>",
   "package_manager": "<nuget|npm|yarn|maven|...>",
@@ -87,17 +73,88 @@ Update these fields:
     "primary": "<analysis.primary>",
     "confidence": <analysis.confidence>,
     "detected_at": "<ISO now>",
-    "candidates": <analysis.candidates>
+    "candidates": <analysis.candidates>,
+    "user_provided": false
   },
   "updated_at": "<ISO now>"
 }
 ```
 
+If the user supplies their own source stack via the interview's free-text option (low-confidence path below), set `source_stack.user_provided = true` and overwrite `primary` with their value.
+
 Do not modify any other top-level fields.
+
+## Output 4: Interview phase — fill REQUIRED migration.md sections
+
+After §2 is written and `state.json.source_stack` is updated, walk the user through filling the remaining REQUIRED migration.md sections (§3 target UI, §4 target API, §6 strategy, §7 auth, §12 testing). This replaces the previous "open migration.md by hand" step.
+
+### Load the catalog
+
+Read `${CLAUDE_PLUGIN_ROOT}/templates/migration-interview.json`. Each entry has:
+- `id` — internal question id
+- `section_anchor` — migration.md heading where the answer is written
+- `field_label` — the bullet label inside that section
+- `question` — text shown to the user
+- `header` — short chip label (≤ 12 chars) for `AskUserQuestion`
+- One of: `options` (list of framework IDs from `frameworks/<id>.md`), `options_inline` ([label, description] pairs), or `derive_from` + `derive_field` (pull the answer from a previously-answered question)
+- Optional `recommend_by_source`, `recommend_by_loc` for picking the `(Recommended)` option
+- Optional `default` for inline option lists
+
+### Low-confidence / unknown-source handling
+
+**First**, if `state.json.source_stack.primary == "unknown"` (or `confidence < 0.5`), surface the evidence the analyzer collected before the first question. Show the user:
+
+```
+We couldn't confidently identify your legacy stack. Here's what we found:
+
+  <bullet list from analysis.json.evidence[]>
+
+The framework files we know about today are:
+  <bullet list of frameworks/*.md frontmatter display_names where role: source>
+```
+
+Then call `AskUserQuestion` for the source-stack question with options = (all `source` framework display names) + an explicit "**None of these — let me specify**" option (free text via the implicit "Other"). If the user picks "Other" and enters a value, set `state.json.source_stack.primary` to their value, set `source_stack.user_provided = true`, and continue with the interview. Downstream skills check `user_provided` and degrade gracefully — they skip framework-specific gotchas and lean on `permanent-gotchas` + WebSearch.
+
+### Iterate the catalog
+
+For each entry in `migration-interview.json` order:
+
+1. **Skip-if-filled**: Read the relevant section of `migration.md` (locate the `section_anchor`, read the matching `field_label` bullet). If it already holds a non-placeholder value (i.e., NOT an HTML comment like `<!-- e.g. ... -->` and NOT empty), skip the question silently. This makes the interview idempotent on re-runs and respects manual edits.
+
+2. **Render options**:
+   - If the entry has `options` (framework IDs): for each id, Read `${CLAUDE_PLUGIN_ROOT}/frameworks/<id>.md` frontmatter `display_name` and use it as the option label. The option description can be a short summary from the file's first paragraph after the frontmatter (or the `## Recommendation context` first line, if present).
+   - If the entry has `options_inline`: use each `[label, description]` pair directly.
+   - If the entry has `derive_from`: pull the previously-answered question's framework file (e.g., `ui_test_framework` derives from `ui_framework`); Read that file's `## Test framework` section first line as the answer. Fall through to `options_inline_fallback` if the file doesn't declare one.
+
+3. **Mark the recommendation**: look up the recommended option via `recommend_by_source[state.source_stack.primary]` or `recommend_by_loc[<loc-bucket>]`. Wildcard `"*"` is the fallback. Label that option `(Recommended)` and present it first.
+
+4. **Ask** via `AskUserQuestion`. Single-select. The implicit "Other" lets the user provide free text. On the **first** question, also append an explicit "Skip the rest of the interview" option — picking it stops the interview cleanly; whatever's already filled stays, and `/web-modernize:plan`'s validation acts as the safety net.
+
+5. **Write the answer immediately** via `Edit` against `migration.md` — locate the `field_label` bullet under `section_anchor` and replace its value. Do NOT batch; partial completion is recoverable.
+
+6. **Validate** where the entry has `validate` (e.g., `integer 0-100`). Re-ask once if the user's value is invalid; on second invalid input, accept it verbatim and let `/plan`'s validation report it.
+
+7. For source-stack-dependent recommendations on `target_auth`, also fold in the answer from the `current_auth` question (if the user picked "Keep current (bridge)", recommend the same provider).
+
+### After the interview
+
+Update `state.json.target_stack` with the answers (UI framework, API framework if not `none`):
+```json
+{
+  "target_stack": {
+    "ui": "<answer>",
+    "api": "<answer or 'none'>"
+  }
+}
+```
+
+Update `state.json.strategy` and `state.json.testing` similarly from the answers (these mirror what `/plan` would otherwise write — pre-populating them here lets the user skip straight to `/scaffold` after a clean interview, while `/plan` re-reads `migration.md` as the source of truth).
 
 ## After writing
 
-Print a one-screen summary:
+Print a one-screen summary. Two shapes depending on whether the interview completed cleanly:
+
+**Happy path (all required fields filled by the interview):**
 
 ```
 ✓ Analyzed: <framework> (confidence <pct>%)
@@ -105,20 +162,33 @@ Print a one-screen summary:
   Top libraries: <comma-separated top 3>
   Entry points found: <n> (will become migration units in /plan)
 
+✓ migration.md filled: <N of M required fields answered via interview>
+
   Warnings:
     <list any>
 
-  migration.md §2 has been updated. Review it, then:
-  → Fill in sections 3 (target UI), 6 (strategy), 7 (auth), 10 (acceptance) in migration.md.
-  → Then run /web-modernize:plan.
+Next step:
+  → Run /web-modernize:plan to generate the migration plan and seed units.
+
+Want to tweak §10 acceptance criteria or §8 constraints? Edit migration.md by hand
+— /plan re-reads the file on every run.
 ```
 
-## Low-confidence path
+**Bail-out / partial fill (user picked "skip the rest" or some fields still unset):**
 
-If `analysis.confidence < 0.5`:
+```
+✓ Analyzed: <framework> (confidence <pct>%)
+✓ migration.md §2 filled.
 
-- Still write `state.json.source_stack.primary = "unknown"` and the candidates list.
-- Add a prominent warning to the user output: "Could not confidently detect framework. `/web-modernize:plan` will produce a skeleton plan with TODOs rather than a fully generated unit list. Consider editing `migration.md §2` manually before continuing."
+⚠ Interview partial — these REQUIRED sections still need values:
+  - §3 Target UI framework
+  - §6 Migration strategy
+  - <etc.>
+
+Either:
+  → Edit migration.md by hand to fill the remaining sections, then run /web-modernize:plan.
+  → Re-run /web-modernize:analyze — it skips sections that are already filled.
+```
 
 ## State transition
 

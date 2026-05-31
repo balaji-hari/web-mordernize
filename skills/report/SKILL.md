@@ -1,12 +1,5 @@
 ---
-description: >
-  Generates a stakeholder-friendly migration progress report — burndown,
-  velocity, ETA, risk heat-map, ownership, recent activity, blockers, and
-  acceptance-criteria status. Read-only on state files; writes the rendered
-  report to .claude/modernize/reports/<date>-<format>. Useful for sprint
-  syncs, exec summaries, or pasting into Slack. Defaults to Markdown; can
-  also emit JSON (for dashboards) or HTML (for sharing with non-technical
-  stakeholders). Iterates per-unit files under .claude/modernize/units/.
+description: "Generate a stakeholder progress/velocity/risk report (md/json/html). Use when state.status is 'in_progress' or 'complete'. Triggers: 'generate a report', 'stakeholder update', 'progress report', 'export progress', 'exec summary', 'report for leadership'."
 disable-model-invocation: false
 ---
 

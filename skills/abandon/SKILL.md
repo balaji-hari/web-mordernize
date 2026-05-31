@@ -1,11 +1,5 @@
 ---
-description: >
-  Rollback / reset for the web-modernize migration. Two-step destructive command
-  with multiple modes: --soft clears per-unit files and top-level state but
-  keeps notes/, --hard deletes generated artifacts including target scaffold,
-  --unit <id> marks a single unit as skipped without touching the rest. Always
-  requires a second confirming invocation before deleting anything. Use when
-  the team wants to start over or formally drop a unit from scope.
+description: "Roll back the migration in part or whole (destructive; two-step confirmation). Use only when the user wants to stop or restart the migration. Triggers: 'abandon the migration', 'start over', 'wipe everything', 'cancel migration', 'reset everything', 'throw it away'."
 disable-model-invocation: false
 ---
 

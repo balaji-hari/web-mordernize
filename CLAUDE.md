@@ -22,8 +22,13 @@ skills/<name>/SKILL.md     # one per slash command (15 total — see Slash comma
 templates/                 # files copied into the user's repo by /init and /plan
   state.schema.json        # top-level state schema (schema_version 3)
   unit.schema.json         # per-unit object schema
+  migration-interview.json # declarative catalog driving /analyze's interactive interview
+frameworks/<name>.md       # one per supported framework (source / target-ui / target-api)
+                           # see "Framework files" below; loaded on demand by /analyze,
+                           # /scaffold, /auth, and legacy-analyzer
 agents/
   legacy-analyzer.md       # read-only subagent for source-stack detection
+                           # (reads detection signals from frameworks/*.md role: source)
   unit-migrator.md         # shared per-unit migration loop used by /next, /migrate, /retry
 hooks/
   hooks.json               # PostToolUse heartbeat
@@ -81,9 +86,26 @@ Skills cannot directly invoke other skills. They can only instruct Claude (via p
 
 `templates/migration.md` is the team-facing config. Sections marked **REQUIRED** are validated by `/plan` — if you add a new required section, update the validation list in `skills/plan/SKILL.md`.
 
+`templates/migration-interview.json` is the catalog driving `/analyze`'s interactive interview. Each entry has `id`, `section_anchor`, `field_label`, `question`, `header`, and one of `options` (framework IDs resolved against `frameworks/*.md`), `options_inline` (`[label, description]` pairs), or `derive_from` + `derive_field` (pulls answer from a previously-answered question's framework file). Optional `recommend_by_source` / `recommend_by_loc` lookups drive the `(Recommended)` label. Add a new entry when introducing a new REQUIRED migration.md section.
+
 `templates/state.schema.json` and `templates/unit.schema.json` are JSON Schemas (draft 2020-12). Bump `schema_version` (top-level `const` in state.schema.json) when you make breaking changes. **Do NOT add migration logic.** The plugin has no production users yet; schema bumps require a fresh `/init`. `/init` should refuse to operate on a state file with a mismatched `schema_version` and tell the user to delete `.claude/modernize/` and re-init.
 
 `templates/plan.md` and `templates/report.md` use `{{PLACEHOLDER}}` markers that the corresponding skill substitutes. New placeholders need a corresponding substitution rule in the skill.
+
+## Framework files
+
+`frameworks/<name>.md` is the canonical per-framework recipe location. One markdown file per supported source or target stack, with frontmatter declaring `name`, `display_name`, and `role: source | target-ui | target-api`. Loaded on demand by the consuming skill/agent — adding a new framework is a one-file drop-in, no skill edits required.
+
+Standard sections (use all that apply for the role):
+
+- `## Detection` — source files only. Strong + weak signals (file paths, library references, build files, language constructs) the `legacy-analyzer` agent scores against the source tree.
+- `## Scaffold` — target files only. Shell command(s) to scaffold a new project. `skills/scaffold/SKILL.md` reads this for the chosen UI/API stack and executes it. Include the `### Wire to API` block for UI targets (env var setup + `src/lib/api.ts` helper).
+- `## Test framework` — default test runner for the stack, plus install + sample-test guidance. `skills/scaffold/SKILL.md` reads this in the Test harness step.
+- `## Auth notes` — API targets. Per-stack password-hashing library + load-bearing rules (e.g., FastAPI's bcrypt 72-byte truncation, NestJS's `bcrypt` vs `bcryptjs`). `skills/auth/SKILL.md` reads this; cross-cutting auth rules stay in `agents/permanent-gotchas.md`.
+- `## Dev server` — port + install/activate + dev command + URL + health-check command. Used by the scaffold's "After writing" closing message.
+- `## Recommendation context` — optional. Source stacks this is a natural target for; consumed by `templates/migration-interview.json`'s `recommend_by_source` lookups via the interview skill.
+
+When a user picks a target framework the plugin has no file for, the unknown-tech path takes over: `/scaffold` runs a 3-question follow-up (scaffold command / test framework / verify commands) and persists answers to `verify.config.json`. `/auth` defers to `permanent-gotchas` + OWASP. `/analyze` accepts a free-text source value and sets `state.source_stack.user_provided = true`.
 
 ## Versioning policy
 

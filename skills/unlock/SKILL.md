@@ -1,10 +1,5 @@
 ---
-description: >
-  Force-clear a stale advisory lock on state.json. Use when a previous
-  /plan or /scaffold session crashed while holding the lock and another
-  team member (or the same user in a new session) is blocked. Confirms
-  with the user before clearing, records the force-clear in
-  state.history, and never touches per-unit files.
+description: "Force-clear a stale advisory lock on state.json (requires typing 'force-clear'). Use when /plan or /scaffold refuses due to a stale lock. Triggers: 'unlock', 'clear the lock', 'release the lock', 'stuck lock', 'lock is stuck', 'force unlock'."
 disable-model-invocation: false
 ---
 

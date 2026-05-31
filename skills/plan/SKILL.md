@@ -1,11 +1,5 @@
 ---
-description: >
-  Validates that migration.md has all required fields filled in, then generates
-  .claude/modernize/plan.md (human-readable migration plan), seeds one file per
-  unit under .claude/modernize/units/<id>.json from analysis.json, and records
-  the ordered id list in state.json.unit_ids. Refuses to run if migration.md
-  is incomplete; produces a numbered list of missing fields with section anchors.
-  This is the gate between "exploration" and "execution".
+description: "Validate migration.md and generate the migration plan plus per-unit files. Use when state.status is 'analyzed' and migration.md required fields are filled. Triggers: 'create the plan', 'list the units', 'break it into units', 'plan the work', 'let's plan it', 'generate plan'."
 disable-model-invocation: false
 ---
 

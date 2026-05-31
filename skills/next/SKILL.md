@@ -1,10 +1,5 @@
 ---
-description: >
-  Picks the next pending unit from the migration plan (respecting depends_on)
-  and migrates it. The main workhorse of the iterative migration loop. Handles
-  in-flight collision detection: if another developer has a unit in flight,
-  surfaces it and offers to take over. Each invocation moves exactly one unit
-  from pending → in_progress → migrated. Run repeatedly until all units done.
+description: "Pick the next pending unit (respecting depends_on) and migrate it. Workhorse of the iteration loop. Use when state.status is 'auth_done' or 'in_progress'. Triggers: 'what's next', 'continue', 'keep going', 'migrate the next one', 'next page', 'next unit', 'next iteration'."
 disable-model-invocation: false
 ---
 

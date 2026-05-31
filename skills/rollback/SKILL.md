@@ -1,11 +1,5 @@
 ---
-description: >
-  Reverts a single migrated, verified, or failed unit back to "pending" so it
-  can be re-migrated cleanly. Restores target files via git (checks out the
-  legacy state on tracked paths, removes the feature branch if one exists),
-  clears the unit's verification record, and stamps rollback_info on the unit
-  for audit. Per-unit and recoverable: this is the soft inverse of
-  /web-modernize:migrate, not the nuclear reset that /web-modernize:abandon is.
+description: "Revert one unit's target files and reset it to 'pending'. Soft inverse of /migrate. Use to undo a single unit. Triggers: 'rollback <unit>', 'undo this unit', 'revert the migration of <unit>', 'unroll <unit>', 'reset this unit'."
 disable-model-invocation: false
 ---
 

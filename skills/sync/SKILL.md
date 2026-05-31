@@ -1,13 +1,5 @@
 ---
-description: >
-  Pulls the latest .claude/modernize/state.json and per-unit files (units/*.json)
-  from the git remote and merges them with the local copies using deterministic
-  rules ("most-advanced unit status wins", "freshest heartbeat wins", "highest
-  top-level workflow status wins"). With the schema v3 per-unit file split,
-  most concurrent edits land on completely disjoint files — sync is now mostly
-  about reconciling the small top-level state.json. Read-only on remote — does
-  not push, commit, or fetch other files. Run after pulling other devs' work
-  if you suspect any conflicts.
+description: "Reconcile local and remote state.json + per-unit files for multi-developer workflows. Use when the team works in parallel and git shows merge churn on state files. Triggers: 'sync state', 'pull teammates changes', 'reconcile state', 'merge state files', 'after git pull'."
 disable-model-invocation: false
 ---
 
