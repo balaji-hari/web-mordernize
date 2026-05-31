@@ -94,6 +94,19 @@ Recommend (a) as the default with an opt-out flag for fast iteration. Findings p
 - ~1 agent invocation per unit at verify time. Cheap compared to migration itself.
 - Some false positives (intentional behaviour changes the team wanted). Mitigation: a `parity_acknowledged_diffs[]` field on the unit that the user fills to suppress.
 
+### Considered and deferred: Playwright-based dynamic parity
+
+A dynamic parity tester driving both apps in a real browser (Playwright) was considered. It catches a class of bug the static reviewer can't — dropped client-side input normalization, runtime-only behaviour differences, visual regressions. But it carries real operational costs that the static reviewer doesn't:
+
+- Both legacy and migrated apps must be runnable side-by-side. Strangler-fig has this naturally; big-bang and module-by-module don't, depending on cutover phase.
+- Test fixtures required (what input to type / endpoints to call). Best sourced from legacy unit tests or recorded user sessions, not invented at parity-check time.
+- Stable selectors on both sides (accessibility-based: text content, ARIA roles) — often requires light legacy-side cleanup.
+- ~500MB Playwright install + browser binaries on every dev box and CI runner.
+- Screenshot diffing is flaky across browser versions, font rendering, animations; needs deterministic-seed mitigations.
+- Different tool entirely for API parity — Playwright in a browser is wrong for `POST /orders` parity; HTTP replay (Pact / VCR / `pytest-recording`) is right. Different again for pure logic units, where static review is sufficient.
+
+**Decision: defer.** The static reviewer is the right *first* parity check — always-on, cheap, catches the obvious wins. A Playwright UI tester + HTTP-replay API tester family can be revisited later as opt-in higher-fidelity checks for high-risk units (auth, payments, compliance-sensitive flows). Splitting parity verification into three tools (static / UI dynamic / API replay) maps better to how real migrations work, but is a heavier investment than the v0.10.0 follow-up scope warrants.
+
 ---
 
 ## Candidate 3 — Pre-flight dependency analyzer  (both)
