@@ -193,6 +193,62 @@
           }
         }
       }
+    },
+    "parity_reviewed_at": {
+      "description": "When the parity-reviewer last compared this unit's source_paths against its target_paths. Lets /verify and /status tell whether parity_findings reflect the current code. Absent/null = never reviewed.",
+      "oneOf": [
+        { "type": "null" },
+        { "type": "string", "format": "date-time" }
+      ]
+    },
+    "parity_findings": {
+      "type": "array",
+      "description": "Behavioural-parity differences between the legacy source and the migrated target, produced by the parity-reviewer agent (run by /web-modernize:verify's gate or /web-modernize:parity-check). Replaced wholesale on each parity run. A finding with severity 'high' whose id is NOT present in parity_acknowledged_diffs[] blocks the migrated→verified transition.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "kind", "severity", "legacy", "migrated"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable, content-derived identifier, e.g. 'output_sort_order:OrderListPage:orderdate-desc-to-asc'. Deterministic from kind + the legacy/migrated behaviour, so an acknowledgement survives a re-run on unchanged code, but a CHANGED behaviour produces a new id and re-surfaces for review."
+          },
+          "kind": {
+            "enum": [
+              "input_required", "input_validation", "input_normalization", "input_default",
+              "output_shape", "output_field_name", "output_type", "output_sort_order",
+              "output_null_vs_missing", "output_status_code", "pagination",
+              "error_handling", "business_logic", "edge_case",
+              "ui_field", "ui_required", "ui_client_validation", "ui_submit",
+              "ui_redirect", "ui_error_state", "ui_default",
+              "other"
+            ]
+          },
+          "severity": {
+            "enum": ["high", "medium", "low"],
+            "description": "high = a difference an end user / API caller hits on a normal path (regression). medium = edge-case or secondary-path difference. low = unlikely to matter in practice."
+          },
+          "legacy": { "type": "string", "description": "Observable legacy behaviour, e.g. \"accepts empty 'q' param (returns all rows)\"." },
+          "migrated": { "type": "string", "description": "Observable migrated behaviour, e.g. \"rejects empty 'q' with HTTP 400\"." },
+          "file": { "type": "string", "description": "Target file (optionally :line) where the difference is rooted, when locatable." },
+          "recommendation": { "type": "string", "description": "Optional one-line suggested resolution." }
+        }
+      }
+    },
+    "parity_acknowledged_diffs": {
+      "type": "array",
+      "description": "Parity findings the team reviewed and accepted as intentional. Each entry suppresses the matching parity_findings[] item (by id) from blocking the migrated→verified transition. Filled by /web-modernize:parity-check (interactive prompt or --acknowledge). Survives re-runs; a dormant entry whose id no longer appears in parity_findings[] is harmless.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "by", "at", "reason"],
+        "properties": {
+          "id": { "type": "string", "description": "Matches a parity_findings[].id." },
+          "by": { "type": "string", "description": "User identity (email when available)." },
+          "at": { "type": "string", "format": "date-time" },
+          "reason": { "type": "string", "description": "Why this difference is intentional / acceptable." }
+        }
+      }
     }
   },
   "$defs": {

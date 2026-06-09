@@ -18,7 +18,7 @@ The plugin's runtime artifacts split into two locations: this repo (plugin sourc
 .claude-plugin/
   plugin.json              # manifest — name, version, author
   marketplace.json         # self-referencing marketplace (source: "./")
-skills/<name>/SKILL.md     # one per slash command (15 total — see Slash command reference in README)
+skills/<name>/SKILL.md     # one per slash command (16 total — see Slash command reference in README)
 templates/                 # files copied into the user's repo by /init and /plan
   state.schema.json        # top-level state schema (schema_version 3)
   unit.schema.json         # per-unit object schema
@@ -30,6 +30,8 @@ agents/
   legacy-analyzer.md       # read-only subagent for source-stack detection
                            # (reads detection signals from frameworks/*.md role: source)
   unit-migrator.md         # shared per-unit migration loop used by /next, /migrate, /retry
+  parity-reviewer.md       # read-only subagent: compares migrated target vs legacy source
+                           # for behavioural parity; run by /verify's gate + /parity-check
 hooks/
   hooks.json               # PostToolUse heartbeat
   heartbeat.mjs            # Node script that bumps last_heartbeat in each in-flight unit file
@@ -81,6 +83,8 @@ Each `skills/<name>/SKILL.md` is a prompt that gets loaded into Claude's context
 Skills cannot directly invoke other skills. They can only instruct Claude (via prose) to suggest the next slash command to the user.
 
 `/web-modernize:next`, `/web-modernize:migrate`, and `/web-modernize:retry` all delegate the actual per-unit translation work to `agents/unit-migrator.md`. Don't duplicate the migration loop — edit it in `agents/unit-migrator.md`. The skills handle only unit selection, dependency gating, and the closing message; the agent handles in-flight collision resolution (Case A/B/C), unit acquisition, the translation body, and finalization.
+
+`/web-modernize:verify` and `/web-modernize:parity-check` both delegate the behavioural-parity comparison to `agents/parity-reviewer.md`. Unlike `unit-migrator` (read inline), `parity-reviewer` is a **real subagent** like `legacy-analyzer` — read-only, isolated context, returns a single JSON block, no user interaction. Don't duplicate the comparison logic — edit it in `agents/parity-reviewer.md`. `/verify` runs it as a gate on the `migrated → verified` transition (blocks on unacknowledged high-severity findings; `--no-parity` opts out); `/parity-check` runs it on demand and owns the acknowledge mutation (`parity_acknowledged_diffs[]`). The two new schema fields (`parity_findings[]`, `parity_acknowledged_diffs[]`, plus `parity_reviewed_at`) are additive — no `schema_version` bump.
 
 ## Editing templates
 

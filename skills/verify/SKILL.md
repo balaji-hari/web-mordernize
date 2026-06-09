@@ -1,9 +1,9 @@
 ---
-description: "Run lint/typecheck/tests and transition a unit from 'migrated' to 'verified'. Use when at least one unit is in 'migrated' status. Triggers: 'verify', 'run tests', 'check the migration', 'is it passing', 'verify this unit', 'run verification'."
+description: "Run lint/typecheck/tests plus a behavioural-parity check, then transition a unit from 'migrated' to 'verified'. Use when at least one unit is in 'migrated' status. Triggers: 'verify', 'run tests', 'check the migration', 'is it passing', 'verify this unit', 'run verification', 'check parity'."
 disable-model-invocation: false
 ---
 
-# `/web-modernize:verify [unit-id]`
+# `/web-modernize:verify [unit-id] [--no-parity]`
 
 You are the **verify** skill. Your job is to prove (or disprove) that a migrated unit meets the team's bar.
 
@@ -27,8 +27,9 @@ Refusing would block the team until the slowest updater catches up — that's a 
 1. Read `.claude/modernize/state.json`. Require at least `status == "scaffolded"` (i.e., target project exists).
 2. Read `.claude/modernize/verify.config.json`. Required.
 3. Parse `$ARGUMENTS`:
-   - Empty → verify ALL units currently in status `migrated`. Iterate `state.unit_ids[]`, read each `units/<id>.json`, filter to `status == "migrated"`.
-   - `<unit-id>` → read `.claude/modernize/units/<unit-id>.json`. If the file does not exist, list valid ids (`ls .claude/modernize/units/*.json`) and stop.
+   - `--no-parity` (flag, anywhere in the args) → skip the behavioural-parity gate (step 5) for this run; record `verification.parity = "skipped"` on each unit touched. For fast iteration when you already know parity is fine.
+   - The remaining non-flag token, if any, is `<unit-id>` → read `.claude/modernize/units/<unit-id>.json`. If the file does not exist, list valid ids (`ls .claude/modernize/units/*.json`) and stop.
+   - No `<unit-id>` → verify ALL units currently in status `migrated`. Iterate `state.unit_ids[]`, read each `units/<id>.json`, filter to `status == "migrated"`.
 
 ## Per-unit verification
 
@@ -67,16 +68,29 @@ For each unit to verify:
 
    Use `n/a` if a command was not defined for this subsystem.
 
-5. **Decide unit status transition** and write `.claude/modernize/units/<unit-id>.json`:
-   - All `tests_must_pass`, `lint_must_pass`, `typecheck_must_pass` thresholds met → set `status = "verified"`.
-   - Otherwise → keep `status = "migrated"` but record the failure detail in `verification.failures[]` and in the unit's `notes_path`.
+5. **Behavioural-parity gate** — skip if `--no-parity` was passed, OR if step 3's lint/typecheck/test thresholds were NOT met (a unit that already can't reach `verified` doesn't need a parity run).
 
-6. **Append history** to the per-unit file:
+   Parity proves what lint/typecheck/tests cannot: that the migrated unit *behaves like* the legacy one — same validation, same response shape/field names, same sort order, same error handling, same UI fields/states. **Tests passing ≠ behaviour preserved.**
+
+   a. **Launch the `parity-reviewer` subagent** (Agent tool, `subagent_type: parity-reviewer`). Pass a prompt containing the unit's `id`, `kind`, `source_paths[]`, `target_paths[]`, the `notes_path` (`.claude/modernize/notes/<unit-id>.md`), and the relevant `migration.md §10` acceptance-criteria lines. It is read-only and returns a single JSON block: `{ parity_findings[], summary, warnings }`.
+
+   b. **Graceful degrade.** If the agent errors, times out, or returns malformed JSON, do NOT block — set `verification.parity = "review-unavailable"`, print a one-line warning, and proceed to step 6 as if there were no findings. An agent hiccup must never trap a working migration in `migrated`.
+
+   c. **Persist findings.** Write the returned array to `unit.parity_findings` (replace wholesale) and set `unit.parity_reviewed_at = <now>`. **Leave `unit.parity_acknowledged_diffs[]` untouched** — acknowledgements persist across runs and match by finding `id`.
+
+   d. **Compute blocking findings**: every finding with `severity == "high"` whose `id` is NOT present in `unit.parity_acknowledged_diffs[]`. Medium/low findings never block — surface them as info only.
+
+6. **Decide unit status transition** and write `.claude/modernize/units/<unit-id>.json`:
+   - lint/typecheck/test thresholds (`lint_must_pass`, `typecheck_must_pass`, `tests_must_pass`) NOT met → keep `status = "migrated"`, record the detail in `verification.failures[]` and `notes_path`. (Parity was skipped per step 5.)
+   - Thresholds met AND no blocking parity findings → set `status = "verified"`. Record `verification.parity` as `"clean"` (zero findings) or `"<A> acknowledged / <I> info"`.
+   - Thresholds met BUT one or more **blocking** parity findings → **keep `status = "migrated"`**. Set `verification.parity = "blocked: <N> high-severity unacknowledged difference(s)"`. This is the gate doing its job: the code compiles and tests pass, but it does not yet behave like the legacy unit. Print the blocking findings (see "After writing") and the two ways forward — fix the code and re-verify, or, if a difference is intentional, acknowledge it via `/web-modernize:parity-check <unit-id>` then re-verify.
+
+7. **Append history** to the per-unit file:
    ```json
    { "at": "<now>", "by": "<user>", "from": "migrated", "to": "verified" (or unchanged), "session_id": "..." }
    ```
 
-7. **Update `notes/<unit-id>.md`** — fill in the "Verification" section with the actual command output (trimmed to relevant lines if too long).
+8. **Update `notes/<unit-id>.md`** — fill in the "Verification" section with the actual command output (trimmed to relevant lines if too long). When parity findings exist, append a "Behavioural parity" subsection listing each finding (`severity` · `kind` · legacy → migrated · recommendation) so reviewers see them in the diff.
 
 ## Project-wide post-checks
 
@@ -151,7 +165,21 @@ verify <unit.id>:
   lint:      <result>
   typecheck: <result>
   tests:     <result>
+  parity:    <clean | <I> info | <A> acknowledged | BLOCKED: <N> high-severity | skipped | review-unavailable>
   → <verified | still-migrated, see notes/<unit.id>.md>
+```
+
+When parity **blocked** the transition, follow the per-unit line with the offending findings so the user can act without opening the JSON:
+
+```
+  ⚠ Parity blocked verified — <N> high-severity difference(s):
+    [<finding-id>] <kind>
+       legacy:   <legacy behaviour>
+       migrated: <migrated behaviour>
+       fix:      <recommendation>            (file: <file>)
+    ...
+  To resolve: fix the code and re-run /web-modernize:verify <unit.id>,
+  or if the change is intentional: /web-modernize:parity-check <unit.id>  (acknowledge it), then re-verify.
 ```
 
 All-units mode output: per-unit lines plus a summary:
@@ -170,4 +198,4 @@ Next: address failures, then re-run /web-modernize:verify <unit.id>.
 
 - Pre: `state.status` ≥ `scaffolded`
 - Post: top-level unaffected unless this was the last verification → `complete`
-- Per-unit file: `migrated` → `verified` (on pass) or unchanged
+- Per-unit file: `migrated` → `verified` (on pass) or unchanged. The `migrated → verified` flip is gated on BOTH the lint/typecheck/test thresholds AND the behavioural-parity check (no unacknowledged high-severity findings), unless `--no-parity` is passed.

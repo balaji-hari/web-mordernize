@@ -100,7 +100,8 @@ Per-unit loop:
   6. Loop until /web-modernize:status reports "complete":
        /web-modernize:next                  ← auto-pick the next eligible unit
        /web-modernize:migrate <unit-id>     ← OR explicitly pick a named unit (e.g., one assigned in standup)
-       /web-modernize:verify                ← after each unit, or batch
+       /web-modernize:verify                ← lint/typecheck/tests + behavioural-parity gate
+       /web-modernize:parity-check <id>     ← (optional) on-demand behaviour diff vs legacy; acknowledge intentional changes
 
      /next and /migrate <unit-id> do the same translation work — only unit
      selection differs. Use /next if you want the plugin to pick the next
@@ -154,7 +155,8 @@ Commit the `.claude/modernize/` directory. That's how Alice on Monday and Bob on
 | `/web-modernize:retry <id> [--with-prompt="…"]` | Re-attempt a failed unit; preserves diagnostic history | When `/status` shows a unit in `failed` status |
 | `/web-modernize:rollback --unit <id>` | Revert one unit's target files via git; reset to `pending` | When a migrated/verified unit broke and you want a clean re-attempt |
 | `/web-modernize:sync` | Merge latest `state.json` and per-unit files from origin into local | After pulling, when other developers have been working in parallel |
-| `/web-modernize:verify [id]` | Lint + typecheck + test a migrated unit, record evidence | After each `/next`, or in batch |
+| `/web-modernize:verify [id] [--no-parity]` | Lint + typecheck + test a migrated unit **and run a behavioural-parity check**, record evidence, flip to `verified` | After each `/next`, or in batch |
+| `/web-modernize:parity-check <id> [--all] [--acknowledge <finding-id> --reason "…"]` | Compare a migrated unit's behaviour against the legacy original (validation, output shape, sort order, error handling, UI states); acknowledge intentional diffs | On demand, or when `/verify` reports a parity block |
 | `/web-modernize:report [--format=md\|json\|html]` | Generate stakeholder progress report (burndown, ETA, risks) | Sprint syncs, exec updates, weekly digests |
 | `/web-modernize:status` | Print progress dashboard | Anytime — read-only |
 | `/web-modernize:unlock` | Force-clear a stuck advisory lock on `state.json` (requires typing `force-clear`) | When a Claude session crashed holding the lock and `/plan` or `/scaffold` is blocked |
@@ -164,7 +166,7 @@ Commit the `.claude/modernize/` directory. That's how Alice on Monday and Bob on
 
 ## Talk to it naturally
 
-You don't have to memorize the 15 slash-command names above. Every skill's `description:` field includes trigger phrases and lifecycle anchors that Claude Code's native skill auto-invocation uses to route plain-English requests to the right command.
+You don't have to memorize the 16 slash-command names above. Every skill's `description:` field includes trigger phrases and lifecycle anchors that Claude Code's native skill auto-invocation uses to route plain-English requests to the right command.
 
 Examples of utterances that route reliably:
 
@@ -178,6 +180,7 @@ Examples of utterances that route reliably:
 | *"where are we"* / *"show status"* / *"progress"* | `/web-modernize:status` |
 | *"migrate the OrderController"* / *"do the login page"* | `/web-modernize:migrate <name>` |
 | *"verify"* / *"run tests"* / *"is it passing"* | `/web-modernize:verify` |
+| *"check parity"* / *"does it behave like the old one"* | `/web-modernize:parity-check <id>` |
 | *"retry"* / *"try again"* | `/web-modernize:retry <id>` |
 | *"rollback the LoginPage"* / *"undo this unit"* | `/web-modernize:rollback --unit <id>` |
 | *"stuck lock"* / *"unlock"* | `/web-modernize:unlock` |
