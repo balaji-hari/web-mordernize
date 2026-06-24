@@ -9,6 +9,10 @@ Thumbs.db
 CLAUDE.local.md
 .claude/settings.local.json
 
+# Python (docs build scripts)
+__pycache__/
+*.py[cod]
+
 # Node (if anyone adds tooling later)
 node_modules/
 npm-debug.log*
