@@ -1,0 +1,294 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Page 3 of 3: State Machine, Data Flow & Multi-Developer Model -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 870" width="1600" height="870"
+     font-family="'Segoe UI',system-ui,-apple-system,Arial,sans-serif">
+<defs>
+  <marker id="ah" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+    <path d="M0,0 L0,6 L8,3 z" fill="#37474f"/>
+  </marker>
+  <marker id="ahR" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+    <path d="M0,0 L0,6 L8,3 z" fill="#c62828"/>
+  </marker>
+  <marker id="ahB" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+    <path d="M0,0 L0,6 L8,3 z" fill="#4e342e"/>
+  </marker>
+  <marker id="ahS" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+    <path d="M0,0 L0,6 L8,3 z" fill="#546e7a"/>
+  </marker>
+  <marker id="ahG" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+    <path d="M0,0 L0,6 L8,3 z" fill="#2e7d32"/>
+  </marker>
+  <marker id="ahP" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+    <path d="M0,0 L0,6 L8,3 z" fill="#6a1b9a"/>
+  </marker>
+</defs>
+
+<rect width="1600" height="870" fill="#eceff1"/>
+
+<!-- ================================================================
+     TITLE  y=0..72
+     ================================================================ -->
+<rect x="0" y="0" width="1600" height="72" fill="#0d1b4b"/>
+<text x="800" y="28" text-anchor="middle" dominant-baseline="middle"
+      fill="white" font-size="24" font-weight="700" letter-spacing="0.5">web-modernize — State Machine &amp; Data Flow</text>
+<text x="800" y="55" text-anchor="middle" dominant-baseline="middle"
+      fill="#9fc8fa" font-size="13">Page 3 of 3: Per-Unit States · State File Schema · Multi-Developer Model · Data Flow</text>
+
+<!-- ================================================================
+     PER-UNIT STATE MACHINE  y=72..310
+     ================================================================ -->
+<rect x="0" y="72" width="1600" height="238" fill="#fff8e1"/>
+<rect x="0" y="72" width="1600" height="32" fill="#e65100"/>
+<text x="800" y="88" text-anchor="middle" dominant-baseline="middle"
+      fill="white" font-size="14" font-weight="700">Per-Unit Migration States  (one units/&lt;id&gt;.json file per unit — each migrates independently)</text>
+
+<!-- MAIN FLOW nodes  y=118, h=36 -->
+<rect x="40"  y="118" width="140" height="36" rx="5" fill="#607d8b"/>
+<text x="110" y="136" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="11" font-weight="600">pending</text>
+
+<rect x="270" y="118" width="150" height="36" rx="5" fill="#e65100"/>
+<text x="345" y="136" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="11" font-weight="600">in_progress</text>
+
+<rect x="520" y="118" width="140" height="36" rx="5" fill="#1565c0"/>
+<text x="590" y="136" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="11" font-weight="600">migrated</text>
+
+<rect x="760" y="118" width="140" height="36" rx="5" fill="#2e7d32"/>
+<text x="830" y="136" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="11" font-weight="600">verified</text>
+
+<!-- Main flow arrows -->
+<line x1="182" y1="136" x2="268" y2="136" stroke="#37474f" stroke-width="2" marker-end="url(#ah)"/>
+<line x1="422" y1="136" x2="518" y2="136" stroke="#37474f" stroke-width="2" marker-end="url(#ah)"/>
+<line x1="662" y1="136" x2="758" y2="136" stroke="#37474f" stroke-width="2" marker-end="url(#ah)"/>
+
+<!-- Main flow arrow labels above -->
+<text x="225" y="112" text-anchor="middle" dominant-baseline="middle" fill="#37474f" font-size="10" font-weight="600">/next or /migrate</text>
+<text x="470" y="112" text-anchor="middle" dominant-baseline="middle" fill="#37474f" font-size="10" font-weight="600">translation complete</text>
+<text x="710" y="112" text-anchor="middle" dominant-baseline="middle" fill="#37474f" font-size="10" font-weight="600">/verify passes</text>
+
+<!-- Heartbeat annotation (below in_progress) -->
+<rect x="248" y="168" width="194" height="36" rx="4" fill="#fff9c4" stroke="#f57f17" stroke-width="1.5"/>
+<text x="345" y="181" text-anchor="middle" dominant-baseline="middle" fill="#e65100" font-size="9.5" font-weight="600">PostToolUse hook fires on every Write</text>
+<text x="345" y="197" text-anchor="middle" dominant-baseline="middle" fill="#e65100" font-size="9">→ heartbeat.mjs bumps last_heartbeat</text>
+<line x1="345" y1="156" x2="345" y2="166" stroke="#f57f17" stroke-width="1.5" stroke-dasharray="3,2"/>
+
+<!-- /verify fails annotation (below migrated) -->
+<rect x="502" y="168" width="178" height="36" rx="4" fill="#fce4ec" stroke="#c62828" stroke-width="1.5"/>
+<text x="591" y="181" text-anchor="middle" dominant-baseline="middle" fill="#c62828" font-size="9.5" font-weight="600">/verify fails → unit.status</text>
+<text x="591" y="197" text-anchor="middle" dominant-baseline="middle" fill="#c62828" font-size="9">= failed, error stored</text>
+<line x1="591" y1="156" x2="591" y2="166" stroke="#c62828" stroke-width="1.5" stroke-dasharray="3,2"/>
+
+<!-- BRANCH STATES  y=220 -->
+<text x="40" y="220" dominant-baseline="middle" fill="#546e7a" font-size="10.5" font-weight="700">Branch States:</text>
+
+<rect x="40"  y="234" width="140" height="36" rx="5" fill="#4e342e"/>
+<text x="110" y="252" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="11" font-weight="600">blocked</text>
+
+<rect x="210" y="234" width="140" height="36" rx="5" fill="#c62828"/>
+<text x="280" y="252" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="11" font-weight="600">failed</text>
+
+<rect x="380" y="234" width="140" height="36" rx="5" fill="#546e7a"/>
+<text x="450" y="252" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="11" font-weight="600">skipped</text>
+
+<!-- Branch arrows from main nodes -->
+<line x1="110" y1="156" x2="110" y2="232" stroke="#4e342e" stroke-width="1.5" marker-end="url(#ahB)"/>
+<text x="126" y="198" dominant-baseline="middle" fill="#4e342e" font-size="9">depends_on unmet</text>
+
+<line x1="280" y1="156" x2="280" y2="232" stroke="#c62828" stroke-width="1.5" marker-end="url(#ahR)"/>
+<text x="296" y="198" dominant-baseline="middle" fill="#c62828" font-size="9">translation error</text>
+
+<line x1="450" y1="254" x2="450" y2="154" stroke="#546e7a" stroke-width="1" stroke-dasharray="4,3"/>
+<text x="466" y="210" dominant-baseline="middle" fill="#546e7a" font-size="9">/abandon --unit</text>
+
+<!-- /retry arrow: failed → in_progress -->
+<path d="M 352 252 Q 400 280 400 300 Q 400 320 345 320 Q 290 320 290 300 Q 290 260 270 154"
+      fill="none" stroke="#e65100" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#ah)"/>
+<text x="408" y="304" dominant-baseline="middle" fill="#e65100" font-size="9" font-weight="600">/retry → in_progress</text>
+
+<!-- /rollback arrow: migrated → pending -->
+<path d="M 590 156 Q 590 96 350 96 Q 200 96 110 116"
+      fill="none" stroke="#78909c" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#ah)"/>
+<text x="340" y="90" dominant-baseline="middle" fill="#78909c" font-size="9" font-weight="600">/rollback → pending</text>
+
+<!-- RIGHT SIDE: in-flight collision resolution -->
+<rect x="960" y="118" width="620" height="152" rx="5" fill="#eceff1" stroke="#546e7a" stroke-width="1.5"/>
+<text x="970" y="136" dominant-baseline="middle" fill="#37474f" font-size="12" font-weight="700">In-Flight Collision Resolution  (when /next or /migrate sees a unit = in_progress)</text>
+
+<rect x="970" y="148" width="600" height="34" rx="4" fill="#e3f2fd" stroke="#1565c0" stroke-width="1"/>
+<text x="980" y="158" dominant-baseline="middle" fill="#0d47a1" font-size="10" font-weight="700">Case A — Stale heartbeat (&gt;15 min)</text>
+<text x="980" y="172" dominant-baseline="middle" fill="#0d47a1" font-size="9.5">Assume crash or abandoned session → proceed and acquire the unit</text>
+
+<rect x="970" y="190" width="600" height="34" rx="4" fill="#fff9c4" stroke="#f57f17" stroke-width="1"/>
+<text x="980" y="200" dominant-baseline="middle" fill="#e65100" font-size="10" font-weight="700">Case B — Same developer, same host (fresh heartbeat)</text>
+<text x="980" y="214" dominant-baseline="middle" fill="#e65100" font-size="9.5">Collision with yourself → show warning, ask if you want to retry from scratch</text>
+
+<rect x="970" y="232" width="600" height="34" rx="4" fill="#fce4ec" stroke="#c62828" stroke-width="1"/>
+<text x="980" y="242" dominant-baseline="middle" fill="#c62828" font-size="10" font-weight="700">Case C — Different developer (fresh heartbeat)</text>
+<text x="980" y="256" dominant-baseline="middle" fill="#c62828" font-size="9.5">Block — suggest /sync then pick a different unit; /status shows who is working what</text>
+
+<!-- ================================================================
+     STATE FILES SCHEMA  y=310..520
+     Two columns: state.json (left) | units/<id>.json (right)
+     ================================================================ -->
+<rect x="0" y="310" width="1600" height="210" fill="#f3e5f5"/>
+<rect x="0" y="310" width="1600" height="32" fill="#6a1b9a"/>
+<text x="800" y="326" text-anchor="middle" dominant-baseline="middle"
+      fill="white" font-size="14" font-weight="700">State File Schema  (templates/ define the shape; /init copies them into the user repo)</text>
+
+<!-- Left: state.json -->
+<rect x="12" y="350" width="770" height="162" rx="5" fill="#7b1fa2"/>
+<text x="397" y="367" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="12" font-weight="700">state.json  (top-level workflow ledger  ·  schema_version: 3 const)</text>
+
+<text x="24"  y="387" dominant-baseline="middle" fill="#e1bee7" font-size="10" font-family="'Cascadia Code','Consolas',monospace">status         </text>
+<text x="200" y="387" dominant-baseline="middle" fill="#ffeb3b" font-size="10">"uninitialized|initialized|analyzed|planned|scaffolded|auth_done|in_progress|complete"</text>
+
+<text x="24"  y="405" dominant-baseline="middle" fill="#e1bee7" font-size="10" font-family="'Cascadia Code','Consolas',monospace">unit_ids[]     </text>
+<text x="200" y="405" dominant-baseline="middle" fill="white" font-size="10">Ordered list of unit IDs — set by /plan, order determines migration sequence</text>
+
+<text x="24"  y="422" dominant-baseline="middle" fill="#e1bee7" font-size="10" font-family="'Cascadia Code','Consolas',monospace">source_stack   </text>
+<text x="200" y="422" dominant-baseline="middle" fill="white" font-size="10">{ primary, confidence, candidates[], detected_at }  — written by /analyze</text>
+
+<text x="24"  y="439" dominant-baseline="middle" fill="#e1bee7" font-size="10" font-family="'Cascadia Code','Consolas',monospace">target_stack   </text>
+<text x="200" y="439" dominant-baseline="middle" fill="white" font-size="10">{ ui.framework, api.framework, db.type }  — chosen by team during /analyze interview</text>
+
+<text x="24"  y="456" dominant-baseline="middle" fill="#e1bee7" font-size="10" font-family="'Cascadia Code','Consolas',monospace">scaffold       </text>
+<text x="200" y="456" dominant-baseline="middle" fill="white" font-size="10">{ ui/api/db: { path, status } }  — written by /scaffold</text>
+
+<text x="24"  y="473" dominant-baseline="middle" fill="#e1bee7" font-size="10" font-family="'Cascadia Code','Consolas',monospace">lock           </text>
+<text x="200" y="473" dominant-baseline="middle" fill="white" font-size="10">{ holder, acquired_at, expires_at }  — advisory, guards /plan + /scaffold only (10-min TTL)</text>
+
+<text x="24"  y="490" dominant-baseline="middle" fill="#e1bee7" font-size="10" font-family="'Cascadia Code','Consolas',monospace">plugin_version </text>
+<text x="200" y="490" dominant-baseline="middle" fill="white" font-size="10">Bumped by /plan, /next, /verify. schema_version const: bump = fresh /init required.</text>
+
+<!-- Right: units/<id>.json -->
+<rect x="818" y="350" width="770" height="162" rx="5" fill="#7b1fa2"/>
+<text x="1203" y="367" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="12" font-weight="700">units/&lt;id&gt;.json  (per-unit state  ·  N files, one per migration unit)</text>
+
+<text x="830" y="387" dominant-baseline="middle" fill="#e1bee7" font-size="10" font-family="'Cascadia Code','Consolas',monospace">id / kind      </text>
+<text x="1006" y="387" dominant-baseline="middle" fill="white" font-size="10">page|controller|component|module|service|endpoint|shared</text>
+
+<text x="830" y="405" dominant-baseline="middle" fill="#e1bee7" font-size="10" font-family="'Cascadia Code','Consolas',monospace">source_paths[] </text>
+<text x="1006" y="405" dominant-baseline="middle" fill="white" font-size="10">Files in the legacy app this unit translates from</text>
+
+<text x="830" y="422" dominant-baseline="middle" fill="#e1bee7" font-size="10" font-family="'Cascadia Code','Consolas',monospace">target_paths[] </text>
+<text x="1006" y="422" dominant-baseline="middle" fill="white" font-size="10">Files written into the new scaffold</text>
+
+<text x="830" y="439" dominant-baseline="middle" fill="#e1bee7" font-size="10" font-family="'Cascadia Code','Consolas',monospace">depends_on[]   </text>
+<text x="1006" y="439" dominant-baseline="middle" fill="white" font-size="10">Unit IDs that must be migrated first (e.g. __auth__, UserService)</text>
+
+<text x="830" y="456" dominant-baseline="middle" fill="#e1bee7" font-size="10" font-family="'Cascadia Code','Consolas',monospace">status         </text>
+<text x="1006" y="456" dominant-baseline="middle" fill="#ffeb3b" font-size="10">pending|in_progress|migrated|verified|blocked|skipped|failed</text>
+
+<text x="830" y="473" dominant-baseline="middle" fill="#e1bee7" font-size="10" font-family="'Cascadia Code','Consolas',monospace">in_flight      </text>
+<text x="1006" y="473" dominant-baseline="middle" fill="white" font-size="10">{ by (email), host, started_at, last_heartbeat }  — bumped every Write</text>
+
+<text x="830" y="490" dominant-baseline="middle" fill="#e1bee7" font-size="10" font-family="'Cascadia Code','Consolas',monospace">history[]      </text>
+<text x="1006" y="490" dominant-baseline="middle" fill="white" font-size="10">{ at, by, action, notes }  — audit trail of all transitions</text>
+
+<!-- ================================================================
+     MULTI-DEVELOPER MODEL  y=520..680
+     ================================================================ -->
+<rect x="0" y="520" width="1600" height="160" fill="#e3f2fd"/>
+<rect x="0" y="520" width="1600" height="32" fill="#0277bd"/>
+<text x="800" y="536" text-anchor="middle" dominant-baseline="middle"
+      fill="white" font-size="14" font-weight="700">Multi-Developer Model  (coordinate offline — standup / Slack — not via the plugin)</text>
+
+<!-- 3 columns of explanation -->
+<rect x="12"  y="560" width="500" height="112" rx="5" fill="#e1f5fe" stroke="#0277bd" stroke-width="1.5"/>
+<text x="262" y="578" text-anchor="middle" dominant-baseline="middle" fill="#01579b" font-size="11" font-weight="700">Per-Unit File Split</text>
+<text x="262" y="596" text-anchor="middle" dominant-baseline="middle" fill="#01579b" font-size="10">Alice works on units/LoginPage.json</text>
+<text x="262" y="612" text-anchor="middle" dominant-baseline="middle" fill="#01579b" font-size="10">Bob works on units/OrderForm.json</text>
+<text x="262" y="628" text-anchor="middle" dominant-baseline="middle" fill="#01579b" font-size="10">→ completely different files</text>
+<text x="262" y="644" text-anchor="middle" dominant-baseline="middle" fill="#0277bd" font-size="10" font-weight="600">→ git merge is trivial (no conflicts)</text>
+<text x="262" y="660" text-anchor="middle" dominant-baseline="middle" fill="#546e7a" font-size="9">state.json touched only on phase transitions</text>
+
+<rect x="550" y="560" width="500" height="112" rx="5" fill="#e1f5fe" stroke="#0277bd" stroke-width="1.5"/>
+<text x="800" y="578" text-anchor="middle" dominant-baseline="middle" fill="#01579b" font-size="11" font-weight="700">Advisory Lock  (state.json.lock)</text>
+<text x="800" y="596" text-anchor="middle" dominant-baseline="middle" fill="#01579b" font-size="10">Only /plan and /scaffold are guarded</text>
+<text x="800" y="612" text-anchor="middle" dominant-baseline="middle" fill="#01579b" font-size="10">Lock expires after 10 minutes (TTL)</text>
+<text x="800" y="628" text-anchor="middle" dominant-baseline="middle" fill="#01579b" font-size="10">Does NOT block unit migrations (/next)</text>
+<text x="800" y="644" text-anchor="middle" dominant-baseline="middle" fill="#0277bd" font-size="10" font-weight="600">/unlock force-clears if stale</text>
+<text x="800" y="660" text-anchor="middle" dominant-baseline="middle" fill="#546e7a" font-size="9">holder: { email, session_id, acquired_at, expires_at }</text>
+
+<rect x="1088" y="560" width="500" height="112" rx="5" fill="#e1f5fe" stroke="#0277bd" stroke-width="1.5"/>
+<text x="1338" y="578" text-anchor="middle" dominant-baseline="middle" fill="#01579b" font-size="11" font-weight="700">Heartbeat Staleness</text>
+<text x="1338" y="596" text-anchor="middle" dominant-baseline="middle" fill="#01579b" font-size="10">last_heartbeat bumped on every Write</text>
+<text x="1338" y="612" text-anchor="middle" dominant-baseline="middle" fill="#01579b" font-size="10">If &gt; 15 min old → assume crash (Case A)</text>
+<text x="1338" y="628" text-anchor="middle" dominant-baseline="middle" fill="#01579b" font-size="10">/next can re-acquire stale unit</text>
+<text x="1338" y="644" text-anchor="middle" dominant-baseline="middle" fill="#0277bd" font-size="10" font-weight="600">/status shows staleness warning</text>
+<text x="1338" y="660" text-anchor="middle" dominant-baseline="middle" fill="#546e7a" font-size="9">/sync reconciles state.json after git pull</text>
+
+<!-- ================================================================
+     DATA FLOW DIAGRAM  y=680..800
+     ================================================================ -->
+<rect x="0" y="680" width="1600" height="120" fill="#f8f9fa"/>
+<rect x="0" y="680" width="1600" height="28" fill="#37474f"/>
+<text x="800" y="694" text-anchor="middle" dominant-baseline="middle"
+      fill="white" font-size="13" font-weight="700">Data Flow — How Components Talk to Each Other</text>
+
+<!-- Flow boxes and arrows at y=720 (h=30) -->
+<!-- /analyze → legacy-analyzer → frameworks(source) → analysis.json -->
+<rect x="12"   y="720" width="155" height="30" rx="4" fill="#1565c0"/>
+<text x="89"   y="735" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="9.5" font-weight="600">/analyze (skill)</text>
+<line x1="169" y1="735" x2="198" y2="735" stroke="#37474f" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="200"  y="720" width="155" height="30" rx="4" fill="#bf360c"/>
+<text x="277"  y="735" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="9.5" font-weight="600">legacy-analyzer</text>
+<line x1="357" y1="735" x2="386" y2="735" stroke="#37474f" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="388"  y="720" width="175" height="30" rx="4" fill="#1b5e20"/>
+<text x="475"  y="735" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="9.5">frameworks/ (source)</text>
+<line x1="565" y1="735" x2="594" y2="735" stroke="#6a1b9a" stroke-width="1.5" marker-end="url(#ahP)"/>
+<rect x="596"  y="720" width="140" height="30" rx="4" fill="#7b1fa2"/>
+<text x="666"  y="735" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="9.5">analysis.json</text>
+
+<!-- /scaffold → frameworks(target) → new scaffold + verify.config.json -->
+<rect x="800"  y="720" width="155" height="30" rx="4" fill="#1565c0"/>
+<text x="877"  y="735" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="9.5" font-weight="600">/scaffold (skill)</text>
+<line x1="957" y1="735" x2="986" y2="735" stroke="#37474f" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="988"  y="720" width="175" height="30" rx="4" fill="#1b5e20"/>
+<text x="1075" y="735" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="9.5">frameworks/ (target)</text>
+<line x1="1165" y1="735" x2="1194" y2="735" stroke="#880e4f" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="1196" y="720" width="194" height="30" rx="4" fill="#880e4f"/>
+<text x="1293" y="735" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="9.5">apps/web-new/ apps/api-new/</text>
+
+<!-- Row 2 of data flow -->
+<rect x="12"   y="760" width="155" height="30" rx="4" fill="#1565c0"/>
+<text x="89"   y="775" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="9.5" font-weight="600">/next (skill)</text>
+<line x1="169" y1="775" x2="198" y2="775" stroke="#37474f" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="200"  y="760" width="155" height="30" rx="4" fill="#bf360c"/>
+<text x="277"  y="775" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="9.5" font-weight="600">unit-migrator (inline)</text>
+<line x1="357" y1="775" x2="386" y2="775" stroke="#37474f" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="388"  y="760" width="175" height="30" rx="4" fill="#1b5e20"/>
+<text x="475"  y="775" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="9.5">frameworks/ src+target</text>
+<line x1="565" y1="775" x2="594" y2="775" stroke="#6a1b9a" stroke-width="1.5" marker-end="url(#ahP)"/>
+<rect x="596"  y="760" width="140" height="30" rx="4" fill="#7b1fa2"/>
+<text x="666"  y="775" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="9.5">units/&lt;id&gt;.json</text>
+
+<!-- PostToolUse hook fires -->
+<rect x="800"  y="760" width="215" height="30" rx="4" fill="#00695c"/>
+<text x="907"  y="775" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="9.5" font-weight="600">PostToolUse hook fires</text>
+<line x1="1017" y1="775" x2="1046" y2="775" stroke="#37474f" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="1048" y="760" width="145" height="30" rx="4" fill="#00695c"/>
+<text x="1120" y="775" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="9.5">heartbeat.mjs</text>
+<line x1="1195" y1="775" x2="1224" y2="775" stroke="#6a1b9a" stroke-width="1.5" marker-end="url(#ahP)"/>
+<rect x="1226" y="760" width="164" height="30" rx="4" fill="#7b1fa2"/>
+<text x="1308" y="775" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="9.5">last_heartbeat bumped</text>
+
+<!-- ================================================================
+     FOOTER  y=800..870
+     ================================================================ -->
+<rect x="0" y="800" width="1600" height="70" fill="#e8eaf6"/>
+<line x1="0" y1="800" x2="1600" y2="800" stroke="#9fa8da" stroke-width="1.5"/>
+
+<rect x="12"  y="818" width="490" height="30" rx="4" fill="#424242"/>
+<text x="257" y="833" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="11">◀  PAGE 1: Overview  →  architecture-p1-overview.svg</text>
+
+<rect x="555" y="818" width="490" height="30" rx="4" fill="#424242"/>
+<text x="800" y="833" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="11">◀  PAGE 2: Plugin Components  →  architecture-p2-plugin.svg</text>
+
+<rect x="1098" y="818" width="490" height="30" rx="4" fill="#6a1b9a"/>
+<text x="1343" y="833" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="11" font-weight="700">◀  PAGE 3 of 3: State &amp; Data Flow  (you are here)</text>
+
+<text x="800" y="860" text-anchor="middle" dominant-baseline="middle" fill="#9e9e9e" font-size="9.5">
+  github.com/balaji-hari/web-mordernize  ·  Plugin namespace: web-modernize  ·  State schema v3  ·  15 skills  ·  3 agents  ·  31 framework files
+</text>
+
+</svg>

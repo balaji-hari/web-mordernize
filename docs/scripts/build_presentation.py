@@ -34,7 +34,7 @@ FONT_MONO        = "Consolas"
 FONT_HEADER      = "Segoe UI Semibold"   # slide titles, section banners, table headers
 FONT_HEADER_LIGHT = "Segoe UI Light"     # hero wordmarks on title/closing slides
 
-FOOTER_TEXT = "web-modernize v0.10.0   ·   Balaji Harikrishnan   ·   Cognizant   ·   May 2026"
+FOOTER_TEXT = "web-modernize v0.11.0   ·   Balaji Harikrishnan   ·   Cognizant   ·   June 2026"
 
 
 # ── Low-level helpers ───────────────────────────────────────────────────────
@@ -244,7 +244,7 @@ def slide_01_title(prs):
              size=15, italic=True, color=TEAL, align=PP_ALIGN.CENTER)
 
     add_text(slide, 0.5, 6.55, 12.333, 0.35,
-             "Balaji Harikrishnan   ·   Cognizant   ·   May 2026   ·   v0.10.0",
+             "Balaji Harikrishnan   ·   Cognizant   ·   June 2026   ·   v0.11.0",
              size=12, color=SLATE, font=FONT_HEADER, align=PP_ALIGN.CENTER)
 
 
@@ -316,9 +316,9 @@ def slide_02_intro(prs):
          "Installs via the standard  /plugin install  command  —  no "
          "separate infrastructure, no servers."),
         ("What It Adds",
-         "15 skills exposed as slash commands  ·  3 AI agents (analyzer, "
-         "migrator, gotchas catalog)  ·  2 automation hooks  ·  8 "
-         "schema-validated templates copied into the team's repo."),
+         "16 skills exposed as slash commands  ·  4 AI agents (analyzer, "
+         "migrator, parity-reviewer, gotchas catalog)  ·  2 automation "
+         "hooks  ·  9 schema-validated templates copied into the team's repo."),
         ("State and Concurrency",
          "All migration state lives in git as JSON. Per-unit file split "
          "(schema v3) lets 20+ developers migrate different units in "
@@ -627,7 +627,7 @@ def slide_05_execution(prs):
 
     # "Same time" indicator below cards
     add_text(slide, 0.40, 6.48, 12.533, 0.26,
-             "/verify enforces lint + type-check + tests before a unit is marked done.  Per-unit git files mean zero merge conflicts in parallel.",
+             "/verify enforces lint + type-check + tests + a behavioural-parity check before a unit is marked done.  Per-unit git files mean zero merge conflicts in parallel.",
              size=11, italic=True, color=SLATE,
              align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
 
@@ -661,11 +661,14 @@ def slide_07_risk_safety(prs):
          "accidental wipes. Per-unit notes capture the why alongside "
          "the what."),
         ("Nothing ships unverified",
-         "/verify is a hard gate — lint + type-check + tests must pass "
-         "before a unit transitions from migrated to verified. Failed "
-         "units record diagnostics in failure.diagnostic_history for "
-         "review. /retry --with-prompt re-attempts with human-supplied "
-         "guidance; the prior attempt's diagnostic is never lost."),
+         "/verify is a hard gate — lint, type-check, and tests must pass "
+         "before a unit transitions from migrated to verified. A read-only "
+         "parity-reviewer then compares the migrated unit against the "
+         "legacy original (validation, output shape, errors, UI states); "
+         "high-severity differences block the unit until the team "
+         "acknowledges them via /parity-check. Failed units keep their "
+         "diagnostic history, and /retry --with-prompt re-attempts with "
+         "human guidance."),
         ("Nothing is hidden",
          "All state lives in git as JSON — auditable, diffable, "
          "code-reviewable. /status shows real-time who's working on "
@@ -949,7 +952,7 @@ def slide_06_advantages(prs):
          "Per-unit git files mean Alice and Bob's work touch zero shared files — conflict-free by design."),
         ("Quality assurance",
          "Verification is whatever the developer remembers to run — lint, types, tests can be skipped.",
-         "/verify enforces lint, type-check, and tests as a hard gate before a unit is marked done."),
+         "/verify enforces lint, type-check, tests, and a behavioural-parity check as a hard gate before a unit is marked done."),
         ("Failure recovery",
          "A failed migration leaves broken files behind — recovery is manual git surgery, no audit trail.",
          "/rollback reverts a unit cleanly in one command; /retry preserves every diagnostic for review."),
@@ -1024,14 +1027,14 @@ def slide_06_advantages(prs):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Slide 10 — The 15 Skills (Slash Commands)
+# Slide 10 — The 16 Skills (Slash Commands)
 # ══════════════════════════════════════════════════════════════════════════════
 
 def slide_10_commands(prs):
     slide = blank_slide(prs)
     page_chrome(
         slide,
-        "The 15 Skills  (Slash Commands)",
+        "The 16 Skills  (Slash Commands)",
         "Each skill is exposed as a slash command — or auto-fires from plain English (see slide 8)",
         page_num=10,
     )
@@ -1045,7 +1048,8 @@ def slide_10_commands(prs):
         ("/auth",      "Migrates login and authentication first, because every feature depends on it."),
         ("/next",      "Picks the next available unit from the backlog and migrates it automatically."),
         ("/migrate",   "Migrates a specific unit by name — used when standup assigns work."),
-        ("/verify",    "Runs lint, type-check, and unit tests on a migrated unit before it is declared done."),
+        ("/verify",    "Runs lint, type-check, unit tests, and a behavioural-parity check on a migrated unit before it is declared done."),
+        ("/parity-check", "Compares a migrated unit's behaviour against the legacy original — validation, output shape, errors, UI states — and lets the team acknowledge intentional differences."),
         ("/retry",     "Re-attempts a failed unit, optionally with team-supplied corrective guidance."),
         ("/rollback",  "Reverts a single unit back to its original state in one git command."),
         ("/sync",      "Merges teammates' parallel progress into the local copy with deterministic rules."),
@@ -1061,7 +1065,7 @@ def slide_10_commands(prs):
         col_ratios=[0.18, 0.82],
         header_size=13, body_size=11,
         mono_col0=True,
-        row_height=0.36,
+        row_height=0.33,
     )
 
 
@@ -1078,31 +1082,33 @@ def slide_11_inventory(prs):
         page_num=11,
     )
 
-    add_text(slide, 0.40, 1.30, 12.5, 0.32,
-             "3 AI Agents   (specialised AIs that read your code, translate it, and steer around known pitfalls)",
+    add_text(slide, 0.40, 1.22, 12.5, 0.32,
+             "4 AI Agents   (specialised AIs that read your code, translate it, verify behaviour, and steer around known pitfalls)",
              size=15, color=COBALT, font=FONT_HEADER)
     add_table(
-        slide, 0.40, 1.65, 12.533, 1.45,
+        slide, 0.40, 1.55, 12.533, 1.55,
         ["Agent", "What It Does"],
         [
             ("legacy-analyzer",
              "Read-only AI agent that inspects the legacy codebase and produces a structured stack inventory."),
             ("unit-migrator",
              "Core migration engine that translates one page or feature from legacy code to the modern target stack."),
+            ("parity-reviewer",
+             "Read-only AI that compares the migrated unit against the legacy original and reports behavioural differences tests can't catch."),
             ("permanent-gotchas",
              "Curated read-only catalog of bugs the AI cannot reliably discover on its own — first-run crashes and silent failures."),
         ],
         col_ratios=[0.22, 0.78],
         header_size=12, body_size=11,
         mono_col0=True,
-        row_height=0.31,
+        row_height=0.30,
     )
 
-    add_text(slide, 0.40, 3.20, 12.5, 0.32,
+    add_text(slide, 0.40, 3.15, 12.5, 0.32,
              "2 Automation Hooks",
              size=15, color=COBALT, font=FONT_HEADER)
     add_table(
-        slide, 0.40, 3.55, 12.533, 1.10,
+        slide, 0.40, 3.48, 12.533, 1.10,
         ["Hook", "What It Does"],
         [
             ("hooks.json",
@@ -1116,11 +1122,11 @@ def slide_11_inventory(prs):
         row_height=0.31,
     )
 
-    add_text(slide, 0.40, 4.75, 12.5, 0.32,
+    add_text(slide, 0.40, 4.52, 12.5, 0.32,
              "9 Templates  +  31 Framework Files",
              size=15, color=COBALT, font=FONT_HEADER)
     add_table(
-        slide, 0.40, 5.10, 12.533, 2.05,
+        slide, 0.40, 4.85, 12.533, 2.05,
         ["Artifact", "What It Does"],
         [
             ("migration.md",                          "The team-editable configuration: target stack, strategy, auth, acceptance criteria."),
@@ -1186,7 +1192,7 @@ def slide_12_closing(prs):
              "Balaji Harikrishnan   ·   balaji.harikrishnan@cognizant.com",
              size=13, color=WHITE, align=PP_ALIGN.CENTER)
     add_text(slide, 0.5, 6.70, 12.333, 0.32,
-             "web-modernize v0.10.0   ·   github.com/balaji-hari/web-mordernize",
+             "web-modernize v0.11.0   ·   github.com/balaji-hari/web-mordernize",
              size=11, italic=True, color=SLATE, align=PP_ALIGN.CENTER)
 
 
@@ -1197,7 +1203,7 @@ def slide_12_closing(prs):
 def build():
     prs = new_prs()
 
-    print("Building 12-slide leadership deck (v0.10.0)...")
+    print("Building 12-slide leadership deck (v0.11.0)...")
     slide_01_title(prs);            print("  [1/12] Title")
     slide_02_intro(prs);            print("  [2/12] What is web-modernize")
     slide_03_need(prs);             print("  [3/12] Why we need it")
@@ -1207,11 +1213,11 @@ def build():
     slide_07_risk_safety(prs);      print("  [7/12] Risk, safety, and reversibility (NEW)")
     slide_08_extensibility(prs);    print("  [8/12] Natural language + pluggable framework library")
     slide_09_planning(prs);         print("  [9/12] Built for sprint and PI planning")
-    slide_10_commands(prs);         print("  [10/12] 15 skills (slash commands)")
+    slide_10_commands(prs);         print("  [10/12] 16 skills (slash commands)")
     slide_11_inventory(prs);        print("  [11/12] Agents, hooks, templates, framework library")
     slide_12_closing(prs);          print("  [12/12] Closing / next step")
 
-    out = r"C:\1\web-mordernize\web-modernize-presentation.pptx"
+    out = r"C:\1\web-mordernize\docs\decks\web-modernize-presentation.pptx"
     prs.save(out)
     print(f"\nSaved: {out}")
 
