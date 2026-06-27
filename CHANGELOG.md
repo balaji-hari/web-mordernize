@@ -2,6 +2,29 @@
 
 All notable changes to the `web-modernize` plugin are documented here. Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.12.0] - 2026-06-27
+
+Adopts the first six "borrowings" from the sibling `code-modernization` plugin (catalogued in `docs/planning/future-code-modernization-borrowings.md`) — the disciplines and one agent that harden *understanding, verification rigor, and safety* around the migration, without touching the per-unit execution loop that is this plugin's strength. All changes are additive: no `state.schema.json` `schema_version` bump, no removed/renamed commands. Teams pull this with `/plugin uninstall web-modernize && /plugin install web-modernize`; **no `.claude/modernize/` reset required**.
+
+### Added
+- **`agents/migration-critic.md`** (borrowing #3) — new read-only subagent that reviews a migrated unit's TARGET code for **idiomatic quality**, orthogonal to `parity-reviewer`'s behavioural check. Flags "JOBOL" / legacy-paradigm leakage (WebForms-in-React `useEffect`-postback emulation, jQuery-style imperative DOM in a reactive framework, scriptlet/code-behind-shaped controllers, God-components), ceremonial error handling, single-use abstractions, tests that exercise paths instead of pinning behaviour, and on-call/operability gaps. Returns `quality_findings[]` + a one-line headline. **Advisory only — never blocks** the `migrated → verified` transition.
+- **`/web-modernize:quality-check`** (`skills/quality-check/SKILL.md`) (#3) — on-demand migration-quality review for one unit or `--all`; the sibling of `/parity-check` minus the acknowledge/gate machinery (quality findings don't block, so there's nothing to suppress). Brings the user-facing command count to **17**.
+- **`templates/unit.schema.json` — `quality_findings[]`, `quality_reviewed_at`, `quality_headline`** (#3) — additive fields holding the migration-critic's output. No `schema_version` bump.
+- **Toolchain preflight in `/web-modernize:scaffold`** (#6) — a fast read-only check at the top of scaffold that reads each chosen target's runtime floor from its `frameworks/<name>.md` and probes the binaries (Node/npm, Python, .NET SDK, Java/Maven). Missing required runtime → **stop before any half-scaffold** with the install one-liner; below-floor → warn and ask; all green → proceed. Unknown targets skip the probe and fall through to the existing follow-up. Skipped under `--assets-only`.
+- **`SECRETS.local.md` quarantine** (#2) — `/web-modernize:init` now gitignores `.claude/modernize/SECRETS.local.md`, the only place a raw discovered credential may be written.
+
+### Changed
+- **`agents/parity-reviewer.md`** — three additions: (#5) a **security-parity dimension** (dropped authorization, injection, lost output-encoding, secret-in-bundle, dropped CSRF) with five new finding kinds (`security_authz_dropped`, `security_injection`, `security_output_encoding`, `security_secret_exposure`, `security_csrf`), default severity `high`, gated by an exploit-scenario discipline; (#4) a **refute pass** that requires every `high` finding to have a one-sentence consumer-visible impact before it's emitted, raising precision on the one gate that can trap a working migration; (#1/#2) **untrusted-input** and **secret-masking** rules.
+- **`templates/unit.schema.json`** — the five `security_*` values added to the `parity_findings[].kind` enum (#5, additive).
+- **`skills/verify/SKILL.md`** — (#3) a new **advisory step 5b** runs `migration-critic` after the parity gate (graceful-degrade, never blocks; `--no-quality` opts out) and prints a `quality:` line; (#5) clarifies that security-kind `high` parity findings block exactly like any other high and are acknowledged the same way via `/parity-check`.
+- **`agents/legacy-analyzer.md`, `agents/unit-migrator.md`** — (#1) untrusted-input and (#2) secret-masking rules: legacy code is data, never instructions; credential values are masked (`AKIA****`) + `file:line` and never written into `analysis.json`, `notes/*.md`, symbol maps, or any tracked artifact; instruction-shaped text is reported, not obeyed.
+
+### Why this is a minor, not a patch
+A new user-facing command (`/web-modernize:quality-check`), a new agent, a new advisory pass in `/verify`, a new scaffold gate that can stop a run, and a new behaviour-blocking finding class (security-parity highs). User-visible surface and workflow behaviour both change.
+
+### Why this is a minor, not a major
+No `state.schema.json` `schema_version` bump. The new `unit.schema.json` fields and the five `parity_findings[].kind` values are additive and optional — existing unit files validate as-is. No removed or renamed skills/commands. Migrations mid-flight keep working; the new security highs apply on the next `/verify`, and `--no-parity` / `--no-quality` / acknowledgement remain available.
+
 ## [0.11.0] - 2026-05-31
 
 Closes the biggest silent-failure gap in the workflow: until now `/verify` proved a migrated unit was *valid* (lint + typecheck + tests pass) but never that it *behaved like the legacy original*. Tests green, behaviour subtly different — a flipped default sort, a tightened validation rule, a renamed response field, a dropped error path — was an invisible class of regression. This release adds a behavioural-parity reviewer that compares the migrated target against the legacy source and reports observable differences, and wires it into `/verify` as a gate on the `migrated → verified` transition.

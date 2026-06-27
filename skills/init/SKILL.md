@@ -91,7 +91,12 @@ Open the team's existing `.gitignore` (create it if absent). Append the followin
 # web-modernize plugin — per-developer scratch (not shared)
 CLAUDE.local.md
 .claude/settings.local.json
+# web-modernize plugin — quarantined secrets discovered in legacy code (never commit raw values)
+.claude/modernize/SECRETS.local.md
+.claude/modernize/**/SECRETS.local.md
 ```
+
+The `SECRETS.local.md` lines keep raw credentials the agents discover in legacy source out of git. The agents (`legacy-analyzer`, `unit-migrator`, `parity-reviewer`, `migration-critic`) mask secret **values** in everything they write to tracked artifacts; if a raw value must be recorded for the team to rotate, it goes only to this gitignored file.
 
 ## After writing
 

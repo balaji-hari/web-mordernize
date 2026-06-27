@@ -221,6 +221,8 @@
               "error_handling", "business_logic", "edge_case",
               "ui_field", "ui_required", "ui_client_validation", "ui_submit",
               "ui_redirect", "ui_error_state", "ui_default",
+              "security_authz_dropped", "security_injection", "security_output_encoding",
+              "security_secret_exposure", "security_csrf",
               "other"
             ]
           },
@@ -247,6 +249,46 @@
           "by": { "type": "string", "description": "User identity (email when available)." },
           "at": { "type": "string", "format": "date-time" },
           "reason": { "type": "string", "description": "Why this difference is intentional / acceptable." }
+        }
+      }
+    },
+    "quality_reviewed_at": {
+      "description": "When the migration-critic last reviewed this unit's target code for idiomatic quality. Absent/null = never reviewed.",
+      "oneOf": [
+        { "type": "null" },
+        { "type": "string", "format": "date-time" }
+      ]
+    },
+    "quality_headline": {
+      "description": "The migration-critic's one-line 'if I could change one thing' summary from its most recent review.",
+      "oneOf": [
+        { "type": "null" },
+        { "type": "string" }
+      ]
+    },
+    "quality_findings": {
+      "type": "array",
+      "description": "Idiomatic / maintainability findings about the migrated TARGET code, produced by the migration-critic agent (run by /web-modernize:verify's advisory pass or /web-modernize:quality-check). Replaced wholesale on each review. ADVISORY ONLY — quality findings never block the migrated→verified transition (that gate depends solely on lint/typecheck/tests + behavioural parity).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "kind", "severity", "observation"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable, content-derived identifier, e.g. 'jobol:OrderListPage:useeffect-postback-emulation'. Deterministic from kind + the observation, so it survives a re-run on unchanged code and a fixed issue drops off."
+          },
+          "kind": {
+            "enum": ["jobol", "idiom", "error_handling", "dead_abstraction", "test_quality", "oncall_readiness", "other"]
+          },
+          "severity": {
+            "enum": ["blocker", "high", "medium", "nit"],
+            "description": "Quality grade. NEVER blocks verification — informational only. 'blocker' means the critic would not approve the code in review, not that the workflow halts."
+          },
+          "observation": { "type": "string", "description": "What the critic observed in the target code." },
+          "why_it_matters": { "type": "string", "description": "Optional: the maintainability / operability cost if left as-is." },
+          "suggestion": { "type": "string", "description": "Optional: a concrete change toward the idiomatic target-stack form." },
+          "file": { "type": "string", "description": "Target file (optionally :line) the finding is rooted in." }
         }
       }
     }

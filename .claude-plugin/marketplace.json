@@ -8,8 +8,8 @@
     {
       "name": "web-modernize",
       "source": "./",
-      "description": "Guides teams through migrating legacy web applications to modern stacks. Provides /web-modernize:analyze, plan, scaffold (now copies legacy assets), next, verify (with behavioural-parity gate), parity-check, rollback, retry, sync, report, and other slash commands. Per-unit state file split for multi-developer concurrency.",
-      "version": "0.11.0"
+      "description": "Guides teams through migrating legacy web applications to modern stacks. Provides /web-modernize:analyze, plan, scaffold (legacy-asset copy + toolchain preflight), next, verify (behavioural-parity + security gate), parity-check, quality-check (advisory idiomatic-code review), rollback, retry, sync, report, and other slash commands. Per-unit state file split for multi-developer concurrency.",
+      "version": "0.12.0"
     }
   ]
 }

@@ -32,6 +32,45 @@ You are the **scaffold** skill. Your job is to bring up the modern project's ske
 
 If `--assets-only`, skip directly to "Copy legacy assets" below; do not run the per-subsystem checklist or update `verify.config.json`.
 
+## Toolchain preflight
+
+(Skip entirely under `--assets-only` — copying assets needs no build toolchain.)
+
+Before scaffolding anything, verify the runtimes the chosen target stacks need are installed and new enough. Catching a missing or too-old runtime *now* — in one ~60-second check — beats hitting it half-way through `npm install`, or at the smoke-build gate with a half-written subsystem already on disk.
+
+1. **Resolve the chosen targets.** Read `state.target_stack.ui` and `state.target_stack.api` (fall back to `migration.md §3`/`§4` if state hasn't recorded them yet). Skip the API row if it's `none` / `reuse-existing`.
+
+2. **Read each target's runtime floor from its framework file.** For each chosen target with a `frameworks/<name>.md`, read its `## Scaffold` note, `## Dev server` row, and `display_name` for the required runtime + minimum version — e.g. `react-vite-ts` states "Node ≥ 22", `fastapi`'s display_name is "FastAPI (Python 3.12+)". **Do not hardcode floors in this skill** — the framework file is the source of truth (a one-file drop-in must carry its own floor).
+   - If a chosen target has **no** `frameworks/<name>.md` (unknown target), you cannot know its toolchain — **skip the probe for it** and let the Unknown-target follow-up (run later, per subsystem) collect what's needed. Note it in the table as `unknown — recipe supplied at scaffold time`.
+
+3. **Probe the binaries** the resolved stacks actually need (only those — don't probe Python if there's no FastAPI target):
+
+   | Runtime | Needed by | Probe | Floor source |
+   |---|---|---|---|
+   | Node + npm | Vite / Next / Angular / SvelteKit / Nuxt / Remix / Astro UIs, NestJS / Express / Hono APIs | `node -v`, `npm -v` | per UI framework file (Vite stacks: 22) |
+   | Python | `fastapi` | `python3 --version` (or `python --version`) | 3.12 |
+   | .NET SDK | `dotnet-minimal-api` | `dotnet --version` | per framework file |
+   | Java + Maven | `spring-boot-3` | `java -version`, `./mvnw -v` (or `mvn -v`) | per framework file |
+
+   Parse the version from each probe and compare to the floor.
+
+4. **Print a readiness table and decide:**
+
+   ```
+   Toolchain preflight (targets: <ui> + <api>)
+     Runtime   Required   Found      Status
+     Node      ≥ 22       v22.3.0    ✅
+     Python    ≥ 3.12     3.11.4     ⚠ below floor
+     ...
+   ```
+
+   - **All required runtimes present and ≥ floor → ✅** — print one green line and continue to the per-subsystem checklist.
+   - **A required runtime is below its floor → ⚠** — print the upgrade one-liner (from the framework file's `## Dev server` Install column, or the standard upgrade command for that runtime) and **ask the user** whether to proceed anyway or stop and upgrade first. Below-floor sometimes works; let the human decide.
+   - **A required runtime is missing entirely → ❌ STOP.** Do not scaffold — a missing runtime guarantees a failed `npm install` / `dotnet build` / `pip install` and a half-written subsystem. Print the missing runtime, its install one-liner, and tell the user to install it and re-run `/web-modernize:scaffold`.
+   - **Unknown target (no framework file) →** skip its probe with the note above; the per-subsystem Unknown-target follow-up collects the scaffold command later, so don't block on it here.
+
+This check is read-only and fast; it never writes state. It only gates *entry* to the scaffold — once green, the smoke-build gate below remains the real proof that each subsystem actually installs and builds.
+
 ## Per-subsystem checklist
 
 Process each subsystem in order: UI → API → DB. For each, set `state.json.scaffold.<subsystem>` to `{"status": "in_progress", "path": "...", "started_at": "..."}` before starting. **Before flipping the subsystem to `"status": "done"`, run the smoke-build gate** (see "Smoke-build the subsystem" below). If smoke-build fails, leave `status` as `in_progress` and stop — do not advance to the next subsystem. This makes resume-after-interruption straightforward and guarantees a subsystem only reaches `done` when its skeleton actually installs and builds.

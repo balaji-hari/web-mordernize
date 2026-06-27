@@ -1,9 +1,9 @@
 ---
-description: "Run lint/typecheck/tests plus a behavioural-parity check, then transition a unit from 'migrated' to 'verified'. Use when at least one unit is in 'migrated' status. Triggers: 'verify', 'run tests', 'check the migration', 'is it passing', 'verify this unit', 'run verification', 'check parity'."
+description: "Run lint/typecheck/tests plus a behavioural-parity check (and an advisory migration-quality review), then transition a unit from 'migrated' to 'verified'. Use when at least one unit is in 'migrated' status. Triggers: 'verify', 'run tests', 'check the migration', 'is it passing', 'verify this unit', 'run verification', 'check parity', 'quality review'."
 disable-model-invocation: false
 ---
 
-# `/web-modernize:verify [unit-id] [--no-parity]`
+# `/web-modernize:verify [unit-id] [--no-parity] [--no-quality]`
 
 You are the **verify** skill. Your job is to prove (or disprove) that a migrated unit meets the team's bar.
 
@@ -28,6 +28,7 @@ Refusing would block the team until the slowest updater catches up — that's a 
 2. Read `.claude/modernize/verify.config.json`. Required.
 3. Parse `$ARGUMENTS`:
    - `--no-parity` (flag, anywhere in the args) → skip the behavioural-parity gate (step 5) for this run; record `verification.parity = "skipped"` on each unit touched. For fast iteration when you already know parity is fine.
+   - `--no-quality` (flag, anywhere in the args) → skip the advisory migration-quality review (step 5b) for this run; record `verification.quality = "skipped"` on each unit touched. Quality is advisory, so this never affects the verified decision — it just suppresses the extra agent run.
    - The remaining non-flag token, if any, is `<unit-id>` → read `.claude/modernize/units/<unit-id>.json`. If the file does not exist, list valid ids (`ls .claude/modernize/units/*.json`) and stop.
    - No `<unit-id>` → verify ALL units currently in status `migrated`. Iterate `state.unit_ids[]`, read each `units/<id>.json`, filter to `status == "migrated"`.
 
@@ -78,7 +79,19 @@ For each unit to verify:
 
    c. **Persist findings.** Write the returned array to `unit.parity_findings` (replace wholesale) and set `unit.parity_reviewed_at = <now>`. **Leave `unit.parity_acknowledged_diffs[]` untouched** — acknowledgements persist across runs and match by finding `id`.
 
-   d. **Compute blocking findings**: every finding with `severity == "high"` whose `id` is NOT present in `unit.parity_acknowledged_diffs[]`. Medium/low findings never block — surface them as info only.
+   d. **Compute blocking findings**: every finding with `severity == "high"` whose `id` is NOT present in `unit.parity_acknowledged_diffs[]`. Medium/low findings never block — surface them as info only. (Security-kind findings — `security_authz_dropped`, `security_injection`, `security_output_encoding`, `security_secret_exposure`, `security_csrf` — are ordinary `parity_findings`; a `high` one blocks exactly like any other high and is acknowledged the same way via `/web-modernize:parity-check`. No separate handling.)
+
+5b. **Migration-quality review** (advisory, non-blocking) — skip if `--no-quality` was passed, OR if step 3's lint/typecheck/test thresholds were NOT met (a unit that can't reach `verified` doesn't need a quality review yet).
+
+   Orthogonal to parity: parity asks *did behaviour change?*; quality asks *is the migrated code idiomatic and maintainable, or is it the legacy paradigm in new clothes?* (WebForms-in-React, jQuery-in-a-reactive-framework, scriptlet-shaped controllers). It **never blocks** — it informs.
+
+   a. **Launch the `migration-critic` subagent** (Agent tool, `subagent_type: migration-critic`). Pass a prompt containing the unit's `id`, `kind`, `target_paths[]`, `source_paths[]`, the `notes_path` (`.claude/modernize/notes/<unit-id>.md`), and `state.target_stack` (so it judges against the right idiom). It is read-only and returns a single JSON block: `{ quality_findings[], headline, summary, warnings }`.
+
+   b. **Graceful degrade.** If the agent errors, times out, or returns malformed JSON, do NOT block or fail — set `verification.quality = "review-unavailable"`, print a one-line warning, and continue. Quality is advisory; an agent hiccup is a non-event.
+
+   c. **Persist.** Write the returned array to `unit.quality_findings` (replace wholesale), set `unit.quality_reviewed_at = <now>` and `unit.quality_headline = <returned headline>`. There is no acknowledgement list — quality findings don't block, so nothing to suppress.
+
+   d. **Quality does NOT affect the transition.** Step 6 depends ONLY on lint/typecheck/tests + parity. Quality findings — even `blocker` ones — are reported as information (see "After writing"), never as a gate.
 
 6. **Decide unit status transition** and write `.claude/modernize/units/<unit-id>.json`:
    - lint/typecheck/test thresholds (`lint_must_pass`, `typecheck_must_pass`, `tests_must_pass`) NOT met → keep `status = "migrated"`, record the detail in `verification.failures[]` and `notes_path`. (Parity was skipped per step 5.)
@@ -166,6 +179,7 @@ verify <unit.id>:
   typecheck: <result>
   tests:     <result>
   parity:    <clean | <I> info | <A> acknowledged | BLOCKED: <N> high-severity | skipped | review-unavailable>
+  quality:   <clean | <B> blocker · <H> high · <M> medium · <N> nit | skipped | review-unavailable>   (advisory)
   → <verified | still-migrated, see notes/<unit.id>.md>
 ```
 
@@ -180,6 +194,18 @@ When parity **blocked** the transition, follow the per-unit line with the offend
     ...
   To resolve: fix the code and re-run /web-modernize:verify <unit.id>,
   or if the change is intentional: /web-modernize:parity-check <unit.id>  (acknowledge it), then re-verify.
+```
+
+When the migration-quality review returned `blocker`/`high` findings, list them as **advisory** — they did NOT affect the verified decision:
+
+```
+  ℹ Migration-quality (advisory — did not block verified):
+    [<finding-id>] <kind> · <severity>
+       <observation>
+       fix: <suggestion>            (file: <file>)
+    ...
+  Headline: <quality_headline>
+  Re-review any time with /web-modernize:quality-check <unit.id>.
 ```
 
 All-units mode output: per-unit lines plus a summary:
@@ -198,4 +224,4 @@ Next: address failures, then re-run /web-modernize:verify <unit.id>.
 
 - Pre: `state.status` ≥ `scaffolded`
 - Post: top-level unaffected unless this was the last verification → `complete`
-- Per-unit file: `migrated` → `verified` (on pass) or unchanged. The `migrated → verified` flip is gated on BOTH the lint/typecheck/test thresholds AND the behavioural-parity check (no unacknowledged high-severity findings), unless `--no-parity` is passed.
+- Per-unit file: `migrated` → `verified` (on pass) or unchanged. The `migrated → verified` flip is gated on BOTH the lint/typecheck/test thresholds AND the behavioural-parity check (no unacknowledged high-severity findings), unless `--no-parity` is passed. The migration-quality review (step 5b) is **advisory and never affects this transition** — it only writes `quality_findings` and prints them as info.
