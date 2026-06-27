@@ -60,6 +60,12 @@ Goal: retire legacy app, redirect production traffic.
 | {{UNIT_ID}} | {{UNIT_KIND}} | {{SOURCE_PATHS}} | {{TARGET_PATHS}} | {{DEPENDS_ON}} | {{PHASE}} | {{EFFORT}} |
 <!-- One row per unit. /web-modernize:plan regenerates this table from migration.md + analysis.json. -->
 
+## Dependency graph
+
+Structural view of unit dependencies as planned (status-agnostic — every unit is `pending` at plan time). Shows what must precede what, which units are independent (parallelizable), and which are bottlenecks (high fan-in). Regenerated on every `/web-modernize:plan`.
+
+{{DEPENDENCY_GRAPH}}
+
 ## Open questions for the team
 
 These items came up during analysis. Resolve them in `migration.md §11` before the affected units are migrated.

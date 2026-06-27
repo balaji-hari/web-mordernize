@@ -184,6 +184,33 @@ WARNING: unit `<unit.id>` depended on `<missing_id>` which no longer exists in t
 - If the analyzer's dependency_graph shows unit A imports symbols from unit B, add B to A's `depends_on`.
 - Cut cycles by breaking on the larger unit (the assumption: the larger one will probably need refactoring during migration anyway).
 
+### Dependency graph (Mermaid) — `{{DEPENDENCY_GRAPH}}`
+
+Render the unit dependency structure as a Mermaid graph for `plan.md` (the human-readable view — GitHub and most markdown viewers render Mermaid). It is **structural**: at plan time every unit is `pending`, so it shows shape and sequence, not progress. Build it from the merged units' `depends_on[]`:
+
+1. **One node per unit** (id = unit id) plus an `Auth[__auth__]` node. Sanitize ids for Mermaid — replace any character outside `[A-Za-z0-9_]` with `_`, and keep the original as a bracket label if it changed.
+2. **One edge per dependency**: `dep --> unit` for every entry in the unit's `depends_on` (including `__auth__`).
+3. **Group by phase** with `subgraph "Phase <n>"` blocks; use `graph LR` so it reads left-to-right by phase.
+4. **Size cap.** If the plan has **more than 40 units**, do NOT emit the node-level graph (Mermaid becomes an unreadable hairball — the same reason `code-modernization` ships an interactive viewer). Instead collapse to **one node per phase** with edges between consecutive phases, and add a line to the success banner: `Dependency graph collapsed to phase-level (<N> units > 40).` Never silently truncate.
+
+Substitute a fenced ```mermaid block into `{{DEPENDENCY_GRAPH}}`. Example (small plan):
+
+```mermaid
+graph LR
+  Auth[__auth__]
+  subgraph Phase 2
+    OrderListPage
+    Dashboard
+  end
+  subgraph Phase 3
+    PaymentProcessor
+  end
+  Auth --> OrderListPage
+  Auth --> Dashboard
+  OrderListPage --> Dashboard
+  OrderListPage --> PaymentProcessor
+```
+
 ### Open questions
 
 Compose 3-5 open questions for the team based on:

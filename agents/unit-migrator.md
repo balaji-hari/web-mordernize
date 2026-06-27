@@ -257,6 +257,8 @@ This is the actual translation work.
 8. **Add a placeholder test** (smoke test at minimum). The `migration.md §10` acceptance criteria should drive what is asserted. (Step 7c may have already produced this — skip if `unit.tests.translated_count + unit.tests.generated_count > 0`.)
 9. **Append to `notes/<unit.id>.md`**: design decisions, source-to-target symbol map, gotchas. For `retry` mode, add a "Retry #<N>" section that records what was different this time and (if `retry_prompt` was set) quote the user's override verbatim. The "Design translation" section from step 7b lives in this same notes file.
 
+   **Behaviour contract (only when the unit has real rules).** If the legacy unit encodes business rules — calculations, validations, eligibility checks, defaults, state transitions — capture them in the notes' `## Behaviour contract (Given/When/Then)` section as concrete Given/When/Then statements (with real values) **before/while you translate**, so the extracted semantics become an inspectable, git-tracked spec instead of living only in this run's context. The `parity-reviewer` later reads this section as the spec. Skip it for trivial units (a CRUD list, a static display) — leave the section empty rather than inventing rules. Mask any credential values per §0.
+
 ### Honor `retry_prompt` when set
 
 If `retry_prompt` is set (retry mode only), it is the **first** thing you should read after the source files, and it should bias every design decision below. Treat it like a senior engineer's design note: "the prior attempt assumed X — try Y instead". Do not silently ignore it; if any part conflicts with `migration.md`, surface the conflict to the user and ask which wins.

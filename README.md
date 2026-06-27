@@ -147,8 +147,8 @@ Commit the `.claude/modernize/` directory. That's how Alice on Monday and Bob on
 | Command | Purpose | When you run it |
 |---------|---------|-----------------|
 | `/web-modernize:init` | Bootstrap `migration.md` + `.claude/modernize/` (state.json, units/, notes/) | Once per legacy repo |
-| `/web-modernize:analyze` | Detect source stack and entry points; auto-fill `migration.md §2` | Immediately after `/init`, before filling out the rest of `migration.md` |
-| `/web-modernize:plan` | Validate `migration.md`, generate `plan.md`, seed unit list (re-runnable; carries history forward) | After `migration.md` is complete; re-run whenever the unit list changes |
+| `/web-modernize:analyze` | Detect source stack and entry points (exhaustive loop-until-dry discovery when the Workflow tool is available; single-pass fallback otherwise); auto-fill `migration.md §2` and interactively fill target choices | Immediately after `/init` |
+| `/web-modernize:plan` | Validate `migration.md`, generate `plan.md` (incl. a Mermaid dependency graph), seed unit list (re-runnable; carries history forward) | After `migration.md` is complete; re-run whenever the unit list changes |
 | `/web-modernize:scaffold [--assets-only]` | Create target project skeleton (UI, optional API, optional DB) **and** copy legacy assets (images, fonts, favicon) into the target's `public/`. `--assets-only` backfills assets on an already-scaffolded repo. | Once, after `/plan`. Re-run with `--assets-only` if assets were missed. |
 | `/web-modernize:auth` | Migrate authentication as a distinct first slice | Once, after `/scaffold` |
 | `/web-modernize:next` | Pick next pending unit and migrate it | In a loop until migration is complete |
@@ -160,7 +160,7 @@ Commit the `.claude/modernize/` directory. That's how Alice on Monday and Bob on
 | `/web-modernize:parity-check <id> [--all] [--acknowledge <finding-id> --reason "…"]` | Compare a migrated unit's behaviour against the legacy original (validation, output shape, sort order, error handling, UI states, **security: dropped authz / injection / output-encoding / secret-in-bundle / CSRF**); acknowledge intentional diffs | On demand, or when `/verify` reports a parity block |
 | `/web-modernize:quality-check <id> [--all]` | **Advisory** review of a migrated unit's **code quality / idiomaticity** — legacy-paradigm leakage (WebForms-in-React, jQuery-in-a-reactive-framework), ceremonial error handling, dead abstractions, weak tests. Never blocks verification | On demand, when you want the migrated code to read idiomatically |
 | `/web-modernize:report [--format=md\|json\|html]` | Generate stakeholder progress report (burndown, ETA, risks) | Sprint syncs, exec updates, weekly digests |
-| `/web-modernize:status` | Print progress dashboard | Anytime — read-only |
+| `/web-modernize:status` | Print progress dashboard (incl. artifact-drift staleness checks — flags when discovery moved but `/plan` wasn't re-run) | Anytime — read-only |
 | `/web-modernize:unlock` | Force-clear a stuck advisory lock on `state.json` (requires typing `force-clear`) | When a Claude session crashed holding the lock and `/plan` or `/scaffold` is blocked |
 | `/web-modernize:abandon` | Two-step destructive reset (`--soft`, `--hard`, `--unit <id>`) | When you need to start over or formally drop a unit |
 

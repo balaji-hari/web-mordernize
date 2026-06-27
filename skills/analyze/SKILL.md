@@ -16,11 +16,27 @@ You are the **analyze** skill. Your job is to detect what the team is migrating 
 
 ## Detection strategy
 
-Delegate the heavy lifting to the `legacy-analyzer` subagent (defined at `${CLAUDE_PLUGIN_ROOT}/agents/legacy-analyzer.md`). Invoke it with a prompt like:
+The output is the same `analysis.json` payload either way — pick the method by what's available.
+
+### Method A — Workflow orchestration (preferred when the Workflow tool is available)
+
+Running `/web-modernize:analyze` is your authorization to use the **Workflow tool**. When it's available, invoke the bundled discovery workflow — it fans out the `legacy-analyzer` agent **loop-until-dry** (rounds of parallel, scoped passes until two consecutive rounds find nothing new), so it enumerates entry points a single pass would truncate or sample-miss on a large estate (the analyzer caps at ~100 entry points per pass). Tell the user the rough agent count first (one detect pass + a few workers per round).
+
+```
+Workflow({ scriptPath: "${CLAUDE_PLUGIN_ROOT}/workflows/analyze-discovery.js" })
+```
+
+It returns one object in the **same shape as `analysis.json`** (detect metadata + a merged, deduplicated `entry_points[]` + `warnings` + `rounds`). Surface the workflow's `log()` lines as they arrive. The workflow's agents are read-only — **you** write `analysis.json` from the returned object (Output 1 below), exactly as in Method B. If the Workflow tool is NOT available (older Claude Code build, headless run), fall through to Method B automatically.
+
+### Method B — single subagent pass (fallback)
+
+Delegate to the `legacy-analyzer` subagent (defined at `${CLAUDE_PLUGIN_ROOT}/agents/legacy-analyzer.md`). Invoke it with a prompt like:
 
 > Analyze the legacy web application in the current working directory. Report: primary framework + version + confidence; build tool / package manager; top 5 libraries; approximate LOC; entry points (pages/controllers/components); rough dependency graph (which files import which). Load detection rules from `${CLAUDE_PLUGIN_ROOT}/frameworks/*.md` files where `role: source`. If no rule matches, return `primary: "unknown"` with the `evidence[]` array populated. Format the report as JSON matching the schema in the agent's own preamble. Skip `.git/`, `node_modules/`, `bin/`, `obj/`, `dist/`, `build/`, `.claude/`.
 
 Run the subagent, then validate the JSON it returns. If invalid, fix obvious errors and ask the subagent to retry once.
+
+Either way, the validated result is the payload you write to `analysis.json` (Output 1).
 
 ## Frameworks to recognize
 

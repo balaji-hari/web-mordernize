@@ -13,6 +13,22 @@
 - **Target**: {{TARGET_PATHS}}
 - **Depends on**: {{DEPENDS_ON}}
 
+## Behaviour contract (Given/When/Then)
+
+<!--
+  OPTIONAL — fill this in only when the unit has real business rules worth pinning:
+  calculations, validations, eligibility checks, defaults, state transitions. A plain
+  CRUD page or a static display component has nothing to put here — leave it empty.
+  The migrator extracts these from the legacy source before translating; parity-reviewer
+  reads them as the spec when the source and target appear to disagree.
+-->
+
+- <!-- e.g.
+  Given an order with subtotal > $100 and a non-expired account
+  When the cart total is computed
+  Then free shipping is applied and the shipping line reads $0.00
+  -->
+
 ## Design decisions
 
 Document the non-obvious choices made while porting this unit. Future readers (and code reviewers) need the *why*, not the *what*.

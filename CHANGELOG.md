@@ -2,6 +2,26 @@
 
 All notable changes to the `web-modernize` plugin are documented here. Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.13.0] - 2026-06-28
+
+Adopts the remaining four borrowings (#7–#10) from `docs/planning/future-code-modernization-borrowings.md` — exhaustive discovery, knowledge capture, drift detection, and a dependency view — and introduces the `workflows/` orchestration pattern. All additive: no `state.schema.json` / `unit.schema.json` change, no removed/renamed commands. Pull with `/plugin uninstall web-modernize && /plugin install web-modernize`; **no `.claude/modernize/` reset required**.
+
+### Added
+- **`workflows/analyze-discovery.js`** (borrowing #7) — the plugin's first Workflow-tool script. A `Detect` pass (one `legacy-analyzer` for framework + metadata) plus a `Discover` phase that fans out `legacy-analyzer` **loop-until-dry** (parallel scoped rounds, dedup by id, budget-guarded) until two consecutive rounds find nothing new. Returns the same `analysis.json` shape with a far more complete `entry_points[]` than a single pass produces on a large estate (the analyzer caps at ~100 per pass). Agents are read-only; the skill writes the file.
+- **Optional Given/When/Then behaviour contract in notes** (#8) — `templates/notes-template.md` gains an optional `## Behaviour contract (Given/When/Then)` section. `unit-migrator` populates it from the legacy unit's rules (calculations, validations, eligibility, defaults, state transitions) when they exist — left empty for trivial units — and `parity-reviewer` reads it as the spec when source and target disagree. Makes the extracted semantics inspectable and git-tracked instead of living only in one run's context.
+- **Dependency graph in `plan.md`** (#10) — `/web-modernize:plan` renders a Mermaid graph of unit `depends_on` (subgraphed by phase) into `plan.md` via a new `{{DEPENDENCY_GRAPH}}` placeholder. Structural / status-agnostic (everything is `pending` at plan time); it surfaces parallelizable vs bottleneck units for standup assignment. Collapses to phase-level with a printed note when a plan exceeds 40 units (no silent truncation).
+
+### Changed
+- **`skills/analyze/SKILL.md`** (#7) — "Detection strategy" is now **Method A / Method B**: Method A invokes `workflows/analyze-discovery.js` via the Workflow tool (authorized by the `/analyze` invocation) when available; Method B is the existing single `legacy-analyzer` pass as a graceful fallback. The `analysis.json` schema is unchanged — Method A just returns a more complete `entry_points[]`, so `/plan` is unaffected.
+- **`skills/status/SKILL.md`** (#9) — new **Staleness** section using **git commit time** (`git log -1 --format=%ct`, not mtime — git doesn't preserve mtimes across clone/pull): flags `analysis.json` or `migration.md` committed after `plan.md` and nudges a `/plan` re-run. Skips silently when files are untracked. Read-only; no state change.
+- **`agents/unit-migrator.md`, `agents/parity-reviewer.md`** (#8) — the migrator populates the behaviour contract; the reviewer consumes it as spec.
+
+### Why this is a minor, not a patch
+Introduces a new artifact type (`workflows/`), a new `/analyze` execution path, a new `/plan` artifact section, and a new `/status` check. User-visible behaviour changes: richer discovery, a new plan graph, new staleness nudges.
+
+### Why this is a minor, not a major
+No `state.schema.json` / `unit.schema.json` change. No removed or renamed skills/commands. Method A degrades to the existing Method B where the Workflow tool isn't available; the notes contract is optional; the staleness checks and plan graph are additive. Existing migrations keep working untouched.
+
 ## [0.12.0] - 2026-06-27
 
 Adopts the first six "borrowings" from the sibling `code-modernization` plugin (catalogued in `docs/planning/future-code-modernization-borrowings.md`) — the disciplines and one agent that harden *understanding, verification rigor, and safety* around the migration, without touching the per-unit execution loop that is this plugin's strength. All changes are additive: no `state.schema.json` `schema_version` bump, no removed/renamed commands. Teams pull this with `/plugin uninstall web-modernize && /plugin install web-modernize`; **no `.claude/modernize/` reset required**.

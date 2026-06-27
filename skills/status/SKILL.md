@@ -155,6 +155,28 @@ recent activity:
 
 If no history, print `recent activity: (none)`.
 
+### 10. Staleness
+
+Discovery can move without the downstream plan being regenerated. Detect this with **git commit times** — *not* file mtimes, because git does not preserve mtimes across clone/pull, so mtimes are unreliable for teammates. The last commit time for a path is `git log -1 --format=%ct -- <path>` (epoch seconds; empty output means the path is untracked or has no commits). This is read-only.
+
+Compute the commit time of `.claude/modernize/analysis.json`, `migration.md`, and `.claude/modernize/plan.md`, then:
+
+- If `plan.md` has no commit time (untracked / not yet committed), **skip this whole section** — there's nothing to compare against. Likewise skip any individual comparison whose other file is untracked.
+- If `analysis.json` is **newer** than `plan.md`:
+  ```
+  ⚠ staleness: analysis.json was committed after plan.md.
+    You re-ran /web-modernize:analyze but not /web-modernize:plan — the unit list may be stale.
+    Run /web-modernize:plan to regenerate it (it preserves progress on existing units).
+  ```
+- If `migration.md` is **newer** than `plan.md`:
+  ```
+  ⚠ staleness: migration.md was committed after plan.md.
+    The configuration changed since the plan was generated.
+    Run /web-modernize:plan to regenerate the plan from the updated migration.md.
+  ```
+
+If neither is newer (or there's nothing to compare), print nothing for this section. These are advisory nudges only — `/status` never modifies state.
+
 ## After printing
 
 Do not modify state. Do not suggest a next command unless the user is clearly at a transition point — and even then keep it to a one-liner.
