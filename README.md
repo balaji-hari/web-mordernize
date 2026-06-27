@@ -2,6 +2,8 @@
 
 A Claude Code plugin that guides software teams through migrating legacy web applications — ASP.NET WebForms / MVC, Java JSP / Struts / Spring MVC, AngularJS 1.x, classic PHP, ColdFusion, jQuery-spaghetti, and similar — to a modern stack of the team's choosing. The plugin handles the workflow: analysis, plan generation, target scaffolding, auth migration, then unit-by-unit feature porting with verification. State is held in a git-tracked JSON ledger, so migrations span days and multiple developers without losing context.
 
+> 📖 **Using the plugin to run a migration?** The [Developer Handbook](docs/DEVELOPER-HANDBOOK.md) is the hands-on guide — the full workflow, every command, the safety gates, the agents, and how a team runs it in parallel.
+
 ---
 
 ## Install

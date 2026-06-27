@@ -158,6 +158,16 @@ Then exercise the workflow:
 
 After changes to skills, you may need to re-install (`/plugin uninstall web-modernize && /plugin install web-modernize`) to pick them up — Claude Code caches plugin contents.
 
+## Presentation & diagram assets (`docs/`)
+
+The leadership deck, one-pagers, and architecture diagrams live under `docs/`. They are **not** auto-generated from the plugin source — they are maintained by hand and **do not update themselves when you bump the version or add a feature.** Keep them in sync deliberately.
+
+- **`docs/decks/*.pptx` are generated** by the Python scripts in `docs/scripts/` using `python-pptx` (installed: 1.0.2). **Never hand-edit the `.pptx`** (binary) — edit the script and re-run it:
+  - `python docs/scripts/build_presentation.py` → `docs/decks/web-modernize-presentation.pptx` (the multi-slide leadership deck; self-contained — palette, helpers, every slide).
+  - `python docs/scripts/build_onepager_v2.py` → `docs/decks/web-modernize-onepager-v2.pptx` (the current — and only — one-pager generator; it writes straight to the `-v2` path). It **imports the palette + helpers** (`new_prs`, `add_rect`, `add_text`, colours, fonts) from `build_presentation.py`, so run it with `docs/scripts/` importable (e.g. `cd docs/scripts && python build_onepager_v2.py`). (Older `build_onepager.py` / `_v1` variants and the `payer-…` one-pager were removed — don't reintroduce parallel one-pager scripts.)
+- **`docs/diagrams/*.svg` are hand-authored SVG XML — there is no generator script.** Edit the XML directly. `web-migrate architecture.svg` is the comprehensive single-page diagram; `architecture-p1/p2/p3-*.svg` are a 3-page set (overview / plugin / state).
+- **Version + counts are hard-coded in many places** and must be updated together on a release: the scripts carry `FOOTER_TEXT`, title/closing-slide version strings, the "The N Skills" slide title, and the agent/skill/framework counts in the inventory tables; the SVGs carry version strings in their titles and footers (e.g. `… · 16 skills · 4 agents · 31 framework files`). When bumping, grep `docs/` for the old version and the old counts and update every hit.
+
 ## What not to do
 
 - Do not put `commands/`, `skills/`, `agents/`, or `hooks/` inside `.claude-plugin/`. Per the Claude Code plugin reference, only `plugin.json` and `marketplace.json` live in `.claude-plugin/`; everything else is at the plugin root.
