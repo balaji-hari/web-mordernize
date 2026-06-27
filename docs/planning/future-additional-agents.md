@@ -1,12 +1,13 @@
 # Plan: Additional agents to make migration faster or better
 
-> **STATUS: 🟡 PARTIALLY SHIPPED** — Candidate 2 (behavioural-parity reviewer) shipped in v0.11.0.
-> Candidate 1 (parallel migrator) and Candidate 3 (dependency preflight) remain valid; see the
-> per-candidate notes below and `future-code-modernization-borrowings.md`.
+> **STATUS: 🟡 PARTIALLY SHIPPED** — Candidate 2 (behavioural-parity reviewer) shipped in v0.11.0,
+> and the quality-grader idea shipped in v0.12.0 as `agents/migration-critic.md`. The two open
+> candidates below — Candidate 1 (parallel migrator) and Candidate 3 (dependency preflight) —
+> remain future work; see `future-code-modernization-borrowings.md`.
 
 ## Context
 
-The plugin currently ships two functional agents (`legacy-analyzer`, `unit-migrator`) plus one knowledge document framed as an agent (`permanent-gotchas`). Three subagent additions would deliver meaningful improvements without fragmenting the existing architecture. This doc captures them as future work — implementation is not committed.
+The plugin currently ships two functional agents (`legacy-analyzer`, `unit-migrator`) plus one knowledge document framed as an agent (`permanent-gotchas`). These subagent additions would deliver meaningful improvements without fragmenting the existing architecture. This doc captures them as future work — implementation is not committed.
 
 **Design constraint** (from user memory: *"prefer pattern-level rules over per-scenario features"*): new agents earn their place only when they offer genuinely separable concerns — different context window, different tool set, or different failure mode. Specialised mini-agents that just split `unit-migrator` into pieces (test-translator, design-extractor, asset-extractor, etc.) are explicitly rejected.
 
@@ -50,71 +51,6 @@ Schema v3 already proved per-unit files prevent multi-dev conflicts. Same shape 
 
 - N× tokens during a batch. Cost is opt-in (separate command).
 - Coordinator complexity for unit-selection (must reject sets with overlapping target paths, even if `depends_on` is clean).
-
----
-
-## Candidate 2 — Behavioural-parity reviewer  (quality)
-
-### Problem
-
-`/verify` checks lint + typecheck + tests pass. It does **not** check whether the migrated page/endpoint *behaves like the legacy one*. This is the silent-failure mode for real migrations — tests green, behaviour subtly different (different validation rules, different error handling, missing edge cases, different sort orders).
-
-### Agent shape
-
-New file `agents/parity-reviewer.md`. Read-only. Algorithm:
-
-1. Read the legacy unit's source files (`unit.source_paths`).
-2. Read the migrated unit's target files (`unit.target_paths`).
-3. Compare observable behaviour:
-   - Endpoint inputs: required vs optional, validation rules, normalisation.
-   - Endpoint outputs: response shape, field names, sort order, null vs missing.
-   - UI: form fields, submit behaviour, client-side validation, error states.
-4. Produce a structured diff:
-   ```json
-   {
-     "unit_id": "OrderListPage",
-     "parity_findings": [
-       { "kind": "input_validation", "severity": "high",
-         "legacy": "accepts empty 'q' param (returns all)",
-         "migrated": "rejects empty 'q' with 400",
-         "file": "apps/web-new/src/pages/orders.tsx:42" },
-       { "kind": "sort_order", "severity": "medium",
-         "legacy": "OrderDate DESC", "migrated": "OrderDate ASC" }
-     ]
-   }
-   ```
-
-### Surface
-
-Either:
-- (a) New gate inside `/verify` — runs after lint/typecheck/tests pass, blocks the `migrated → verified` transition until parity findings are reviewed.
-- (b) Standalone `/web-modernize:parity-check <unit-id>` for manual on-demand runs.
-
-Recommend (a) as the default with an opt-out flag for fast iteration. Findings persist on `units/<id>.json.parity_findings[]` (additive field, no schema bump).
-
-### Wins
-
-- Closes the biggest silent-failure gap. Tests pass ≠ behaves the same — this proves the latter.
-- Audit-ready: a structured report leadership / compliance can review.
-- Read-only, isolated context → safe.
-
-### Cost
-
-- ~1 agent invocation per unit at verify time. Cheap compared to migration itself.
-- Some false positives (intentional behaviour changes the team wanted). Mitigation: a `parity_acknowledged_diffs[]` field on the unit that the user fills to suppress.
-
-### Considered and deferred: Playwright-based dynamic parity
-
-A dynamic parity tester driving both apps in a real browser (Playwright) was considered. It catches a class of bug the static reviewer can't — dropped client-side input normalization, runtime-only behaviour differences, visual regressions. But it carries real operational costs that the static reviewer doesn't:
-
-- Both legacy and migrated apps must be runnable side-by-side. Strangler-fig has this naturally; big-bang and module-by-module don't, depending on cutover phase.
-- Test fixtures required (what input to type / endpoints to call). Best sourced from legacy unit tests or recorded user sessions, not invented at parity-check time.
-- Stable selectors on both sides (accessibility-based: text content, ARIA roles) — often requires light legacy-side cleanup.
-- ~500MB Playwright install + browser binaries on every dev box and CI runner.
-- Screenshot diffing is flaky across browser versions, font rendering, animations; needs deterministic-seed mitigations.
-- Different tool entirely for API parity — Playwright in a browser is wrong for `POST /orders` parity; HTTP replay (Pact / VCR / `pytest-recording`) is right. Different again for pure logic units, where static review is sufficient.
-
-**Decision: defer.** The static reviewer is the right *first* parity check — always-on, cheap, catches the obvious wins. A Playwright UI tester + HTTP-replay API tester family can be revisited later as opt-in higher-fidelity checks for high-risk units (auth, payments, compliance-sensitive flows). Splitting parity verification into three tools (static / UI dynamic / API replay) maps better to how real migrations work, but is a heavier investment than the v0.10.0 follow-up scope warrants.
 
 ---
 
@@ -174,23 +110,23 @@ These were considered and rejected:
 - **Documentation-generator agent**. `/report` already covers stakeholder reporting. A separate "tech docs" agent overlaps without adding clear new value.
 - **Per-concern auditors** (security scanner, perf scanner, accessibility scanner) as always-on agents. Each is useful in isolation, but adding all inflates the surface area without proportionate value. Better as opt-in `/verify` post-checks that read `verify.config.json` rather than dedicated agents.
 - **Translation-quality grader agent.** Tempting but subjective — would mostly restate what tests + parity-reviewer already capture, with worse signal-to-noise.
-  - **Revisited (2026):** the code-modernization analysis (`future-code-modernization-borrowings.md` #3) reframes this as an *idiomatic-structure* critic (detecting "JOBOL" / WebForms-in-React leakage), not a subjective quality grade. That lens is objective and orthogonal to behavioural parity, so it is worth reconsidering as an **advisory** (non-blocking) agent — `agents/migration-critic.md`.
+  - **Shipped (v0.12.0):** the code-modernization analysis (`future-code-modernization-borrowings.md` #3) reframed this as an *idiomatic-structure* critic (detecting "JOBOL" / WebForms-in-React leakage) rather than a subjective grade — objective and orthogonal to behavioural parity. It shipped as the advisory (non-blocking) `agents/migration-critic.md` + `/web-modernize:quality-check`.
 
 ---
 
 ## Recommended order
 
-If implementing one: **Candidate 2 (parity-reviewer)**. Closes the biggest silent-failure gap; gives leadership a strong audit-ready story; lowest risk (read-only, isolated, no state churn).
+Of the two open candidates: do **Candidate 1 (parallel coordinator)** first — the biggest demonstrable speedup, and it fits cleanly on the existing per-unit-file architecture (safe by construction). Note the 2026 reshape above: prefer building it via the Workflow tool (`future-code-modernization-borrowings.md` #7), which itself depends on the `unit-migrator` subagent conversion in `future-subagent-unit-migrator.md`.
 
-If implementing two: add **Candidate 1 (parallel coordinator)** next. Biggest demonstrable speedup. Fits cleanly on top of the existing per-unit-file architecture. Safe by construction.
+Hold **Candidate 3 (preflight)** until you observe retry patterns in real migrations indicating it would pay off. It's the most speculative — the cost is real (latency on every `/next`), and the benefit depends on how often dependency declarations are wrong, which is hard to predict without telemetry.
 
-Skip **Candidate 3 (preflight)** until you observe retry patterns in real migrations indicating it would pay off. It's the most speculative of the three — the cost is real (latency on every `/next`), the benefit depends on how often dependency declarations are wrong, which is hard to predict without telemetry.
+*(Candidate 2, the behavioural-parity reviewer, shipped in v0.11.0 and is no longer tracked here.)*
 
 ---
 
 ## Critical files (when implemented)
 
-For each candidate, the file footprint:
+For each open candidate, the file footprint:
 
 ### Candidate 1 — parallel coordinator
 | File | Change |
@@ -199,14 +135,6 @@ For each candidate, the file footprint:
 | `skills/next-batch/SKILL.md` | **NEW.** Exposes `/web-modernize:next-batch [--n=K]`. |
 | `templates/state.schema.json` | No change. |
 | Slash-command table in README + plugin.json `keywords` | Optional update. |
-
-### Candidate 2 — parity reviewer
-| File | Change |
-|---|---|
-| `agents/parity-reviewer.md` | **NEW.** Read-only reviewer agent. |
-| `skills/verify/SKILL.md` | New step: invoke parity-reviewer between tests and finalisation; gate the migrated→verified transition on review. |
-| `skills/parity-check/SKILL.md` | **NEW** (optional). Standalone `/web-modernize:parity-check <unit-id>`. |
-| `templates/unit.schema.json` | Additive: `parity_findings[]`, `parity_acknowledged_diffs[]`. No schema bump. |
 
 ### Candidate 3 — preflight
 | File | Change |
@@ -222,7 +150,5 @@ For each candidate, the file footprint:
 Each candidate's verification is independent and can ship separately.
 
 **Parallel coordinator**: in a workspace with ≥ 6 independent pending units, run `/web-modernize:next-batch --n=3`. Confirm 3 units migrate concurrently, each gets its own `in_flight` block, all finalise correctly. Time it; compare to 3 sequential `/next` invocations.
-
-**Parity reviewer**: migrate a unit known to have a behavioural difference (e.g., intentionally change the sort order of a list page). Run `/web-modernize:verify`. Confirm parity-reviewer surfaces the diff and `verified` status is gated until the user acknowledges or fixes.
 
 **Preflight**: create a unit with a deliberately-missing `depends_on` reference. Run `/web-modernize:next`. Confirm preflight surfaces the missing dep with a recommendation; user can proceed (`--force`) or fix the plan and re-run.
