@@ -32,7 +32,7 @@
 <text x="800" y="28" text-anchor="middle" dominant-baseline="middle"
       fill="white" font-size="24" font-weight="700" letter-spacing="0.5">web-modernize — State Machine &amp; Data Flow</text>
 <text x="800" y="55" text-anchor="middle" dominant-baseline="middle"
-      fill="#9fc8fa" font-size="13">Page 3 of 3: Per-Unit States · State File Schema · Multi-Developer Model · Data Flow</text>
+      fill="#9fc8fa" font-size="13">Page 3 of 3: Per-Unit States · State File Schema · Multi-Developer Model · Data Flow  ·  v0.13.0</text>
 
 <!-- ================================================================
      PER-UNIT STATE MACHINE  y=72..310
@@ -76,6 +76,14 @@
 <text x="591" y="181" text-anchor="middle" dominant-baseline="middle" fill="#c62828" font-size="9.5" font-weight="600">/verify fails → unit.status</text>
 <text x="591" y="197" text-anchor="middle" dominant-baseline="middle" fill="#c62828" font-size="9">= failed, error stored</text>
 <line x1="591" y1="156" x2="591" y2="166" stroke="#c62828" stroke-width="1.5" stroke-dasharray="3,2"/>
+
+<!-- /verify gate stack (under verified) -->
+<rect x="700" y="168" width="244" height="56" rx="4" fill="#e0f2f1" stroke="#00695c" stroke-width="1.5"/>
+<text x="822" y="180" text-anchor="middle" dominant-baseline="middle" fill="#00695c" font-size="9.5" font-weight="700">/verify gate (migrated → verified)</text>
+<text x="822" y="195" text-anchor="middle" dominant-baseline="middle" fill="#004d40" font-size="9">lint · typecheck · tests + behavioural-parity</text>
+<text x="822" y="208" text-anchor="middle" dominant-baseline="middle" fill="#004d40" font-size="9">+ security gate (high diffs block)</text>
+<text x="822" y="219" text-anchor="middle" dominant-baseline="middle" fill="#546e7a" font-size="8.5">advisory: migration-critic code quality (/quality-check)</text>
+<line x1="830" y1="156" x2="830" y2="166" stroke="#00695c" stroke-width="1.5" stroke-dasharray="3,2"/>
 
 <!-- BRANCH STATES  y=220 -->
 <text x="40" y="220" dominant-baseline="middle" fill="#546e7a" font-size="10.5" font-weight="700">Branch States:</text>
@@ -184,6 +192,9 @@
 <text x="830" y="490" dominant-baseline="middle" fill="#e1bee7" font-size="10" font-family="'Cascadia Code','Consolas',monospace">history[]      </text>
 <text x="1006" y="490" dominant-baseline="middle" fill="white" font-size="10">{ at, by, action, notes }  — audit trail of all transitions</text>
 
+<text x="830" y="505" dominant-baseline="middle" fill="#e1bee7" font-size="10" font-family="'Cascadia Code','Consolas',monospace">findings       </text>
+<text x="1006" y="505" dominant-baseline="middle" fill="white" font-size="10">parity_findings[] · quality_findings[] · verification (lint/typecheck/tests)</text>
+
 <!-- ================================================================
      MULTI-DEVELOPER MODEL  y=520..680
      ================================================================ -->
@@ -214,7 +225,7 @@
 <text x="1338" y="596" text-anchor="middle" dominant-baseline="middle" fill="#01579b" font-size="10">last_heartbeat bumped on every Write</text>
 <text x="1338" y="612" text-anchor="middle" dominant-baseline="middle" fill="#01579b" font-size="10">If &gt; 15 min old → assume crash (Case A)</text>
 <text x="1338" y="628" text-anchor="middle" dominant-baseline="middle" fill="#01579b" font-size="10">/next can re-acquire stale unit</text>
-<text x="1338" y="644" text-anchor="middle" dominant-baseline="middle" fill="#0277bd" font-size="10" font-weight="600">/status shows staleness warning</text>
+<text x="1338" y="644" text-anchor="middle" dominant-baseline="middle" fill="#0277bd" font-size="10" font-weight="600">/status: heartbeat + artifact-drift staleness</text>
 <text x="1338" y="660" text-anchor="middle" dominant-baseline="middle" fill="#546e7a" font-size="9">/sync reconciles state.json after git pull</text>
 
 <!-- ================================================================
@@ -288,7 +299,7 @@
 <text x="1343" y="833" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="11" font-weight="700">◀  PAGE 3 of 3: State &amp; Data Flow  (you are here)</text>
 
 <text x="800" y="860" text-anchor="middle" dominant-baseline="middle" fill="#9e9e9e" font-size="9.5">
-  github.com/balaji-hari/web-mordernize  ·  Plugin namespace: web-modernize  ·  State schema v3  ·  15 skills  ·  3 agents  ·  31 framework files
+  github.com/balaji-hari/web-mordernize  ·  Plugin namespace: web-modernize  ·  State schema v3  ·  17 skills  ·  5 agents  ·  31 framework files  ·  1 workflow
 </text>
 
 </svg>

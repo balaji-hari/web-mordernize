@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Page 2 of 3: Plugin Components -->
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 940" width="1600" height="940"
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1024" width="1600" height="1024"
      font-family="'Segoe UI',system-ui,-apple-system,Arial,sans-serif">
 
-<rect width="1600" height="940" fill="#eceff1"/>
+<rect width="1600" height="1024" fill="#eceff1"/>
 
 <!-- ================================================================
      TITLE  y=0..72
@@ -12,19 +12,17 @@
 <text x="800" y="28" text-anchor="middle" dominant-baseline="middle"
       fill="white" font-size="24" font-weight="700" letter-spacing="0.5">web-modernize — Plugin Components</text>
 <text x="800" y="55" text-anchor="middle" dominant-baseline="middle"
-      fill="#9fc8fa" font-size="13">Page 2 of 3: Skills · Agents · Framework Files · Templates · Hooks</text>
+      fill="#9fc8fa" font-size="13">Page 2 of 3: Skills · Agents · Framework Files · Templates · Hooks  ·  v0.13.0</text>
 
 <!-- ================================================================
-     SKILLS SECTION  y=72..520
+     SKILLS SECTION  y=72..592  (17 commands, 6 rows)
      ================================================================ -->
-<rect x="0" y="72" width="1600" height="448" fill="#e8edf8"/>
+<rect x="0" y="72" width="1600" height="520" fill="#e8edf8"/>
 <rect x="0" y="72" width="1600" height="32" fill="#1565c0"/>
 <text x="800" y="88" text-anchor="middle" dominant-baseline="middle"
-      fill="white" font-size="14" font-weight="700">Skills — 15 Slash Commands  (each is a SKILL.md loaded into Claude's context)</text>
+      fill="white" font-size="14" font-weight="700">Skills — 17 Slash Commands  (each is a SKILL.md loaded into Claude's context)</text>
 
-<!-- Skills grid: 3 cols, 5 rows
-     Each box has skill name + one-line purpose
-     Col x: 12(w=500), 556(w=500), 1088(w=500)  rows y: 112,184,256,328,400  box h=64  gap=8 -->
+<!-- Skills grid: 3 cols, 6 rows  ·  Col x: 12(w=500), 556(w=500), 1100(w=500)  ·  rows y: 112,184,256,328,400,472  box h=64 -->
 
 <!-- ROW 1 -->
 <rect x="12"   y="112" width="500" height="64" rx="5" fill="#1565c0"/>
@@ -34,24 +32,24 @@
 
 <rect x="556"  y="112" width="500" height="64" rx="5" fill="#1565c0"/>
 <text x="576"  y="133" dominant-baseline="middle" fill="white" font-size="12" font-weight="700">/web-modernize:analyze</text>
-<text x="576"  y="153" dominant-baseline="middle" fill="#bbdefb" font-size="10">Spawns legacy-analyzer subagent to detect source stack; runs interactive interview</text>
-<text x="576"  y="167" dominant-baseline="middle" fill="#bbdefb" font-size="10">for target choices. Writes analysis.json. Precondition: initialized.</text>
+<text x="576"  y="153" dominant-baseline="middle" fill="#bbdefb" font-size="10">Detects source stack + interview. Method A fans out legacy-analyzer loop-until-dry</text>
+<text x="576"  y="167" dominant-baseline="middle" fill="#bbdefb" font-size="10">(workflow) for exhaustive discovery; single-pass fallback. Writes analysis.json.</text>
 
 <rect x="1100" y="112" width="500" height="64" rx="5" fill="#1565c0"/>
 <text x="1120" y="133" dominant-baseline="middle" fill="white" font-size="12" font-weight="700">/web-modernize:plan</text>
-<text x="1120" y="153" dominant-baseline="middle" fill="#bbdefb" font-size="10">Reads migration.md (validates 11 REQUIRED sections) + analysis.json; generates</text>
-<text x="1120" y="167" dominant-baseline="middle" fill="#bbdefb" font-size="10">ordered units/*.json files and plan.md. Precondition: analyzed.</text>
+<text x="1120" y="153" dominant-baseline="middle" fill="#bbdefb" font-size="10">Reads migration.md (validates REQUIRED sections) + analysis.json; generates ordered</text>
+<text x="1120" y="167" dominant-baseline="middle" fill="#bbdefb" font-size="10">units/*.json + plan.md (incl. dependency graph). Precondition: analyzed.</text>
 
 <!-- ROW 2 -->
 <rect x="12"   y="184" width="500" height="64" rx="5" fill="#0d47a1"/>
 <text x="32"   y="205" dominant-baseline="middle" fill="white" font-size="12" font-weight="700">/web-modernize:scaffold</text>
-<text x="32"   y="225" dominant-baseline="middle" fill="#bbdefb" font-size="10">Creates target UI/API/DB skeleton using framework .md recipes; copies legacy</text>
-<text x="32"   y="239" dominant-baseline="middle" fill="#bbdefb" font-size="10">static assets. Writes verify.config.json. Precondition: planned.</text>
+<text x="32"   y="225" dominant-baseline="middle" fill="#bbdefb" font-size="10">Toolchain preflight, then creates target UI/API/DB skeleton from framework recipes;</text>
+<text x="32"   y="239" dominant-baseline="middle" fill="#bbdefb" font-size="10">copies legacy assets. Writes verify.config.json. Precondition: planned.</text>
 
 <rect x="556"  y="184" width="500" height="64" rx="5" fill="#0d47a1"/>
 <text x="576"  y="205" dominant-baseline="middle" fill="white" font-size="12" font-weight="700">/web-modernize:auth</text>
 <text x="576"  y="225" dominant-baseline="middle" fill="#bbdefb" font-size="10">Migrates authentication end-to-end (login · logout · session · password hashing).</text>
-<text x="576"  y="239" dominant-baseline="middle" fill="#bbdefb" font-size="10">Reads API target's auth notes. Creates __auth__.json unit. Precondition: scaffolded.</text>
+<text x="576"  y="239" dominant-baseline="middle" fill="#bbdefb" font-size="10">Reads API target's auth notes. Creates __auth__ unit. Precondition: scaffolded.</text>
 
 <rect x="1100" y="184" width="500" height="64" rx="5" fill="#0d47a1"/>
 <text x="1120" y="205" dominant-baseline="middle" fill="white" font-size="12" font-weight="700">/web-modernize:next</text>
@@ -66,13 +64,13 @@
 
 <rect x="556"  y="256" width="500" height="64" rx="5" fill="#1976d2"/>
 <text x="576"  y="277" dominant-baseline="middle" fill="white" font-size="12" font-weight="700">/web-modernize:verify  [unit-id]</text>
-<text x="576"  y="297" dominant-baseline="middle" fill="#bbdefb" font-size="10">Runs lint · typecheck · tests from verify.config.json; transitions unit status</text>
-<text x="576"  y="311" dominant-baseline="middle" fill="#bbdefb" font-size="10">migrated → verified (or → failed). Precondition: at least 1 migrated unit.</text>
+<text x="576"  y="297" dominant-baseline="middle" fill="#bbdefb" font-size="10">lint · typecheck · tests + behavioural-parity + security gate; advisory quality</text>
+<text x="576"  y="311" dominant-baseline="middle" fill="#bbdefb" font-size="10">review. Transitions migrated → verified. Precondition: ≥1 migrated unit.</text>
 
 <rect x="1100" y="256" width="500" height="64" rx="5" fill="#1976d2"/>
 <text x="1120" y="277" dominant-baseline="middle" fill="white" font-size="12" font-weight="700">/web-modernize:status</text>
-<text x="1120" y="297" dominant-baseline="middle" fill="#bbdefb" font-size="10">Read-only dashboard: overall phase, per-unit progress, in-flight heartbeats,</text>
-<text x="1120" y="311" dominant-baseline="middle" fill="#bbdefb" font-size="10">blockers, suggested next action. Never mutates state. Any status.</text>
+<text x="1120" y="297" dominant-baseline="middle" fill="#bbdefb" font-size="10">Read-only dashboard: phase, per-unit progress, heartbeats, blockers, artifact-drift</text>
+<text x="1120" y="311" dominant-baseline="middle" fill="#bbdefb" font-size="10">staleness, suggested next action. Never mutates state. Any status.</text>
 
 <!-- ROW 4 -->
 <rect x="12"   y="328" width="500" height="64" rx="5" fill="#1976d2"/>
@@ -106,118 +104,146 @@
 <text x="1120" y="441" dominant-baseline="middle" fill="#e1bee7" font-size="10">Force-clears the advisory lock on state.json (10-min TTL). Only /plan and</text>
 <text x="1120" y="455" dominant-baseline="middle" fill="#e1bee7" font-size="10">/scaffold are guarded by this lock. Requires typing "force-clear".</text>
 
+<!-- ROW 6  — the two verification-quality skills (parity-check v0.11, quality-check v0.12) -->
+<rect x="12"   y="472" width="500" height="64" rx="5" fill="#00838f"/>
+<text x="32"   y="493" dominant-baseline="middle" fill="white" font-size="12" font-weight="700">/web-modernize:parity-check  [unit-id] [--all]</text>
+<text x="32"   y="513" dominant-baseline="middle" fill="#b2ebf2" font-size="10">Behavioural + security diff of migrated vs legacy (validation, output shape, errors,</text>
+<text x="32"   y="527" dominant-baseline="middle" fill="#b2ebf2" font-size="10">UI, authz/injection/secrets). Acknowledge intentional diffs. Gates /verify.</text>
+
+<rect x="556"  y="472" width="500" height="64" rx="5" fill="#00838f"/>
+<text x="576"  y="493" dominant-baseline="middle" fill="white" font-size="12" font-weight="700">/web-modernize:quality-check  [unit-id] [--all]</text>
+<text x="576"  y="513" dominant-baseline="middle" fill="#b2ebf2" font-size="10">Advisory idiomatic-code review — flags "JOBOL" / legacy-paradigm leakage in the</text>
+<text x="576"  y="527" dominant-baseline="middle" fill="#b2ebf2" font-size="10">migrated code. Never blocks. Same critic /verify runs as advisory step 5b.</text>
+
+<rect x="1100" y="472" width="500" height="64" rx="5" fill="#e8edf8" stroke="#00838f" stroke-width="1.5"/>
+<text x="1120" y="497" dominant-baseline="middle" fill="#00695c" font-size="11" font-weight="700">Verification stack (new in v0.11–v0.13)</text>
+<text x="1120" y="515" dominant-baseline="middle" fill="#37474f" font-size="9.5">tests → behavioural-parity → security → advisory quality.</text>
+<text x="1120" y="528" dominant-baseline="middle" fill="#37474f" font-size="9.5">Only high parity/security diffs block; quality never blocks.</text>
+
 <!-- Skill inheritance note -->
-<rect x="12" y="474" width="1576" height="28" rx="4" fill="#e3f2fd" stroke="#1565c0" stroke-width="1"/>
-<text x="800" y="488" text-anchor="middle" dominant-baseline="middle" fill="#0d47a1" font-size="10">
+<rect x="12" y="548" width="1576" height="28" rx="4" fill="#e3f2fd" stroke="#1565c0" stroke-width="1"/>
+<text x="800" y="562" text-anchor="middle" dominant-baseline="middle" fill="#0d47a1" font-size="10">
   All skills read state.json on entry to check precondition and redirect if status is wrong. Skills cannot invoke other skills — they instruct Claude to suggest the next command.
 </text>
 
 <!-- ================================================================
-     AGENTS SECTION  y=520..650
+     AGENTS SECTION  y=600..730  (5 agents)
      ================================================================ -->
-<rect x="0" y="520" width="1600" height="130" fill="#fbe9e7"/>
-<rect x="0" y="520" width="1600" height="32" fill="#bf360c"/>
-<text x="800" y="536" text-anchor="middle" dominant-baseline="middle"
-      fill="white" font-size="14" font-weight="700">Agents  (reusable procedures — 3 total)</text>
+<rect x="0" y="600" width="1600" height="130" fill="#fbe9e7"/>
+<rect x="0" y="600" width="1600" height="32" fill="#bf360c"/>
+<text x="800" y="616" text-anchor="middle" dominant-baseline="middle"
+      fill="white" font-size="14" font-weight="700">Agents  (reusable procedures — 5 total)</text>
 
-<!-- 3 agent boxes side by side  y=560, h=82 -->
-<rect x="12"   y="560" width="506" height="82" rx="5" fill="#bf360c"/>
-<text x="265" y="578" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="12" font-weight="700">legacy-analyzer</text>
-<text x="265" y="595" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="10">Type: subagent (spawned by /analyze)</text>
-<text x="265" y="611" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="10">Role: read-only — scores the source tree against detection</text>
-<text x="265" y="627" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="10">signals in frameworks/*.md (role: source). Returns JSON.</text>
+<!-- 5 agent boxes side by side  y=640, h=82  ·  x: 12,330,648,966,1284  w=306  centers: 165,483,801,1119,1437 -->
+<rect x="12"   y="640" width="306" height="82" rx="5" fill="#bf360c"/>
+<text x="165" y="658" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="11.5" font-weight="700">legacy-analyzer</text>
+<text x="165" y="676" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="9">subagent · spawned by /analyze</text>
+<text x="165" y="692" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="9">read-only · scores frameworks/*.md</text>
+<text x="165" y="708" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="9">detection signals → analysis.json</text>
 
-<rect x="548"  y="560" width="506" height="82" rx="5" fill="#bf360c"/>
-<text x="801" y="578" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="12" font-weight="700">unit-migrator</text>
-<text x="801" y="595" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="10">Type: inline procedure (NOT a subagent)</text>
-<text x="801" y="611" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="10">Role: per-unit translation — handles in-flight collision (A/B/C),</text>
-<text x="801" y="627" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="10">acquires lock, ports source → target, finalizes unit file.</text>
+<rect x="330"  y="640" width="306" height="82" rx="5" fill="#bf360c"/>
+<text x="483" y="658" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="11.5" font-weight="700">unit-migrator</text>
+<text x="483" y="676" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="9">inline procedure (not a subagent)</text>
+<text x="483" y="692" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="9">per-unit translation loop</text>
+<text x="483" y="708" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="9">collision A/B/C · port · finalize</text>
 
-<rect x="1084" y="560" width="504" height="82" rx="5" fill="#bf360c"/>
-<text x="1336" y="578" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="12" font-weight="700">permanent-gotchas</text>
-<text x="1336" y="595" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="10">Type: reference catalog (disable-model-invocation: true)</text>
-<text x="1336" y="611" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="10">Role: load-bearing framework bugs unreachable in &lt;30s via</text>
-<text x="1336" y="627" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="10">search (e.g. passlib+bcrypt≥4 breakage, FastAPI editable install).</text>
+<rect x="648"  y="640" width="306" height="82" rx="5" fill="#bf360c"/>
+<text x="801" y="658" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="11.5" font-weight="700">parity-reviewer  (v0.11)</text>
+<text x="801" y="676" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="9">subagent · read-only</text>
+<text x="801" y="692" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="9">behavioural + security diff vs legacy</text>
+<text x="801" y="708" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="9">high diffs gate migrated → verified</text>
+
+<rect x="966"  y="640" width="306" height="82" rx="5" fill="#bf360c"/>
+<text x="1119" y="658" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="11.5" font-weight="700">migration-critic  (v0.12)</text>
+<text x="1119" y="676" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="9">subagent · read-only · advisory</text>
+<text x="1119" y="692" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="9">idiomatic-quality review (JOBOL)</text>
+<text x="1119" y="708" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="9">never blocks · /verify 5b + /quality-check</text>
+
+<rect x="1284" y="640" width="304" height="82" rx="5" fill="#bf360c"/>
+<text x="1436" y="658" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="11.5" font-weight="700">permanent-gotchas</text>
+<text x="1436" y="676" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="9">reference catalog (no model-invocation)</text>
+<text x="1436" y="692" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="9">load-bearing framework bugs</text>
+<text x="1436" y="708" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="9">e.g. passlib+bcrypt≥4, hatchling install</text>
 
 <!-- ================================================================
-     FRAMEWORK FILES  y=650..800
+     FRAMEWORK FILES  y=730..880
      ================================================================ -->
-<rect x="0" y="650" width="1600" height="150" fill="#e8f5e9"/>
-<rect x="0" y="650" width="1600" height="32" fill="#1b5e20"/>
-<text x="800" y="666" text-anchor="middle" dominant-baseline="middle"
+<rect x="0" y="730" width="1600" height="150" fill="#e8f5e9"/>
+<rect x="0" y="730" width="1600" height="32" fill="#1b5e20"/>
+<text x="800" y="746" text-anchor="middle" dominant-baseline="middle"
       fill="white" font-size="14" font-weight="700">Framework Files — 31 .md files  (data-driven: drop 1 file = add 1 stack, no plugin code changes)</text>
 
 <!-- 3 role columns -->
-<rect x="12"   y="690" width="506" height="102" rx="5" fill="#1b5e20"/>
-<text x="265" y="706" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="12" font-weight="700">role: source  (14 files)</text>
-<text x="265" y="723" text-anchor="middle" dominant-baseline="middle" fill="#c8e6c9" font-size="10">Sections: Detection (strong + weak signals)</text>
-<text x="265" y="738" text-anchor="middle" dominant-baseline="middle" fill="#a5d6a7" font-size="9.5">aspnet-webforms · aspnet-mvc · java-jsp · java-spring-mvc</text>
-<text x="265" y="753" text-anchor="middle" dominant-baseline="middle" fill="#a5d6a7" font-size="9.5">angularjs-1 · extjs · jquery-spaghetti · php-classic</text>
-<text x="265" y="768" text-anchor="middle" dominant-baseline="middle" fill="#a5d6a7" font-size="9.5">django · ruby-on-rails · wordpress · coldfusion · vbscript · struts</text>
+<rect x="12"   y="770" width="506" height="102" rx="5" fill="#1b5e20"/>
+<text x="265" y="786" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="12" font-weight="700">role: source  (17 files)</text>
+<text x="265" y="803" text-anchor="middle" dominant-baseline="middle" fill="#c8e6c9" font-size="10">Sections: Detection (strong + weak signals)</text>
+<text x="265" y="818" text-anchor="middle" dominant-baseline="middle" fill="#a5d6a7" font-size="9.5">aspnet-webforms · aspnet-mvc · aspnet-core-mvc · java-jsp</text>
+<text x="265" y="833" text-anchor="middle" dominant-baseline="middle" fill="#a5d6a7" font-size="9.5">java-struts · java-spring-mvc · java-spring-boot · angularjs-1 · vue-2</text>
+<text x="265" y="848" text-anchor="middle" dominant-baseline="middle" fill="#a5d6a7" font-size="9.5">jquery · php-classic · coldfusion · vbscript-asp · rails · django</text>
+<text x="265" y="863" text-anchor="middle" dominant-baseline="middle" fill="#a5d6a7" font-size="9.5">wordpress · extjs</text>
 
-<rect x="548"  y="690" width="506" height="102" rx="5" fill="#2e7d32"/>
-<text x="801" y="706" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="12" font-weight="700">role: target-ui  (9 files)</text>
-<text x="801" y="723" text-anchor="middle" dominant-baseline="middle" fill="#c8e6c9" font-size="10">Sections: Scaffold · Test framework · Dev server · Wire to API</text>
-<text x="801" y="738" text-anchor="middle" dominant-baseline="middle" fill="#a5d6a7" font-size="9.5">react-vite-ts · next-app-router · vue3-vite · angular</text>
-<text x="801" y="753" text-anchor="middle" dominant-baseline="middle" fill="#a5d6a7" font-size="9.5">svelte-kit · astro · remix · nuxt · hono</text>
-<text x="801" y="768" text-anchor="middle" dominant-baseline="middle" fill="#a5d6a7" font-size="9.5">Unknown stack → 3-question fallback (scaffold cmd / test / verify)</text>
+<rect x="548"  y="770" width="506" height="102" rx="5" fill="#2e7d32"/>
+<text x="801" y="786" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="12" font-weight="700">role: target-ui  (8 files)</text>
+<text x="801" y="803" text-anchor="middle" dominant-baseline="middle" fill="#c8e6c9" font-size="10">Sections: Scaffold · Test framework · Dev server · Wire to API</text>
+<text x="801" y="820" text-anchor="middle" dominant-baseline="middle" fill="#a5d6a7" font-size="9.5">react-vite-ts · next-app-router · vue3-vite · angular</text>
+<text x="801" y="836" text-anchor="middle" dominant-baseline="middle" fill="#a5d6a7" font-size="9.5">svelte-kit · astro · nuxt · remix</text>
+<text x="801" y="858" text-anchor="middle" dominant-baseline="middle" fill="#a5d6a7" font-size="9.5">Unknown stack → 3-question fallback (scaffold cmd / test / verify)</text>
 
-<rect x="1084" y="690" width="504" height="102" rx="5" fill="#33691e"/>
-<text x="1336" y="706" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="12" font-weight="700">role: target-api  (8 files)</text>
-<text x="1336" y="723" text-anchor="middle" dominant-baseline="middle" fill="#c8e6c9" font-size="10">Sections: Scaffold · Auth notes · Test framework · Dev server</text>
-<text x="1336" y="738" text-anchor="middle" dominant-baseline="middle" fill="#a5d6a7" font-size="9.5">express · fastapi · django · spring-boot-3</text>
-<text x="1336" y="753" text-anchor="middle" dominant-baseline="middle" fill="#a5d6a7" font-size="9.5">nestjs · dotnet-minimal-api · ruby-on-rails · laravel</text>
-<text x="1336" y="768" text-anchor="middle" dominant-baseline="middle" fill="#a5d6a7" font-size="9.5">Auth notes read by /auth; unknown stack → OWASP + permanent-gotchas</text>
-
-<!-- ================================================================
-     TEMPLATES + HOOKS  y=800..880
-     ================================================================ -->
-<rect x="0" y="800" width="795" height="80" fill="#ede7f6"/>
-<rect x="0" y="800" width="795" height="26" fill="#4527a0"/>
-<text x="397" y="813" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="12" font-weight="700">Templates  (copied into user repo by /init)</text>
-
-<rect x="10" y="832" width="190" height="40" rx="4" fill="#4527a0"/>
-<text x="105" y="848" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="10" font-weight="600">migration.md</text>
-<text x="105" y="863" text-anchor="middle" dominant-baseline="middle" fill="#d1c4e9" font-size="8.5">11-section team config</text>
-
-<rect x="208" y="832" width="190" height="40" rx="4" fill="#4527a0"/>
-<text x="303" y="848" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="10" font-weight="600">state.schema.json</text>
-<text x="303" y="863" text-anchor="middle" dominant-baseline="middle" fill="#d1c4e9" font-size="8.5">schema_version: 3 const</text>
-
-<rect x="406" y="832" width="190" height="40" rx="4" fill="#4527a0"/>
-<text x="501" y="848" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="10" font-weight="600">unit.schema.json</text>
-<text x="501" y="863" text-anchor="middle" dominant-baseline="middle" fill="#d1c4e9" font-size="8.5">per-unit shape</text>
-
-<rect x="604" y="832" width="185" height="40" rx="4" fill="#512da8"/>
-<text x="696" y="843" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="10" font-weight="600">plan.md · report.md</text>
-<text x="696" y="858" text-anchor="middle" dominant-baseline="middle" fill="#d1c4e9" font-size="8.5">{{PLACEHOLDER}} substitution</text>
-<text x="696" y="870" text-anchor="middle" dominant-baseline="middle" fill="#d1c4e9" font-size="8.5">migration-interview.json (Q&amp;A)</text>
-
-<rect x="805" y="800" width="795" height="80" fill="#e0f2f1"/>
-<rect x="805" y="800" width="795" height="26" fill="#00695c"/>
-<text x="1202" y="813" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="12" font-weight="700">Hooks — PostToolUse heartbeat</text>
-
-<rect x="815" y="832" width="370" height="40" rx="4" fill="#00695c"/>
-<text x="1000" y="848" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="10" font-weight="600">hooks.json</text>
-<text x="1000" y="863" text-anchor="middle" dominant-baseline="middle" fill="#b2dfdb" font-size="8.5">PostToolUse trigger → runs heartbeat.mjs</text>
-
-<rect x="1193" y="832" width="400" height="40" rx="4" fill="#00695c"/>
-<text x="1393" y="848" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="10" font-weight="600">heartbeat.mjs  (Node script)</text>
-<text x="1393" y="863" text-anchor="middle" dominant-baseline="middle" fill="#b2dfdb" font-size="8.5">finds in-flight units owned by this dev/host → bumps last_heartbeat</text>
+<rect x="1084" y="770" width="504" height="102" rx="5" fill="#33691e"/>
+<text x="1336" y="786" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="12" font-weight="700">role: target-api  (6 files)</text>
+<text x="1336" y="803" text-anchor="middle" dominant-baseline="middle" fill="#c8e6c9" font-size="10">Sections: Scaffold · Auth notes · Test framework · Dev server</text>
+<text x="1336" y="820" text-anchor="middle" dominant-baseline="middle" fill="#a5d6a7" font-size="9.5">dotnet-minimal-api · spring-boot-3 · nestjs</text>
+<text x="1336" y="836" text-anchor="middle" dominant-baseline="middle" fill="#a5d6a7" font-size="9.5">fastapi · express · hono</text>
+<text x="1336" y="858" text-anchor="middle" dominant-baseline="middle" fill="#a5d6a7" font-size="9.5">Auth notes read by /auth; unknown → OWASP + permanent-gotchas</text>
 
 <!-- ================================================================
-     FOOTER  y=880..940
+     TEMPLATES + WORKFLOWS + HOOKS  y=880..964
      ================================================================ -->
-<rect x="0" y="880" width="1600" height="60" fill="#e8eaf6"/>
-<line x1="0" y1="880" x2="1600" y2="880" stroke="#9fa8da" stroke-width="1.5"/>
+<rect x="0" y="880" width="795" height="84" fill="#ede7f6"/>
+<rect x="0" y="880" width="795" height="26" fill="#4527a0"/>
+<text x="397" y="893" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="12" font-weight="700">Templates + Workflows  (copied / shipped with the plugin)</text>
 
-<rect x="12"  y="896" width="490" height="30" rx="4" fill="#424242"/>
-<text x="257" y="911" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="11">◀  PAGE 1: Overview  →  architecture-p1-overview.svg</text>
+<rect x="10" y="912" width="190" height="44" rx="4" fill="#4527a0"/>
+<text x="105" y="928" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="10" font-weight="600">migration.md + schemas</text>
+<text x="105" y="943" text-anchor="middle" dominant-baseline="middle" fill="#d1c4e9" font-size="8.5">team config · state/unit schema v3</text>
 
-<rect x="555" y="896" width="490" height="30" rx="4" fill="#1565c0"/>
-<text x="800" y="911" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="11" font-weight="700">◀  PAGE 2 of 3: Plugin Components  (you are here)  ▶</text>
+<rect x="208" y="912" width="190" height="44" rx="4" fill="#4527a0"/>
+<text x="303" y="928" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="10" font-weight="600">plan.md · report.md</text>
+<text x="303" y="943" text-anchor="middle" dominant-baseline="middle" fill="#d1c4e9" font-size="8.5">{{PLACEHOLDER}} · notes-template</text>
 
-<rect x="1098" y="896" width="490" height="30" rx="4" fill="#424242"/>
-<text x="1343" y="911" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="11">▶  PAGE 3: State &amp; Data Flow  →  architecture-p3-state.svg</text>
+<rect x="406" y="912" width="190" height="44" rx="4" fill="#4527a0"/>
+<text x="501" y="928" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="10" font-weight="600">migration-interview.json</text>
+<text x="501" y="943" text-anchor="middle" dominant-baseline="middle" fill="#d1c4e9" font-size="8.5">/analyze interview Q&amp;A catalog</text>
+
+<rect x="604" y="912" width="181" height="44" rx="4" fill="#5e35b1"/>
+<text x="694" y="928" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="10" font-weight="600">workflows/*.js</text>
+<text x="694" y="943" text-anchor="middle" dominant-baseline="middle" fill="#d1c4e9" font-size="8.5">analyze-discovery (Workflow tool)</text>
+
+<rect x="805" y="880" width="795" height="84" fill="#e0f2f1"/>
+<rect x="805" y="880" width="795" height="26" fill="#00695c"/>
+<text x="1202" y="893" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="12" font-weight="700">Hooks — PostToolUse heartbeat</text>
+
+<rect x="815" y="912" width="370" height="44" rx="4" fill="#00695c"/>
+<text x="1000" y="928" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="10" font-weight="600">hooks.json</text>
+<text x="1000" y="943" text-anchor="middle" dominant-baseline="middle" fill="#b2dfdb" font-size="8.5">PostToolUse trigger → runs heartbeat.mjs</text>
+
+<rect x="1193" y="912" width="400" height="44" rx="4" fill="#00695c"/>
+<text x="1393" y="928" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="10" font-weight="600">heartbeat.mjs  (Node script)</text>
+<text x="1393" y="943" text-anchor="middle" dominant-baseline="middle" fill="#b2dfdb" font-size="8.5">finds in-flight units owned by this dev/host → bumps last_heartbeat</text>
+
+<!-- ================================================================
+     FOOTER  y=964..1024
+     ================================================================ -->
+<rect x="0" y="964" width="1600" height="60" fill="#e8eaf6"/>
+<line x1="0" y1="964" x2="1600" y2="964" stroke="#9fa8da" stroke-width="1.5"/>
+
+<rect x="12"  y="980" width="490" height="30" rx="4" fill="#424242"/>
+<text x="257" y="995" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="11">◀  PAGE 1: Overview  →  architecture-p1-overview.svg</text>
+
+<rect x="555" y="980" width="490" height="30" rx="4" fill="#1565c0"/>
+<text x="800" y="995" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="11" font-weight="700">◀  PAGE 2 of 3: Plugin Components  (you are here)  ▶</text>
+
+<rect x="1098" y="980" width="490" height="30" rx="4" fill="#424242"/>
+<text x="1343" y="995" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="11">▶  PAGE 3: State &amp; Data Flow  →  architecture-p3-state.svg</text>
 
 </svg>

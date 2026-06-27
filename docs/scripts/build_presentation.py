@@ -34,7 +34,7 @@ FONT_MONO        = "Consolas"
 FONT_HEADER      = "Segoe UI Semibold"   # slide titles, section banners, table headers
 FONT_HEADER_LIGHT = "Segoe UI Light"     # hero wordmarks on title/closing slides
 
-FOOTER_TEXT = "web-modernize v0.11.0   ·   Balaji Harikrishnan   ·   Cognizant   ·   June 2026"
+FOOTER_TEXT = "web-modernize v0.13.0   ·   Balaji Harikrishnan   ·   Cognizant   ·   June 2026"
 
 
 # ── Low-level helpers ───────────────────────────────────────────────────────
@@ -244,7 +244,7 @@ def slide_01_title(prs):
              size=15, italic=True, color=TEAL, align=PP_ALIGN.CENTER)
 
     add_text(slide, 0.5, 6.55, 12.333, 0.35,
-             "Balaji Harikrishnan   ·   Cognizant   ·   June 2026   ·   v0.11.0",
+             "Balaji Harikrishnan   ·   Cognizant   ·   June 2026   ·   v0.13.0",
              size=12, color=SLATE, font=FONT_HEADER, align=PP_ALIGN.CENTER)
 
 
@@ -316,9 +316,10 @@ def slide_02_intro(prs):
          "Installs via the standard  /plugin install  command  —  no "
          "separate infrastructure, no servers."),
         ("What It Adds",
-         "16 skills exposed as slash commands  ·  4 AI agents (analyzer, "
-         "migrator, parity-reviewer, gotchas catalog)  ·  2 automation "
-         "hooks  ·  9 schema-validated templates copied into the team's repo."),
+         "17 skills exposed as slash commands  ·  5 AI agents (analyzer, "
+         "migrator, parity-reviewer, migration-critic, gotchas catalog)  ·  2 "
+         "automation hooks  ·  a workflows/ orchestration script  ·  9 "
+         "schema-validated templates copied into the team's repo."),
         ("State and Concurrency",
          "All migration state lives in git as JSON. Per-unit file split "
          "(schema v3) lets 20+ developers migrate different units in "
@@ -474,7 +475,7 @@ def slide_04_analyze(prs):
         ("Step 1  —  /analyze (automatic)", COBALT, [
             "Reads every legacy file (never modifies them).",
             "Detects framework, version, and build tooling.",
-            "Identifies entry points and key dependencies.",
+            "Identifies entry points  —  exhaustive loop-until-dry discovery on large apps.",
             "Pre-fills migration.md §2  (Source Stack)  for you.",
             "Writes analysis.json — a structured inventory you can audit.",
         ]),
@@ -487,7 +488,7 @@ def slide_04_analyze(prs):
         ]),
         ("Step 3  —  /plan (automatic)", GREEN, [
             "Validates that migration.md is complete and consistent.",
-            "Generates plan.md  —  a full, reviewable migration plan.",
+            "Generates plan.md  —  a reviewable plan with a dependency graph.",
             "Seeds the unit backlog  —  one item per page or feature.",
             "Re-runnable: edit migration.md and re-run /plan anytime.",
             "History is preserved across re-plans  (by unit id).",
@@ -550,7 +551,7 @@ def slide_05_execution(prs):
 
     setup_states = [
         ("Backlog Ready",   "From  /plan.\nUnits sized S / M / L / XL."),
-        ("Target Scaffold", "Modern app skeleton.\nLegacy assets copied in."),
+        ("Target Scaffold", "Skeleton + toolchain preflight.\nLegacy assets copied in."),
         ("Auth Working",    "Login migrated first.\nEvery feature depends on it."),
     ]
     for i, (title, sub) in enumerate(setup_states):
@@ -627,7 +628,7 @@ def slide_05_execution(prs):
 
     # "Same time" indicator below cards
     add_text(slide, 0.40, 6.48, 12.533, 0.26,
-             "/verify enforces lint + type-check + tests + a behavioural-parity check before a unit is marked done.  Per-unit git files mean zero merge conflicts in parallel.",
+             "/verify enforces lint + type-check + tests + behavioural-parity + security checks (plus an advisory code-quality review) before a unit is marked done.  Per-unit git files mean zero merge conflicts.",
              size=11, italic=True, color=SLATE,
              align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
 
@@ -663,12 +664,13 @@ def slide_07_risk_safety(prs):
         ("Nothing ships unverified",
          "/verify is a hard gate — lint, type-check, and tests must pass "
          "before a unit transitions from migrated to verified. A read-only "
-         "parity-reviewer then compares the migrated unit against the "
-         "legacy original (validation, output shape, errors, UI states); "
-         "high-severity differences block the unit until the team "
-         "acknowledges them via /parity-check. Failed units keep their "
-         "diagnostic history, and /retry --with-prompt re-attempts with "
-         "human guidance."),
+         "parity-reviewer then compares migrated vs legacy — validation, "
+         "output shape, errors, UI states, and security (dropped "
+         "authorization, injection, secret leakage); high-severity "
+         "differences block until acknowledged via /parity-check. An "
+         "advisory migration-critic flags non-idiomatic code, and "
+         "discovered credentials are masked in every shared artifact. "
+         "/retry --with-prompt re-attempts with human guidance."),
         ("Nothing is hidden",
          "All state lives in git as JSON — auditable, diffable, "
          "code-reviewable. /status shows real-time who's working on "
@@ -740,7 +742,7 @@ def slide_08_extensibility(prs):
              "Every skill's description now packs intent phrases + a "
              "lifecycle anchor. Claude's native skill matcher routes "
              "plain-English requests to the right command — developers "
-             "stop memorising 15 slash commands.",
+             "stop memorising 17 slash commands.",
              size=11, color=INK, anchor=MSO_ANCHOR.MIDDLE)
 
     # Examples table — "you type → skill fires"
@@ -1027,14 +1029,14 @@ def slide_06_advantages(prs):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Slide 10 — The 16 Skills (Slash Commands)
+# Slide 10 — The 17 Skills (Slash Commands)
 # ══════════════════════════════════════════════════════════════════════════════
 
 def slide_10_commands(prs):
     slide = blank_slide(prs)
     page_chrome(
         slide,
-        "The 16 Skills  (Slash Commands)",
+        "The 17 Skills  (Slash Commands)",
         "Each skill is exposed as a slash command — or auto-fires from plain English (see slide 8)",
         page_num=10,
     )
@@ -1048,8 +1050,9 @@ def slide_10_commands(prs):
         ("/auth",      "Migrates login and authentication first, because every feature depends on it."),
         ("/next",      "Picks the next available unit from the backlog and migrates it automatically."),
         ("/migrate",   "Migrates a specific unit by name — used when standup assigns work."),
-        ("/verify",    "Runs lint, type-check, unit tests, and a behavioural-parity check on a migrated unit before it is declared done."),
-        ("/parity-check", "Compares a migrated unit's behaviour against the legacy original — validation, output shape, errors, UI states — and lets the team acknowledge intentional differences."),
+        ("/verify",    "Runs lint, type-check, tests, a behavioural-parity + security check, and an advisory code-quality review before a unit is declared done."),
+        ("/parity-check", "Compares a migrated unit's behaviour against the legacy original — validation, output shape, errors, UI states, security — and lets the team acknowledge intentional differences."),
+        ("/quality-check", "Advisory review of the migrated code's idiomaticity — flags legacy patterns carried into the new stack. Never blocks."),
         ("/retry",     "Re-attempts a failed unit, optionally with team-supplied corrective guidance."),
         ("/rollback",  "Reverts a single unit back to its original state in one git command."),
         ("/sync",      "Merges teammates' parallel progress into the local copy with deterministic rules."),
@@ -1083,10 +1086,10 @@ def slide_11_inventory(prs):
     )
 
     add_text(slide, 0.40, 1.22, 12.5, 0.32,
-             "4 AI Agents   (specialised AIs that read your code, translate it, verify behaviour, and steer around known pitfalls)",
+             "5 AI Agents   (specialised AIs that read your code, translate it, verify behaviour & quality, and steer around known pitfalls)",
              size=15, color=COBALT, font=FONT_HEADER)
     add_table(
-        slide, 0.40, 1.55, 12.533, 1.55,
+        slide, 0.40, 1.55, 12.533, 1.62,
         ["Agent", "What It Does"],
         [
             ("legacy-analyzer",
@@ -1094,14 +1097,16 @@ def slide_11_inventory(prs):
             ("unit-migrator",
              "Core migration engine that translates one page or feature from legacy code to the modern target stack."),
             ("parity-reviewer",
-             "Read-only AI that compares the migrated unit against the legacy original and reports behavioural differences tests can't catch."),
+             "Read-only AI that compares migrated vs legacy for behavioural AND security differences tests can't catch."),
+            ("migration-critic",
+             "Read-only, advisory AI that reviews the migrated code's idiomaticity — flags legacy patterns leaking into the new stack."),
             ("permanent-gotchas",
              "Curated read-only catalog of bugs the AI cannot reliably discover on its own — first-run crashes and silent failures."),
         ],
         col_ratios=[0.22, 0.78],
         header_size=12, body_size=11,
         mono_col0=True,
-        row_height=0.30,
+        row_height=0.26,
     )
 
     add_text(slide, 0.40, 3.15, 12.5, 0.32,
@@ -1123,15 +1128,16 @@ def slide_11_inventory(prs):
     )
 
     add_text(slide, 0.40, 4.52, 12.5, 0.32,
-             "9 Templates  +  31 Framework Files",
+             "9 Templates  ·  31 Framework Files  ·  1 Workflow Script",
              size=15, color=COBALT, font=FONT_HEADER)
     add_table(
-        slide, 0.40, 4.85, 12.533, 2.05,
+        slide, 0.40, 4.85, 12.533, 2.25,
         ["Artifact", "What It Does"],
         [
             ("migration.md",                          "The team-editable configuration: target stack, strategy, auth, acceptance criteria."),
-            ("migration-interview.json",              "Declarative question catalog driving /analyze's interactive setup interview (new in v0.10.0)."),
-            ("frameworks/<name>.md  ×31",             "One file per supported framework — detection signals, scaffold recipe, test framework, auth notes (new in v0.10.0)."),
+            ("migration-interview.json",              "Declarative question catalog driving /analyze's interactive setup interview."),
+            ("frameworks/<name>.md  ×31",             "One file per supported framework — detection signals, scaffold recipe, test framework, auth notes."),
+            ("workflows/analyze-discovery.js",        "Workflow-tool orchestration script — exhaustive loop-until-dry entry-point discovery driving /analyze."),
             ("state.schema.json  +  unit.schema.json", "Schemas for the workflow ledger and per-unit state — one JSON file per unit, conflict-free in git."),
             ("plan.md  +  report.md  +  notes-template.md", "Templates for the auto-generated plan, stakeholder reports, and per-unit design notes."),
             ("verify.config.json",                    "Per-stack lint, type-check, and test commands used by /verify."),
@@ -1140,7 +1146,7 @@ def slide_11_inventory(prs):
         col_ratios=[0.34, 0.66],
         header_size=12, body_size=10,
         mono_col0=True,
-        row_height=0.28,
+        row_height=0.25,
     )
 
 
@@ -1192,7 +1198,7 @@ def slide_12_closing(prs):
              "Balaji Harikrishnan   ·   balaji.harikrishnan@cognizant.com",
              size=13, color=WHITE, align=PP_ALIGN.CENTER)
     add_text(slide, 0.5, 6.70, 12.333, 0.32,
-             "web-modernize v0.11.0   ·   github.com/balaji-hari/web-mordernize",
+             "web-modernize v0.13.0   ·   github.com/balaji-hari/web-mordernize",
              size=11, italic=True, color=SLATE, align=PP_ALIGN.CENTER)
 
 
@@ -1203,7 +1209,7 @@ def slide_12_closing(prs):
 def build():
     prs = new_prs()
 
-    print("Building 12-slide leadership deck (v0.11.0)...")
+    print("Building 12-slide leadership deck (v0.13.0)...")
     slide_01_title(prs);            print("  [1/12] Title")
     slide_02_intro(prs);            print("  [2/12] What is web-modernize")
     slide_03_need(prs);             print("  [3/12] Why we need it")
@@ -1213,7 +1219,7 @@ def build():
     slide_07_risk_safety(prs);      print("  [7/12] Risk, safety, and reversibility (NEW)")
     slide_08_extensibility(prs);    print("  [8/12] Natural language + pluggable framework library")
     slide_09_planning(prs);         print("  [9/12] Built for sprint and PI planning")
-    slide_10_commands(prs);         print("  [10/12] 16 skills (slash commands)")
+    slide_10_commands(prs);         print("  [10/12] 17 skills (slash commands)")
     slide_11_inventory(prs);        print("  [11/12] Agents, hooks, templates, framework library")
     slide_12_closing(prs);          print("  [12/12] Closing / next step")
 

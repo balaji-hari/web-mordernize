@@ -27,7 +27,7 @@
 <text x="800" y="30" text-anchor="middle" dominant-baseline="middle"
       fill="white" font-size="26" font-weight="700" letter-spacing="0.5">web-modernize</text>
 <text x="800" y="56" text-anchor="middle" dominant-baseline="middle"
-      fill="#9fc8fa" font-size="12.5">Claude Code Plugin · v0.11.0 · Migrate legacy web apps (ASP.NET WebForms/MVC, Java JSP/Spring, AngularJS 1.x, PHP, ColdFusion…) to modern stacks</text>
+      fill="#9fc8fa" font-size="12.5">Claude Code Plugin · v0.13.0 · Migrate legacy web apps (ASP.NET WebForms/MVC, Java JSP/Spring, AngularJS 1.x, PHP, ColdFusion…) to modern stacks</text>
 
 <!-- Install strip (y=70..94) -->
 <rect x="0" y="70" width="1600" height="24" fill="#1a237e"/>
@@ -115,7 +115,7 @@
       fill="white" font-size="13" font-weight="700">PLUGIN REPO — C:\1\web-mordernize  (plugin source, installed once)</text>
 
 <!-- == SKILLS  y=258..399 =========================================== -->
-<text x="12" y="265" dominant-baseline="middle" fill="#1565c0" font-size="11" font-weight="700">Skills — 16 Slash Commands</text>
+<text x="12" y="265" dominant-baseline="middle" fill="#1565c0" font-size="11" font-weight="700">Skills — 17 Slash Commands</text>
 <!-- 4 cols: x=10,204,398,592 (w=186, gap=8)  ·  4 rows: y=272,305,338,371 (h=28, pitch=33)
      centers x: 103, 297, 491, 685 -->
 
@@ -139,11 +139,9 @@
 <rect x="592" y="305" width="186" height="28" rx="4" fill="#1565c0"/>
 <text x="685" y="319" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="9.5" font-weight="600">/web-modernize:verify</text>
 
-<!-- Row 3  (parity-check is new in v0.11.0) -->
-<rect x="10"  y="338" width="186" height="28" rx="4" fill="#1565c0" stroke="#43a047" stroke-width="2"/>
+<!-- Row 3 -->
+<rect x="10"  y="338" width="186" height="28" rx="4" fill="#1565c0"/>
 <text x="103" y="352" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="9.5" font-weight="600">/web-modernize:parity-check</text>
-<rect x="166" y="332" width="34" height="13" rx="6" fill="#43a047"/>
-<text x="183" y="339" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="7.5" font-weight="700">NEW</text>
 <rect x="204" y="338" width="186" height="28" rx="4" fill="#1565c0"/>
 <text x="297" y="352" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="9.5" font-weight="600">/web-modernize:status</text>
 <rect x="398" y="338" width="186" height="28" rx="4" fill="#1565c0"/>
@@ -161,28 +159,38 @@
 <rect x="592" y="371" width="186" height="28" rx="4" fill="#1565c0"/>
 <text x="685" y="385" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="9.5" font-weight="600">/web-modernize:unlock</text>
 
+<!-- Row 5 — quality-check (new in v0.12.0) -->
+<rect x="10"  y="404" width="186" height="28" rx="4" fill="#1565c0" stroke="#43a047" stroke-width="2"/>
+<text x="103" y="418" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="9.5" font-weight="600">/web-modernize:quality-check</text>
+<rect x="166" y="398" width="34" height="13" rx="6" fill="#43a047"/>
+<text x="183" y="405" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="7.5" font-weight="700">NEW</text>
+
 <!-- == AGENTS  y=443..499 =========================================== -->
-<text x="12" y="446" dominant-baseline="middle" fill="#bf360c" font-size="11" font-weight="700">Agents — 4</text>
+<text x="12" y="446" dominant-baseline="middle" fill="#bf360c" font-size="11" font-weight="700">Agents — 5</text>
 <!-- 4 cols: x=10,204,398,592 (w=186)  ·  centers 103,297,491,685 -->
 
-<rect x="10"  y="453" width="186" height="42" rx="4" fill="#bf360c"/>
-<text x="103" y="467" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="10" font-weight="700">legacy-analyzer</text>
-<text x="103" y="484" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="8.5">subagent · stack detection</text>
+<rect x="10"  y="453" width="150" height="42" rx="4" fill="#bf360c"/>
+<text x="85"  y="467" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="9.5" font-weight="700">legacy-analyzer</text>
+<text x="85"  y="484" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="8">subagent · stack detect</text>
 
-<rect x="204" y="453" width="186" height="42" rx="4" fill="#bf360c"/>
-<text x="297" y="467" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="10" font-weight="700">unit-migrator</text>
-<text x="297" y="484" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="8.5">inline · per-unit migration loop</text>
+<rect x="167" y="453" width="150" height="42" rx="4" fill="#bf360c"/>
+<text x="242" y="467" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="9.5" font-weight="700">unit-migrator</text>
+<text x="242" y="484" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="8">inline · migration loop</text>
 
-<!-- parity-reviewer is new in v0.11.0 -->
-<rect x="398" y="453" width="186" height="42" rx="4" fill="#bf360c" stroke="#43a047" stroke-width="2"/>
-<text x="491" y="467" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="10" font-weight="700">parity-reviewer</text>
-<text x="491" y="484" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="8.5">subagent · behavioural parity</text>
-<rect x="540" y="447" width="34" height="13" rx="6" fill="#43a047"/>
-<text x="557" y="454" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="7.5" font-weight="700">NEW</text>
+<rect x="324" y="453" width="150" height="42" rx="4" fill="#bf360c"/>
+<text x="399" y="467" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="9.5" font-weight="700">parity-reviewer</text>
+<text x="399" y="484" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="8">subagent · parity + security</text>
 
-<rect x="592" y="453" width="186" height="42" rx="4" fill="#bf360c"/>
-<text x="685" y="467" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="10" font-weight="700">permanent-gotchas</text>
-<text x="685" y="484" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="8.5">reference · bug catalog</text>
+<!-- migration-critic is new in v0.12.0 -->
+<rect x="481" y="453" width="150" height="42" rx="4" fill="#bf360c" stroke="#43a047" stroke-width="2"/>
+<text x="556" y="467" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="9.5" font-weight="700">migration-critic</text>
+<text x="556" y="484" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="8">subagent · idiomatic quality</text>
+<rect x="597" y="447" width="34" height="13" rx="6" fill="#43a047"/>
+<text x="614" y="454" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="7.5" font-weight="700">NEW</text>
+
+<rect x="638" y="453" width="150" height="42" rx="4" fill="#bf360c"/>
+<text x="713" y="467" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="9.5" font-weight="700">permanent-gotchas</text>
+<text x="713" y="484" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="8">reference · bug catalog</text>
 
 <!-- == FRAMEWORKS  y=505..564 ======================================= -->
 <text x="12" y="507" dominant-baseline="middle" fill="#1b5e20" font-size="11" font-weight="700">Frameworks — 31 .md files  (drop 1 file = add 1 stack, no skill edits needed)</text>
@@ -203,7 +211,7 @@
 <rect x="10"  y="570" width="382" height="62" rx="4" fill="#4527a0"/>
 <text x="201" y="586" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="11" font-weight="700">Templates</text>
 <text x="201" y="603" text-anchor="middle" dominant-baseline="middle" fill="#d1c4e9" font-size="9">migration.md · state.schema.json · unit.schema.json</text>
-<text x="201" y="619" text-anchor="middle" dominant-baseline="middle" fill="#d1c4e9" font-size="9">plan.md · report.md · migration-interview.json</text>
+<text x="201" y="619" text-anchor="middle" dominant-baseline="middle" fill="#d1c4e9" font-size="9">plan.md · report.md · migration-interview.json · workflows/*.js</text>
 
 <rect x="400" y="570" width="383" height="62" rx="4" fill="#00695c"/>
 <text x="591" y="586" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="11" font-weight="700">Hooks — PostToolUse</text>
@@ -248,12 +256,12 @@
 
 <rect x="1201" y="337" width="371" height="48" rx="3" fill="#7b1fa2"/>
 <text x="1386" y="353" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="10.5" font-weight="700">units/&lt;id&gt;.json × N</text>
-<text x="1386" y="370" text-anchor="middle" dominant-baseline="middle" fill="#e1bee7" font-size="9">status · in_flight · history[] · verify · parity_findings[]</text>
+<text x="1386" y="370" text-anchor="middle" dominant-baseline="middle" fill="#e1bee7" font-size="9">status · in_flight · history[] · parity_findings[] · quality_findings[]</text>
 
 <!-- Row 2: plan.md / analysis.json / verify.config.json -->
 <rect x="823" y="393" width="183" height="40" rx="3" fill="#9c27b0"/>
 <text x="914"  y="407" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="10" font-weight="700">plan.md</text>
-<text x="914"  y="423" text-anchor="middle" dominant-baseline="middle" fill="#f3e5f5" font-size="8.5">phased unit ordering</text>
+<text x="914"  y="423" text-anchor="middle" dominant-baseline="middle" fill="#f3e5f5" font-size="8.5">phased ordering + dep graph</text>
 
 <rect x="1014" y="393" width="215" height="40" rx="3" fill="#9c27b0"/>
 <text x="1121" y="407" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="10" font-weight="700">analysis.json</text>
@@ -327,7 +335,7 @@
 <text x="213" y="771" text-anchor="middle" dominant-baseline="middle" fill="#37474f" font-size="9">/next or /migrate</text>
 <text x="417" y="771" text-anchor="middle" dominant-baseline="middle" fill="#37474f" font-size="9">translation complete</text>
 <text x="612" y="767" text-anchor="middle" dominant-baseline="middle" fill="#37474f" font-size="9">/verify passes</text>
-<text x="612" y="757" text-anchor="middle" dominant-baseline="middle" fill="#00695c" font-size="8" font-weight="700">+ parity gate</text>
+<text x="612" y="757" text-anchor="middle" dominant-baseline="middle" fill="#00695c" font-size="8" font-weight="700">+ parity + security</text>
 
 <!-- Branch nodes  y=838, h=26 -->
 <rect x="60"  y="838" width="115" height="26" rx="4" fill="#4e342e"/>
@@ -353,11 +361,11 @@
 <rect x="218" y="872" width="228" height="26" rx="4" fill="#fff9c4" stroke="#f57f17" stroke-width="1"/>
 <text x="332" y="885" text-anchor="middle" dominant-baseline="middle" fill="#e65100" font-size="9">heartbeat.mjs bumps last_heartbeat on every Write</text>
 
-<!-- Parity gate callout (new in v0.11.0) -->
+<!-- Parity + security gate callout -->
 <rect x="455" y="872" width="725" height="26" rx="4" fill="#e0f2f1" stroke="#00695c" stroke-width="1.2"/>
 <rect x="463" y="877" width="34" height="13" rx="6" fill="#43a047"/>
 <text x="480" y="884" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="7.5" font-weight="700">NEW</text>
-<text x="838" y="885" text-anchor="middle" dominant-baseline="middle" fill="#004d40" font-size="8.8">Parity gate: parity-reviewer subagent compares target ↔ legacy; unacknowledged high-severity diffs block migrated→verified  ·  /parity-check reviews &amp; acknowledges  ·  --no-parity opts out</text>
+<text x="838" y="885" text-anchor="middle" dominant-baseline="middle" fill="#004d40" font-size="8.5">Parity + security gate: parity-reviewer diffs target ↔ legacy (behaviour + authz / injection / secrets); highs block migrated→verified  ·  advisory migration-critic = code quality (/quality-check)</text>
 
 <!-- Recovery notes (right side) -->
 <text x="830" y="788" dominant-baseline="middle" fill="#37474f" font-size="10.5" font-weight="700">Recovery actions:</text>
@@ -414,7 +422,7 @@
 
 <!-- Footer -->
 <text x="800" y="1007" text-anchor="middle" dominant-baseline="middle" fill="#9e9e9e" font-size="9.5">
-  github.com/balaji-hari/web-mordernize · Plugin namespace: web-modernize · State schema v3 · 16 skills · 4 agents · 31 framework files
+  github.com/balaji-hari/web-mordernize · Plugin namespace: web-modernize · State schema v3 · 17 skills · 5 agents · 31 framework files · 1 workflow
 </text>
 
 </svg>

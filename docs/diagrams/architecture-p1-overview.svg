@@ -20,7 +20,7 @@
 <text x="800" y="28" text-anchor="middle" dominant-baseline="middle"
       fill="white" font-size="24" font-weight="700" letter-spacing="0.5">web-modernize — Architecture Overview</text>
 <text x="800" y="55" text-anchor="middle" dominant-baseline="middle"
-      fill="#9fc8fa" font-size="13">Page 1 of 3: Overview &amp; Workflow  ·  v0.10.0  ·  Claude Code Plugin</text>
+      fill="#9fc8fa" font-size="13">Page 1 of 3: Overview &amp; Workflow  ·  v0.13.0  ·  Claude Code Plugin</text>
 
 <!-- ================================================================
      WHAT IS THIS  (y=72..240)
@@ -36,7 +36,7 @@
 <text x="30" y="162" dominant-baseline="middle" fill="#64b5f6" font-size="10.5">Sources  ▸  ASP.NET WebForms / MVC  ·  Java JSP / Spring MVC  ·  AngularJS 1.x  ·  PHP Classic  ·  ColdFusion  ·  VBScript ASP</text>
 <text x="30" y="180" dominant-baseline="middle" fill="#64b5f6" font-size="10.5">UI targets  ▸  React · Vue 3 · Next.js · Svelte-Kit · Angular · Astro · Remix · Nuxt</text>
 <text x="30" y="198" dominant-baseline="middle" fill="#64b5f6" font-size="10.5">API targets  ▸  Express · FastAPI · Django · Spring Boot 3 · NestJS · .NET Minimal API · Ruby on Rails</text>
-<text x="30" y="218" dominant-baseline="middle" fill="#a5d6a7" font-size="10.5">✓ State shared via git — zero merge conflicts per unit  ·  ✓ Solo or multi-developer  ·  ✓ Every unit is recoverable</text>
+<text x="30" y="218" dominant-baseline="middle" fill="#a5d6a7" font-size="10.5">✓ State shared via git — zero conflicts per unit  ·  ✓ Gated: parity + security + quality  ·  ✓ Every unit recoverable</text>
 <text x="30" y="235" dominant-baseline="middle" fill="#a5d6a7" font-size="10.5">✓ Drop 1 .md file to add a new framework — no plugin code changes needed</text>
 
 <!-- Right: Install steps + key numbers (x=800..1600) -->
@@ -59,11 +59,11 @@
 
 <!-- Key numbers row -->
 <rect x="830" y="210" width="170" height="26" rx="4" fill="#283593"/>
-<text x="915" y="223" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="10">15 Slash Commands</text>
+<text x="915" y="223" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="10">17 Slash Commands</text>
 <rect x="1008" y="210" width="150" height="26" rx="4" fill="#283593"/>
 <text x="1083" y="223" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="10">31 Framework Files</text>
 <rect x="1166" y="210" width="130" height="26" rx="4" fill="#283593"/>
-<text x="1231" y="223" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="10">3 Agents</text>
+<text x="1231" y="223" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="10">5 Agents</text>
 <rect x="1304" y="210" width="256" height="26" rx="4" fill="#283593"/>
 <text x="1432" y="223" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="10">N Units in Parallel (git-safe)</text>
 
@@ -143,7 +143,7 @@
 <text x="477"  y="351" text-anchor="middle" dominant-baseline="middle" fill="#37474f" font-size="8.5">target chosen</text>
 <!-- planned -->
 <text x="677"  y="338" text-anchor="middle" dominant-baseline="middle" fill="#37474f" font-size="8.5">N units planned,</text>
-<text x="677"  y="351" text-anchor="middle" dominant-baseline="middle" fill="#37474f" font-size="8.5">deps mapped</text>
+<text x="677"  y="351" text-anchor="middle" dominant-baseline="middle" fill="#37474f" font-size="8.5">dep graph drawn</text>
 <!-- scaffolded -->
 <text x="877"  y="338" text-anchor="middle" dominant-baseline="middle" fill="#37474f" font-size="8.5">New app skeleton</text>
 <text x="877"  y="351" text-anchor="middle" dominant-baseline="middle" fill="#37474f" font-size="8.5">created + assets copied</text>
@@ -194,14 +194,14 @@
 <!-- LEFT PANEL: Plugin Repo subsystems -->
 <!-- Skills row -->
 <rect x="10" y="472" width="770" height="42" rx="5" fill="#1565c0"/>
-<text x="90" y="489" dominant-baseline="middle" fill="white" font-size="12" font-weight="700">Skills  (15 slash commands)</text>
+<text x="90" y="489" dominant-baseline="middle" fill="white" font-size="12" font-weight="700">Skills  (17 slash commands)</text>
 <text x="90" y="506" dominant-baseline="middle" fill="#bbdefb" font-size="9.5">Loaded into Claude's context when the command runs — each enforces a precondition on state.json.status</text>
 <text x="16" y="493" dominant-baseline="middle" fill="white" font-size="18">⌨</text>
 
 <!-- Agents row -->
 <rect x="10" y="522" width="770" height="42" rx="5" fill="#bf360c"/>
-<text x="90" y="539" dominant-baseline="middle" fill="white" font-size="12" font-weight="700">Agents  (3)</text>
-<text x="90" y="556" dominant-baseline="middle" fill="#ffccbc" font-size="9.5">legacy-analyzer (subagent, read-only) · unit-migrator (inline, translation loop) · permanent-gotchas (reference)</text>
+<text x="90" y="539" dominant-baseline="middle" fill="white" font-size="12" font-weight="700">Agents  (5)</text>
+<text x="90" y="556" dominant-baseline="middle" fill="#ffccbc" font-size="9.5">legacy-analyzer (read-only) · unit-migrator (inline loop) · parity-reviewer (parity + security) · migration-critic (quality, advisory) · permanent-gotchas (catalog)</text>
 <text x="16" y="543" dominant-baseline="middle" fill="white" font-size="18">🤖</text>
 
 <!-- Frameworks row -->
