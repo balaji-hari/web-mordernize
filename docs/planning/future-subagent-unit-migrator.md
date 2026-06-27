@@ -1,5 +1,10 @@
 # Future Implementation: Subagent per Unit Migration
 
+> **STATUS: ✅ STILL VALID** — not yet implemented (`unit-migrator` is still loaded inline). Now also
+> the prerequisite for Workflow-based parallel migration (see
+> `future-code-modernization-borrowings.md` #7) and for per-`kind` dispatch to a future
+> `data-layer-migrator` (see `future-data-layer-migration.md`).
+
 ## Context
 
 Currently `agents/unit-migrator.md` is loaded **inline** by `/next`, `/migrate`, and `/retry` — not as a true subagent. This was intentional (interactive collision dialog, file mutations, and git identity all need the same conversation), but it means context accumulates across every unit migration in a session, degrading focus and code quality on large codebases.

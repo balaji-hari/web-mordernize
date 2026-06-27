@@ -1,5 +1,10 @@
 # Plan: Make web-modernize friendlier — interactive migration.md fill + sharper NL routing
 
+> **STATUS: ✅ SHIPPED** — all three parts are implemented: the interactive interview
+> (`templates/migration-interview.json`, v0.10.0), the `frameworks/*.md` model + unknown-tech path
+> (Part 3), and the NL-routing skill descriptions (all 16 skills carry `Triggers:` /
+> `Use when state.status`). Retained for design history; **no longer open work.**
+
 ## Context
 
 Today the `/init` → `/analyze` → manual edit → `/plan` flow has two rough edges:

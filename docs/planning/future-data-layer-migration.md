@@ -1,5 +1,10 @@
 # Plan: Data-layer / database migration as a gated phase
 
+> **STATUS: ✅ STILL VALID** — not yet implemented; the biggest remaining functional gap. Unaffected
+> by the code-modernization analysis (cm has no standalone data-layer migration either). Verification
+> can reuse `future-code-modernization-borrowings.md` #4 (refute pass) and #8 (Given/When/Then
+> behaviour contract).
+
 ## Context
 
 The plugin covers **detect → plan → scaffold → auth → migrate units → verify → report**, but the

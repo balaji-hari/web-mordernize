@@ -1,5 +1,9 @@
 # Plan: Additional agents to make migration faster or better
 
+> **STATUS: 🟡 PARTIALLY SHIPPED** — Candidate 2 (behavioural-parity reviewer) shipped in v0.11.0.
+> Candidate 1 (parallel migrator) and Candidate 3 (dependency preflight) remain valid; see the
+> per-candidate notes below and `future-code-modernization-borrowings.md`.
+
 ## Context
 
 The plugin currently ships two functional agents (`legacy-analyzer`, `unit-migrator`) plus one knowledge document framed as an agent (`permanent-gotchas`). Three subagent additions would deliver meaningful improvements without fragmenting the existing architecture. This doc captures them as future work — implementation is not committed.
@@ -9,6 +13,11 @@ The plugin currently ships two functional agents (`legacy-analyzer`, `unit-migra
 ---
 
 ## Candidate 1 — Parallel migrator coordinator  (speed)
+
+> **Reshape (2026):** prefer implementing this via the **Workflow tool**
+> (`future-code-modernization-borrowings.md` #7) — fan out `unit-migrator` as parallel subagents —
+> rather than a bespoke coordinator agent. Depends on the subagent conversion in
+> `future-subagent-unit-migrator.md`.
 
 ### Problem
 
@@ -165,6 +174,7 @@ These were considered and rejected:
 - **Documentation-generator agent**. `/report` already covers stakeholder reporting. A separate "tech docs" agent overlaps without adding clear new value.
 - **Per-concern auditors** (security scanner, perf scanner, accessibility scanner) as always-on agents. Each is useful in isolation, but adding all inflates the surface area without proportionate value. Better as opt-in `/verify` post-checks that read `verify.config.json` rather than dedicated agents.
 - **Translation-quality grader agent.** Tempting but subjective — would mostly restate what tests + parity-reviewer already capture, with worse signal-to-noise.
+  - **Revisited (2026):** the code-modernization analysis (`future-code-modernization-borrowings.md` #3) reframes this as an *idiomatic-structure* critic (detecting "JOBOL" / WebForms-in-React leakage), not a subjective quality grade. That lens is objective and orthogonal to behavioural parity, so it is worth reconsidering as an **advisory** (non-blocking) agent — `agents/migration-critic.md`.
 
 ---
 
