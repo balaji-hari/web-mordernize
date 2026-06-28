@@ -64,8 +64,8 @@
 
 <rect x="556"  y="256" width="500" height="64" rx="5" fill="#1976d2"/>
 <text x="576"  y="277" dominant-baseline="middle" fill="white" font-size="12" font-weight="700">/web-modernize:verify  [unit-id]</text>
-<text x="576"  y="297" dominant-baseline="middle" fill="#bbdefb" font-size="10">lint · typecheck · tests + behavioural-parity + security gate; advisory quality</text>
-<text x="576"  y="311" dominant-baseline="middle" fill="#bbdefb" font-size="10">review. Transitions migrated → verified. Precondition: ≥1 migrated unit.</text>
+<text x="576"  y="297" dominant-baseline="middle" fill="#bbdefb" font-size="10">lint · typecheck · tests + behavioural-parity + security gate; advisory quality +</text>
+<text x="576"  y="311" dominant-baseline="middle" fill="#bbdefb" font-size="10">static-perf review; opt-in --dynamic tier (API replay + Playwright E2E). → verified.</text>
 
 <rect x="1100" y="256" width="500" height="64" rx="5" fill="#1976d2"/>
 <text x="1120" y="277" dominant-baseline="middle" fill="white" font-size="12" font-weight="700">/web-modernize:status</text>

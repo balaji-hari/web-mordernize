@@ -668,9 +668,12 @@ def slide_07_risk_safety(prs):
          "output shape, errors, UI states, and security (dropped "
          "authorization, injection, secret leakage); high-severity "
          "differences block until acknowledged via /parity-check. An "
-         "advisory migration-critic flags non-idiomatic code, and "
-         "discovered credentials are masked in every shared artifact. "
-         "/retry --with-prompt re-attempts with human guidance."),
+         "advisory migration-critic flags non-idiomatic code and "
+         "static-performance regressions (N+1 queries, unbounded fetches, "
+         "bundle bloat), and an opt-in dynamic tier (API replay + Playwright "
+         "E2E) adds runtime checks. Discovered credentials are masked in "
+         "every shared artifact. /retry --with-prompt re-attempts with "
+         "human guidance."),
         ("Nothing is hidden",
          "All state lives in git as JSON — auditable, diffable, "
          "code-reviewable. /status shows real-time who's working on "
