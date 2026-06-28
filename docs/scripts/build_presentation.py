@@ -654,13 +654,16 @@ def slide_07_risk_safety(prs):
     )
 
     cards = [
-        ("Nothing is one-way",
-         "Every action is recorded in git — the team can see who did what, "
-         "when, with what input. One command  (/rollback --unit <id>)  "
-         "reverts a single unit cleanly. Destructive commands  "
-         "(/abandon --hard)  require a two-step confirmation; no "
-         "accidental wipes. Per-unit notes capture the why alongside "
-         "the what."),
+        ("Approved going in, reversible coming out",
+         "Nothing risky is written blind: by default /next presents each "
+         "unit's plan — target files, approach, tests — and waits for your "
+         "approval before writing a line (opt out per migration via "
+         "review_mode, or per unit via --no-plan); /foundation always gates "
+         "the auth + cross-cutting design. And nothing is one-way: every "
+         "action is recorded in git, one command  (/rollback --unit <id>)  "
+         "reverts a unit cleanly (refusing shared files unless forced), and "
+         "destructive commands  (/abandon --hard)  need a two-step confirm. "
+         "Per-unit notes capture the why alongside the what."),
         ("Nothing ships unverified",
          "/verify is a hard gate — lint, type-check, and tests must pass "
          "before a unit transitions from migrated to verified. A read-only "
