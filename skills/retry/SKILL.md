@@ -3,7 +3,7 @@ description: "Re-attempt a failed unit, optionally with extra guidance via --wit
 disable-model-invocation: false
 ---
 
-# `/web-modernize:retry <unit-id> [--with-prompt="<guidance>"]`
+# `/web-modernize:retry <unit-id> [--with-prompt="<guidance>"] [--plan | --no-plan]`
 
 You are the **retry** skill. You re-attempt a failed unit migration with the same algorithm as `/web-modernize:next`, but the unit is named explicitly and the prior failure context is preserved.
 
@@ -12,9 +12,10 @@ You are the **retry** skill. You re-attempt a failed unit migration with the sam
 1. Parse `$ARGUMENTS`:
    - First token is `<unit-id>` (required).
    - Optional flag `--with-prompt="<text>"` (quoted; spaces allowed inside). Strip the quotes when capturing the value.
+   - Optional plan-gate override (default: none): `--plan` → `plan_override = "on"` (force the per-unit plan gate even when `review_mode` is `auto`); `--no-plan` → `plan_override = "off"` (skip the gate even when `review_mode` is `plan-first`); neither → `plan_override = null` (use the migration-wide `state.review_mode` default).
    - If `<unit-id>` is missing or only the flag is provided, print usage and stop:
      ```
-     Usage: /web-modernize:retry <unit-id> [--with-prompt="<guidance>"]
+     Usage: /web-modernize:retry <unit-id> [--with-prompt="<guidance>"] [--plan | --no-plan]
 
      Examples:
        /web-modernize:retry LoginController
@@ -24,7 +25,7 @@ You are the **retry** skill. You re-attempt a failed unit migration with the sam
      files before retrying, run /web-modernize:rollback --unit <id> first.
      ```
 
-2. Read `.claude/modernize/state.json`. Require `status ∈ {auth_done, in_progress}`. Otherwise redirect to the missing skill.
+2. Read `.claude/modernize/state.json`. Require `status ∈ {foundation_done, in_progress}`. Otherwise redirect to the missing skill.
 
 3. Read `.claude/modernize/units/<unit-id>.json`. If the file does not exist, list valid ids (`ls .claude/modernize/units/*.json`) and stop.
 
@@ -76,6 +77,7 @@ Load `${CLAUDE_PLUGIN_ROOT}/agents/unit-migrator.md` and follow it with:
 - `unit = <the failed unit object you just read from units/<id>.json>`
 - `retry_prompt = <the --with-prompt value, or null>`
 - `force_deps = false`
+- `plan_override = <the value parsed in Preflight step 1>`
 
 The shared agent will:
 
@@ -127,6 +129,14 @@ the pattern across attempts. Possible next steps:
     human needs to migrate this unit manually.
 ```
 
+On cancel at the plan gate (the user chose `[c]` in §3.5 — `unit.status` is now `pending`, no new files written):
+
+```
+○ Retry cancelled at the plan gate — <unit.id> is back to `pending`; nothing was written.
+  The prior failure diagnostics are still preserved in units/<unit.id>.json.
+  Re-run /web-modernize:retry <unit.id> when ready (add --no-plan to skip the gate).
+```
+
 ## Edge cases
 
 - **`--with-prompt` value contains newlines or quotes**: encourage single-line, but accept multi-line. Capture verbatim — do NOT collapse whitespace; the model will read it as-is.
@@ -135,5 +145,5 @@ the pattern across attempts. Possible next steps:
 
 ## State transitions
 
-- Pre: `state.status ∈ {auth_done, in_progress}`, `unit.status == "failed"`.
+- Pre: `state.status ∈ {foundation_done, in_progress}`, `unit.status == "failed"`.
 - Post: top-level status unchanged. Per-unit file: `failed` → `in_progress` → `migrated` (or `failed` again with bumped retry_count and appended diagnostic_history).

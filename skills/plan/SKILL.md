@@ -83,9 +83,11 @@ Read `${CLAUDE_PLUGIN_ROOT}/templates/plan.md` and substitute placeholders. Key 
 
 Based on `migration.md §6 Strategy`:
 
-- **strangler-fig**: Phase 1 = scaffold + auth. Phase 2 = read-only / low-risk units (typically dashboards, listing pages). Phase 3 = form-heavy / write-path units. Phase 4 = admin / batch / reporting. Phase N = cutover.
-- **big-bang**: Phase 1 = scaffold + auth. Phase 2 = ALL remaining units in parallel-ready order. Phase 3 = cutover. (Mark this strategy as "small-app only" in the plan summary.)
-- **module-by-module**: Phase 1 = scaffold + auth. Phase 2-N = one phase per top-level module/area discovered in analysis.json.
+- **strangler-fig**: Phase 1 = scaffold + foundation (auth + any cross-cutting concerns). Phase 2 = read-only / low-risk units (typically dashboards, listing pages). Phase 3 = form-heavy / write-path units. Phase 4 = admin / batch / reporting. Phase N = cutover.
+- **big-bang**: Phase 1 = scaffold + foundation (auth + any cross-cutting concerns). Phase 2 = ALL remaining units in parallel-ready order. Phase 3 = cutover. (Mark this strategy as "small-app only" in the plan summary.)
+- **module-by-module**: Phase 1 = scaffold + foundation (auth + any cross-cutting concerns). Phase 2-N = one phase per top-level module/area discovered in analysis.json.
+
+**Background units** (`kind: "background"` — jobs, queue consumers, hubs, batch processors): for **strangler-fig**, place them in Phase 4 (admin / batch / reporting) by default, unless the dependency graph shows a feature unit needs them sooner (then pull them earlier). For **module-by-module**, assign them to the phase of the module they belong to. They don't gate UI work, so they should never sit in an early phase that blocks the visible migration.
 
 ### Unit seeding (with history preservation on re-runs)
 
@@ -110,6 +112,7 @@ For each entry in `analysis.json.entry_points[]`, build a candidate unit (in-mem
 {
   "id": "<entry_point.id>",
   "kind": "<entry_point.kind>",
+  "trigger": "<entry_point.trigger>",   // only when kind == "background"; omit otherwise
   "source_paths": <entry_point.files>,
   "target_paths": [],
   "depends_on": ["__auth__"],
@@ -125,11 +128,27 @@ For each entry in `analysis.json.entry_points[]`, build a candidate unit (in-mem
 }
 ```
 
+**Background units** (`kind == "background"`): carry `entry_point.trigger` onto the unit. Do **not** auto-add `__auth__` to their `depends_on` — a scheduled job / queue consumer / batch processor usually runs without a logged-in user, so seed `depends_on: []` and let the `depends_on` graph step below add real deps from the analyzer's dependency graph (e.g. a job that calls a migrated service). If a background unit genuinely needs the auth/identity layer (rare — e.g. it impersonates a user), the dependency-graph step or a manual edit adds `__auth__`.
+
 Heuristics for `effort`:
 - Single file, <200 LOC → S
 - 1-3 files, 200-800 LOC → M
 - 3-10 files OR >800 LOC OR touches data layer → L
 - Anything involving complex stateful UI (wizards, designers, real-time) → XL
+
+#### Step 2b — Confirm cross-cutting concerns & seed the foundation units
+
+`/web-modernize:foundation` establishes the cross-cutting concerns as the first slice. Decide the set here and seed a synthetic unit per concern (they then flow through the Step 3–6 merge like any unit, so re-runs preserve progress):
+
+1. **auth is always included** (configured in §7).
+2. Read `migration.md §13` and collect any **checked** concerns: `i18n`, `feature-flags`, `error-handling`, `telemetry`, `logging`.
+3. **Confirm the final set with the developer** — a deliberate prompt (unlike `review_mode`). Present `Foundation will establish: auth (always)<, + checked concerns>. Add or remove any?` and accept edits.
+4. Seed one synthetic candidate unit per confirmed concern:
+   - `__auth__` → `kind: "service"`; each other concern → `__i18n__` / `__feature-flags__` / `__error-handling__` / `__telemetry__` / `__logging__` with `kind: "cross-cutting"`.
+   - All: `phase: 1`, `depends_on: []`, `status: "pending"`, `source_paths: []`, `target_paths: []`, `notes_path: ".claude/modernize/notes/__<concern>__.md"`, standard empty fields.
+5. Record the confirmed list — it is written to `state.foundation.concerns` in the state-write step below.
+
+In `unit_ids` ordering, place these foundation units **first** (`__auth__`, then the others) ahead of all feature units. Feature units still get `depends_on: ["__auth__"]` (Step 2); the **other concerns are soft** (phase-1 ordering only, no per-unit dependency) to avoid bloating every unit's `depends_on` — a team wanting a hard gate adds the dep by hand.
 
 #### Step 3 — Discover existing per-unit files
 
@@ -178,9 +197,31 @@ WARNING: unit `<unit.id>` depended on `<missing_id>` which no longer exists in t
   Pruned from depends_on. If this was a rename, declare it in §9b and re-run.
 ```
 
-### `depends_on` graph
+#### Step 6b — Backfill emergent shared units
 
-- All non-auth units depend on `__auth__`.
+The `unit-migrator` records reusable code it extracted mid-migration in each unit's `extracted_shared[]` (see `agents/unit-migrator.md`). Promote those into real `kind: "shared"` units so they're visible, verifiable, and reusable instead of silently duplicated.
+
+1. Scan every per-unit file's `extracted_shared[]`. Build a flat list of `{ id, path, purpose, extracted_by: <that unit's id> }`.
+2. **Dedup**: collapse entries with the same `id` or the same `path`. If two or more *different* units recorded the same `id`/`path` independently, keep one and add a warning (possible duplicate implementations to reconcile by hand):
+   ```
+   WARNING: <id> was extracted independently by <unitA>, <unitB>. Backfilled once; review for duplicate implementations.
+   ```
+3. For each distinct entry whose `id` is **not** already a unit **and** whose `path` is **not** already in any unit's `target_paths[]`, create a backfilled unit:
+   ```json
+   {
+     "id": "<id>", "kind": "shared",
+     "source_paths": [], "target_paths": ["<path>"],
+     "depends_on": [], "phase": 1, "effort": "S",
+     "status": "migrated",
+     "history": [{ "at": "<now>", "by": "<user>", "from": "pending", "to": "migrated", "reason": "backfilled from extracted_shared recorded by <extracted_by>" }],
+     "in_flight": null, "notes_path": ".claude/modernize/notes/<id>.md",
+     "retry_count": 0, "last_retry_prompt": null, "rollback_info": null
+   }
+   ```
+   Status is `migrated` because the code already exists on disk (it was written during `<extracted_by>`'s migration). Add the new id to `unit_ids` (early — right after any synthetic `__…__` units) and add it to the **extracting unit's `depends_on`** so the graph reflects reality.
+4. If any entry's `id`/`path` already corresponds to a unit (e.g. backfilled on a prior run), skip it silently — this step is idempotent.
+
+- All feature units depend on `__auth__` — **except `kind: "background"` units** (they run without a user session) **and the foundation units themselves** (`__auth__` and the `kind: "cross-cutting"` concerns, which have `depends_on: []` and are ordered first by phase). A background unit only gains `__auth__` if the dependency graph or a manual edit adds it.
 - If the analyzer's dependency_graph shows unit A imports symbols from unit B, add B to A's `depends_on`.
 - Cut cycles by breaking on the larger unit (the assumption: the larger one will probably need refactoring during migration anyway).
 
@@ -222,6 +263,17 @@ Compose 3-5 open questions for the team based on:
 
 Mirror `migration.md §9` list verbatim into the plan's "Out of scope" section.
 
+## Resolve review mode (the per-unit plan gate's migration-wide default)
+
+`review_mode` decides whether `/web-modernize:next` / `:migrate` / `:retry` present a plan and wait for approval before writing each unit. Resolve it once here and persist it to `state.json`; whatever is set becomes the default for the **complete** migration (a per-unit `--plan` / `--no-plan` flag overrides a single unit later). Precedence, highest first:
+
+1. **`$ARGUMENTS` flag** — `--review-mode=plan-first` or `--review-mode=auto` (also accept the aliases `--auto` and `--plan-first`). Invalid value → print `Unknown --review-mode value '<x>'. Use plan-first or auto.` and stop before writing.
+2. **`migration.md §6` `Review mode:` line** — if present and a valid value (`plan-first` | `auto`), use it. Ignore if blank or still the template comment.
+3. **Existing `state.review_mode`** — on a re-plan, **preserve** the prior value (sticky). Do not reset it.
+4. **Default** — `plan-first`.
+
+Do **not** prompt interactively — keep the bootstrap path friction-free. (`review_mode` is intentionally NOT in the REQUIRED-fields validation list above; it is always optional.)
+
 ## Write outputs
 
 1. **`.claude/modernize/plan.md`** — fully rendered template. Overwrite any existing one (warn the user first if it exists and has been edited since last generation — detect by comparing the `Generated <timestamp>` header).
@@ -244,19 +296,23 @@ Mirror `migration.md §9` list verbatim into the plan's "Out of scope" section.
     "target_pct": <from §12, integer>
   },
   "strategy": "<from §6>",
+  "review_mode": "<resolved above: plan-first | auto>",
+  "foundation": { "concerns": [ "auth", <other confirmed concerns from Step 2b> ] },
   "scaffold": "<see rule below>",
-  "unit_ids": [ <ordered list of unit ids, including any kept-but-warned units from Step 5> ],
+  "unit_ids": [ <foundation units (__auth__ first, then other concerns) then feature units, ordered phase asc, list_index asc> ],
   "out_of_scope": [ <from §9> ],
   "lock": null,
   "updated_at": "<ISO now>"
 }
 ```
 
+The `foundation.concerns` list is the set `/web-modernize:foundation` will establish (Step 2b). On a re-plan, preserve any already-established concerns (their synthetic units carry status `migrated` and are preserved by the Step-4 merge); add newly-checked concerns as new `pending` foundation units.
+
 The `testing` block is the single source of truth for which runner `/scaffold` installs and which coverage bar the unit-migrator and `/verify` measure against. Re-plans overwrite this block from §12 — if a team needs to switch runners mid-migration they edit §12 and re-run `/plan`. (Note that switching runners mid-migration does not retroactively re-translate already-migrated units' tests; new units pick up the new framework.)
 
 **`status` rule** — preserve forward progress on re-runs:
 - If the current `state.status` is `analyzed`: set to `planned`.
-- If the current `state.status` is `planned`, `scaffolded`, `auth_done`, `in_progress`, or `complete`: leave as-is. A re-plan never rewinds the workflow.
+- If the current `state.status` is `planned`, `scaffolded`, `foundation_done` (or legacy `auth_done`), `in_progress`, or `complete`: leave as-is. A re-plan never rewinds the workflow.
 
 **`scaffold` rule** — only initialize if currently `null`:
 - If `state.scaffold` is `null` (first plan run): seed `{ ui: {status: "pending"}, api: {status: "pending|skipped"}, db: {status: "pending|skipped"} }`.
@@ -280,6 +336,9 @@ Print:
   DB work: <skipped|migration|replatform>
 
   Per-unit files: .claude/modernize/units/*.json  (<count> files)
+  Review mode: <plan-first | auto>
+    <if plan-first:> each unit (/next, /migrate, /retry) presents a plan and waits for approval before writing. Skip a unit's gate with --no-plan, or switch the whole migration with /web-modernize:plan --review-mode=auto.
+    <if auto:> units migrate without a per-unit plan gate. Gate a single risky unit with --plan, or switch the whole migration back with /web-modernize:plan --review-mode=plan-first.
 
 Review .claude/modernize/plan.md. If the unit list looks wrong, edit migration.md and re-run /web-modernize:plan.
 

@@ -3,7 +3,7 @@ description: "Run lint/typecheck/tests plus a behavioural-parity check (and an a
 disable-model-invocation: false
 ---
 
-# `/web-modernize:verify [unit-id] [--no-parity] [--no-quality]`
+# `/web-modernize:verify [unit-id] [--no-parity] [--no-quality] [--dynamic] [--capture-baseline]`
 
 You are the **verify** skill. Your job is to prove (or disprove) that a migrated unit meets the team's bar.
 
@@ -29,6 +29,8 @@ Refusing would block the team until the slowest updater catches up — that's a 
 3. Parse `$ARGUMENTS`:
    - `--no-parity` (flag, anywhere in the args) → skip the behavioural-parity gate (step 5) for this run; record `verification.parity = "skipped"` on each unit touched. For fast iteration when you already know parity is fine.
    - `--no-quality` (flag, anywhere in the args) → skip the advisory migration-quality review (step 5b) for this run; record `verification.quality = "skipped"` on each unit touched. Quality is advisory, so this never affects the verified decision — it just suppresses the extra agent run.
+   - `--dynamic` (flag) → ALSO run the opt-in dynamic testing tier (step 5c: API replay + Playwright E2E). Off by default; advisory — never blocks. Requires `verify.config.json.dynamic.enabled == true` (set up by `/scaffold` when enabled in `migration.md §12`); otherwise prints setup guidance and skips.
+   - `--capture-baseline` (flag, mutually exclusive with normal verification) → run the **baseline-capture** mode instead of verifying: record the legacy app's responses into `verify.config.json.dynamic.baseline_dir` so Phase-A API replay has something to diff against. Requires the legacy app to be runnable; see "Capture baseline" below.
    - The remaining non-flag token, if any, is `<unit-id>` → read `.claude/modernize/units/<unit-id>.json`. If the file does not exist, list valid ids (`ls .claude/modernize/units/*.json`) and stop.
    - No `<unit-id>` → verify ALL units currently in status `migrated`. Iterate `state.unit_ids[]`, read each `units/<id>.json`, filter to `status == "migrated"`.
 
@@ -83,7 +85,7 @@ For each unit to verify:
 
 5b. **Migration-quality review** (advisory, non-blocking) — skip if `--no-quality` was passed, OR if step 3's lint/typecheck/test thresholds were NOT met (a unit that can't reach `verified` doesn't need a quality review yet).
 
-   Orthogonal to parity: parity asks *did behaviour change?*; quality asks *is the migrated code idiomatic and maintainable, or is it the legacy paradigm in new clothes?* (WebForms-in-React, jQuery-in-a-reactive-framework, scriptlet-shaped controllers). It **never blocks** — it informs.
+   Orthogonal to parity: parity asks *did behaviour change?*; quality asks *is the migrated code idiomatic and maintainable, or is it the legacy paradigm in new clothes?* (WebForms-in-React, jQuery-in-a-reactive-framework, scriptlet-shaped controllers). The `migration-critic` also covers **static performance regressions** (N+1 queries, unbounded fetches, request waterfalls, blocking I/O, bundle bloat — `perf_*` finding kinds). It **never blocks** — it informs.
 
    a. **Launch the `migration-critic` subagent** (Agent tool, `subagent_type: migration-critic`). Pass a prompt containing the unit's `id`, `kind`, `target_paths[]`, `source_paths[]`, the `notes_path` (`.claude/modernize/notes/<unit-id>.md`), and `state.target_stack` (so it judges against the right idiom). It is read-only and returns a single JSON block: `{ quality_findings[], headline, summary, warnings }`.
 
@@ -92,6 +94,15 @@ For each unit to verify:
    c. **Persist.** Write the returned array to `unit.quality_findings` (replace wholesale), set `unit.quality_reviewed_at = <now>` and `unit.quality_headline = <returned headline>`. There is no acknowledgement list — quality findings don't block, so nothing to suppress.
 
    d. **Quality does NOT affect the transition.** Step 6 depends ONLY on lint/typecheck/tests + parity. Quality findings — even `blocker` ones — are reported as information (see "After writing"), never as a gate.
+
+5c. **Dynamic testing tier** (advisory, non-blocking) — run ONLY when `--dynamic` was passed AND step 3's thresholds were met. This is the higher-fidelity, runtime counterpart to the static parity/quality reviews; it **never blocks** the transition (E2E flakiness must not gate a migration). Read `verify.config.json.dynamic`:
+
+   - If `dynamic.enabled != true` (not set up), print: `Dynamic tier not configured — enable "Dynamic testing" in migration.md §12 and re-run /web-modernize:scaffold, or add verify.config.json.dynamic.{e2e,api_replay}. Skipping.` and continue. Do not fail.
+   - **Phase A — API replay** (when `dynamic.api_replay` is set and the unit touches the API): if `dynamic.baseline_dir` has recorded legacy fixtures, run the `api_replay` command (substitute `${target_path}`, `${api_root}`, `${baseline_dir}`) — a harness that replays the recorded legacy requests against the new API and diffs responses. Each diff becomes a finding `{ kind: "dynamic_api_replay", severity, observation, recommendation }`. If `baseline_dir` is empty/missing, **skip Phase A** with: `No baseline fixtures — run /web-modernize:verify --capture-baseline first. Skipping API replay.`
+   - **Phase B — E2E** (when `dynamic.e2e` is set and the unit touches the UI): run the `e2e` command (Playwright) scoped to this unit's routes/flows. A failing step becomes a finding `{ kind: "dynamic_e2e", severity, observation }`.
+   - **Graceful degrade:** any harness error/timeout → record `verification.dynamic = "unavailable"`, warn, continue. Never fail the run.
+   - **Persist:** write the findings to `unit.dynamic_findings` (replace wholesale), set `unit.dynamic_reviewed_at = <now>` and `verification.dynamic = "clean" | "<H> high · <M> medium · <L> low" | "skipped" | "unavailable"`. Phase C (visual diff) is out of scope.
+   - **Does NOT affect the transition** (step 6 depends only on lint/typecheck/tests + parity).
 
 6. **Decide unit status transition** and write `.claude/modernize/units/<unit-id>.json`:
    - lint/typecheck/test thresholds (`lint_must_pass`, `typecheck_must_pass`, `tests_must_pass`) NOT met → keep `status = "migrated"`, record the detail in `verification.failures[]` and `notes_path`. (Parity was skipped per step 5.)
@@ -179,9 +190,12 @@ verify <unit.id>:
   typecheck: <result>
   tests:     <result>
   parity:    <clean | <I> info | <A> acknowledged | BLOCKED: <N> high-severity | skipped | review-unavailable>
-  quality:   <clean | <B> blocker · <H> high · <M> medium · <N> nit | skipped | review-unavailable>   (advisory)
+  quality:   <clean | <B> blocker · <H> high · <M> medium · <N> nit | skipped | review-unavailable>   (advisory; incl. static perf)
+  dynamic:   <clean | <H> high · <M> medium · <L> low | not-run | skipped | unavailable>   (advisory; only with --dynamic)
   → <verified | still-migrated, see notes/<unit.id>.md>
 ```
+
+(Omit the `dynamic:` line entirely when `--dynamic` was not passed.)
 
 When parity **blocked** the transition, follow the per-unit line with the offending findings so the user can act without opening the JSON:
 
@@ -219,6 +233,16 @@ Summary: <verified count>/<migrated count> passed.
 Next: address failures, then re-run /web-modernize:verify <unit.id>.
    Or: /web-modernize:next  to migrate more units.
 ```
+
+## Capture baseline (`--capture-baseline`)
+
+Phase-A API replay needs a recording of the **legacy** app's responses to diff against. When invoked with `--capture-baseline`, do NOT verify units — instead:
+
+1. Require `verify.config.json.dynamic.enabled == true`; require a way to run the legacy app and a request set. If the legacy app isn't runnable in this environment, print guidance (how to record fixtures by hand into `baseline_dir`) and stop — never fabricate a baseline.
+2. Run the configured capture command (the `api_replay` harness in its record mode, or a documented per-stack recorder from the framework's `## Dynamic tests` section), exercising the legacy endpoints (sourced from `analysis.json.entry_points` / migrated units' `source_paths`).
+3. Write the recorded request/response fixtures into `verify.config.json.dynamic.baseline_dir` (gitignored under `.claude/modernize/`). Print a summary: `<N> legacy endpoints recorded to <baseline_dir>. Run /web-modernize:verify --dynamic to replay against the new API.`
+
+Baseline capture is a prerequisite for Phase A only; Phase B (E2E) does not need it.
 
 ## State transitions
 

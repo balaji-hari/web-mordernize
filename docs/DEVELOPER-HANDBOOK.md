@@ -21,7 +21,7 @@ workflow**. Five ideas to hold:
    `.claude/modernize/`, committed to your repo. Migrations span days and developers without losing
    context. There is no server.
 3. **A monotonic lifecycle.** `state.json.status` moves forward only:
-   `uninitialized → initialized → analyzed → planned → scaffolded → auth_done → in_progress → complete`.
+   `uninitialized → initialized → analyzed → planned → scaffolded → foundation_done → in_progress → complete`.
    Each command refuses to run out of order and redirects you to the right one.
 4. **Agents do the heavy lifting, you stay in control.** Read-only analysis/review agents plus a
    translation loop; every change is reviewable, gated, and reversible.
@@ -57,7 +57,7 @@ Commands appear under the `/web-modernize:` namespace. You can also just talk to
 /web-modernize:analyze     # detect the legacy stack + interactively fill migration.md
 /web-modernize:plan        # validate config, generate plan.md + the unit backlog
 /web-modernize:scaffold    # create the modern app skeleton + copy legacy assets
-/web-modernize:auth        # migrate authentication first (everything depends on it)
+/web-modernize:foundation  # establish auth + any cross-cutting concerns first (everything depends on this)
 
 # Per-unit loop (repeat until /status says "complete"):
 /web-modernize:next        # migrate the next eligible unit  (or /migrate <id> for a named one)
@@ -78,7 +78,7 @@ Commit `.claude/modernize/` after each unit. That's how the whole team shares pr
 | Detect + configure | `/analyze` | Detects the source stack and **enumerates entry points** (units-to-be). When the Workflow tool is available it runs **exhaustive loop-until-dry discovery** so large estates don't lose the tail; otherwise a single pass. Then an **interactive interview** fills the required `migration.md` sections with stack-aware recommendations. |
 | Plan | `/plan` | Validates `migration.md`, generates `plan.md` (incl. a **Mermaid dependency graph**), and seeds one `units/<id>.json` per entry point — sized S/M/L/XL, phase-ordered, with `depends_on`. Re-runnable; preserves progress by unit id. |
 | Scaffold | `/scaffold` | **Toolchain preflight** (probes Node/.NET/Java/Python against the chosen stack's floors), then creates the UI / optional API / optional DB skeleton from the framework recipe, copies legacy assets into `public/`, and runs a **smoke-build gate** per subsystem. `--assets-only` backfills assets later. |
-| Auth | `/auth` | Migrates authentication as the first slice (a hard phase gate — every feature unit depends on `__auth__`). Picks the per-stack password-hashing library, seeds dev users for local stores. |
+| Foundation | `/foundation` | Establishes the foundational slice before feature units: **auth** (a hard phase gate — every feature unit depends on `__auth__`; picks the per-stack hashing library, seeds dev users) **plus** any cross-cutting concerns opted into in `migration.md §13` (i18n, feature flags, error handling, telemetry, logging). One consolidated design gate; implements concerns in parallel when possible. Replaces the former `/auth`. |
 
 ### 4b. Per-unit loop
 
@@ -86,9 +86,10 @@ Commit `.claude/modernize/` after each unit. That's how the whole team shares pr
 |---|---|
 | `/next` | Auto-selects the next `pending` unit whose `depends_on` are satisfied, then migrates it. |
 | `/migrate <id> [--force]` | Migrates a *named* unit (use when standup assigned it). Blocks on unmet deps unless `--force` (which stubs them). |
-| `/verify [id] [--no-parity] [--no-quality]` | The gate — see **§5**. Flips `migrated → verified` only when it passes. |
+| `/verify [id] [--no-parity] [--no-quality] [--dynamic] [--capture-baseline]` | The gate — see **§5**. Flips `migrated → verified` only when it passes. `--dynamic` adds the opt-in dynamic tier (API replay + Playwright E2E, advisory); `--capture-baseline` records the legacy baseline. |
 | `/parity-check <id> [--all] [--acknowledge <finding-id> --reason "…"]` | On-demand behavioural + security diff vs the legacy original; **acknowledge** intentional differences so they stop blocking. |
-| `/quality-check <id> [--all]` | On-demand idiomatic-code review (advisory — never blocks). |
+| `/quality-check <id> [--all]` | On-demand idiomatic-code + static-performance review (advisory — never blocks). |
+| `/integrate [--dry-run] [--final]` | Assemble migrated units into the composed app — central router + nav, whole-app smoke, orphaned-unit + cutover-coverage report, and (strangler-fig) the traffic-splitting proxy. Idempotent; run any time or `--final` for cutover. |
 
 ### 4c. Recovery & coordination (any time)
 
@@ -200,7 +201,7 @@ Picked a stack the plugin doesn't ship? The **unknown-tech path** keeps you movi
 - **Unknown source:** `/analyze` shows the raw evidence and lets you name it (free-text).
 - **Unknown target:** `/scaffold` asks 3 questions (scaffold cmd / test framework / verify commands)
   and saves them to `verify.config.json` so retries don't re-ask.
-- **Unknown auth:** `/auth` defers to `permanent-gotchas` + OWASP.
+- **Unknown auth:** `/foundation` (auth concern) defers to `permanent-gotchas` + OWASP.
 
 To make a stack first-class, drop a `frameworks/<name>.md` file (see CLAUDE.md "Framework files").
 
@@ -240,8 +241,31 @@ plain English routes to the right command:
 
 ---
 
-## 13. What's new (v0.12.0 – v0.13.0)
+## 13. What's new (v0.12.0 – v0.15.0)
 
+- **Plan-approval gate (v0.15.0)** — `/next`, `/migrate`, `/retry` present a plan and wait for
+  approval before writing (opt-out; migration-wide default `review_mode` set at `/plan`, per-unit
+  `--plan`/`--no-plan`). `/foundation` has an always-on consolidated design gate (`--no-plan` to skip).
+- **Foundation phase (v0.15.0)** — `/foundation` replaces `/auth`: establishes auth + any cross-cutting
+  concerns opted into in `migration.md §13` (i18n, flags, error handling, telemetry, logging), confirmed
+  at `/plan`, implemented in parallel.
+- **Emergent shared-code backfill (v0.15.0)** — the migrator records reusable code it extracts
+  (`extracted_shared[]`); `/plan` backfills `kind: shared` units so it isn't duplicated.
+- **Cross-unit rollback safety (v0.15.0)** — `/rollback` refuses by default when a unit owns shared
+  files other units rely on; `--force-shared` overrides after showing the blast radius.
+- **Integration command (v0.15.0)** — `/integrate` incrementally assembles migrated units into the
+  composed app (router/nav, whole-app smoke, orphan + coverage report, strangler proxy); idempotent,
+  run any time or `--final` for cutover.
+- **Data foundation concern (v0.15.0)** — `/foundation` can establish data-access *wiring* (ORM/
+  connection/migration harness); the bulk schema/query/proc translation stays a later phase.
+- **Static performance review (v0.15.0)** — `migration-critic` flags N+1, unbounded queries,
+  waterfalls, blocking I/O, and bundle bloat (advisory; via `/verify` + `/quality-check`).
+- **Dynamic testing tier (v0.15.0)** — opt-in `/verify --dynamic`: API replay + Playwright E2E
+  (advisory); `--capture-baseline` records the legacy baseline.
+- **Background / non-UI units (v0.15.0)** — `unit.kind: background` (+ a `trigger`) covers scheduled
+  jobs, queue consumers, hubs, and batch processors. `/analyze` finds them via a separate non-route
+  pass; they migrate to the target's idiomatic job mechanism and verify with a build + tests-only
+  smoke gate (the job is never invoked at verify time).
 - **Security review** — `parity-reviewer` now flags dropped authorization, injection, lost
   output-encoding, secret-in-bundle, and dropped CSRF; high findings block `/verify`.
 - **Idiomatic-quality review** — new `migration-critic` agent + `/quality-check` (advisory).

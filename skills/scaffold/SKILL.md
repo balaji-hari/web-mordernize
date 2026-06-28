@@ -16,8 +16,8 @@ You are the **scaffold** skill. Your job is to bring up the modern project's ske
 2. Read `state.json`. Mode-dependent precondition:
    - **Full scaffold** (no flag): require `status == "planned"` (or `"scaffolded"` for re-runs of incomplete scaffolds). Otherwise redirect:
      - If `status` is earlier (`uninitialized`, `initialized`, `analyzed`): print "Run /web-modernize:<missing-skill> first." and stop.
-     - If `status` is later (`auth_done`, `in_progress`, `complete`): tell user scaffolding is already done. To re-scaffold, they must `/web-modernize:abandon` first.
-   - **`--assets-only`**: require `status >= "scaffolded"` (`scaffolded`, `auth_done`, `in_progress`, or `complete`). If earlier, redirect: "Asset backfill needs a target scaffold to copy into. Run /web-modernize:scaffold (without --assets-only) first."
+     - If `status` is later (`foundation_done`, `in_progress`, `complete`): tell user scaffolding is already done. To re-scaffold, they must `/web-modernize:abandon` first.
+   - **`--assets-only`**: require `status >= "scaffolded"` (`scaffolded`, `foundation_done`, `in_progress`, or `complete`). If earlier, redirect: "Asset backfill needs a target scaffold to copy into. Run /web-modernize:scaffold (without --assets-only) first."
 
 3. Read `migration.md` §3 (UI), §4 (API), §5 (DB), §8 (constraints — esp. deployment target). For `--assets-only`, you only need §3 (specifically the optional "Asset directories" field, if present).
 
@@ -245,6 +245,17 @@ Test harness for <stack> is manual — install <framework> yourself, write a sam
 ```
 
 If `state.testing.api_framework == "n/a"` (i.e., §4 set API to `none` / `reuse-existing`), skip the API test harness entirely and record `scaffold.api.test_harness = "n/a"`.
+
+### Dynamic testing harness (opt-in)
+
+Read `migration.md §12` "Dynamic testing (E2E + API replay)". If it is **`no`** / blank, do nothing here (the `verify.config.json.dynamic` block stays `enabled: false`; `/web-modernize:verify --dynamic` will print setup guidance if anyone runs it later). If it is **`yes`**:
+
+1. Read the chosen UI framework's **`## Dynamic tests`** section from `frameworks/<state.target_stack.ui>.md` (Playwright install + config + the per-stack E2E command). If the framework file has no such section, fall back to a generic Playwright setup (`npm i -D @playwright/test && npx playwright install` + a `playwright.config.ts`) and note it.
+2. **E2E (Phase B):** install Playwright into the UI app, write a `playwright.config.ts` + a sample spec, and add a `test:e2e` script.
+3. **API replay (Phase A):** when an API target exists, scaffold a small replay harness (a script that reads recorded fixtures from `baseline_dir`, replays them against the running new API, and diffs responses) + create the `baseline_dir` (`.claude/modernize/baseline/`, gitignored) with a README explaining `/web-modernize:verify --capture-baseline`.
+4. **Write `verify.config.json.dynamic`:** set `enabled: true`, `e2e` to the E2E command (e.g. `npm --prefix ${ui_root} run test:e2e -- ${target_path}`), `api_replay` to the harness command, and `baseline_dir` to the fixtures path.
+
+This is additive and advisory — it never gates verification; it just makes `/web-modernize:verify --dynamic` available.
 
 ### Smoke-build the subsystem
 
@@ -540,7 +551,7 @@ Smoke-check both:
 
 Verification config updated. Edit .claude/modernize/verify.config.json if your scripts differ.
 
-Next: /web-modernize:auth   (migrates the auth provider before any feature units)
+Next: /web-modernize:foundation   (establishes auth + any cross-cutting concerns before feature units)
 ```
 
 For **`--assets-only`**, print:

@@ -27,7 +27,7 @@
 <text x="800" y="30" text-anchor="middle" dominant-baseline="middle"
       fill="white" font-size="26" font-weight="700" letter-spacing="0.5">web-modernize</text>
 <text x="800" y="56" text-anchor="middle" dominant-baseline="middle"
-      fill="#9fc8fa" font-size="12.5">Claude Code Plugin · v0.13.0 · Migrate legacy web apps (ASP.NET WebForms/MVC, Java JSP/Spring, AngularJS 1.x, PHP, ColdFusion…) to modern stacks</text>
+      fill="#9fc8fa" font-size="12.5">Claude Code Plugin · v0.15.0 · Migrate legacy web apps (ASP.NET WebForms/MVC, Java JSP/Spring, AngularJS 1.x, PHP, ColdFusion…) to modern stacks</text>
 
 <!-- Install strip (y=70..94) -->
 <rect x="0" y="70" width="1600" height="24" fill="#1a237e"/>
@@ -94,7 +94,7 @@
 <text x="377"  y="170" text-anchor="middle" dominant-baseline="middle" fill="#1b5e20" font-size="10" font-weight="600">/analyze</text>
 <text x="577"  y="170" text-anchor="middle" dominant-baseline="middle" fill="#1b5e20" font-size="10" font-weight="600">/plan</text>
 <text x="777"  y="170" text-anchor="middle" dominant-baseline="middle" fill="#1b5e20" font-size="10" font-weight="600">/scaffold</text>
-<text x="977"  y="170" text-anchor="middle" dominant-baseline="middle" fill="#1b5e20" font-size="10" font-weight="600">/auth</text>
+<text x="977"  y="170" text-anchor="middle" dominant-baseline="middle" fill="#1b5e20" font-size="10" font-weight="600">/foundation</text>
 <text x="1177" y="170" text-anchor="middle" dominant-baseline="middle" fill="#1b5e20" font-size="10" font-weight="600">/next ×N</text>
 <text x="1377" y="170" text-anchor="middle" dominant-baseline="middle" fill="#1b5e20" font-size="10" font-weight="600">all verified</text>
 
@@ -131,7 +131,7 @@
 
 <!-- Row 2 -->
 <rect x="10"  y="305" width="186" height="28" rx="4" fill="#1565c0"/>
-<text x="103" y="319" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="9.5" font-weight="600">/web-modernize:auth</text>
+<text x="103" y="319" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="9.5" font-weight="600">/web-modernize:foundation</text>
 <rect x="204" y="305" width="186" height="28" rx="4" fill="#1565c0"/>
 <text x="297" y="319" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="9.5" font-weight="600">/web-modernize:next</text>
 <rect x="398" y="305" width="186" height="28" rx="4" fill="#1565c0"/>
@@ -159,38 +159,39 @@
 <rect x="592" y="371" width="186" height="28" rx="4" fill="#1565c0"/>
 <text x="685" y="385" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="9.5" font-weight="600">/web-modernize:unlock</text>
 
-<!-- Row 5 — quality-check (new in v0.12.0) -->
-<rect x="10"  y="404" width="186" height="28" rx="4" fill="#1565c0" stroke="#43a047" stroke-width="2"/>
+<!-- Row 5 -->
+<rect x="10"  y="404" width="186" height="28" rx="4" fill="#1565c0"/>
 <text x="103" y="418" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="9.5" font-weight="600">/web-modernize:quality-check</text>
-<rect x="166" y="398" width="34" height="13" rx="6" fill="#43a047"/>
-<text x="183" y="405" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="7.5" font-weight="700">NEW</text>
+<rect x="204" y="404" width="186" height="28" rx="4" fill="#1565c0"/>
+<text x="297" y="418" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="9.5" font-weight="600">/web-modernize:integrate</text>
 
 <!-- == AGENTS  y=443..499 =========================================== -->
-<text x="12" y="446" dominant-baseline="middle" fill="#bf360c" font-size="11" font-weight="700">Agents — 5</text>
-<!-- 4 cols: x=10,204,398,592 (w=186)  ·  centers 103,297,491,685 -->
+<text x="12" y="446" dominant-baseline="middle" fill="#bf360c" font-size="11" font-weight="700">Agents — 6</text>
+<!-- 6 cols: x=10,141,272,403,534,665 (w=124)  ·  centers 72,203,334,465,596,727 -->
 
-<rect x="10"  y="453" width="150" height="42" rx="4" fill="#bf360c"/>
-<text x="85"  y="467" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="9.5" font-weight="700">legacy-analyzer</text>
-<text x="85"  y="484" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="8">subagent · stack detect</text>
+<rect x="10"  y="453" width="124" height="42" rx="4" fill="#bf360c"/>
+<text x="72"  y="467" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="8.5" font-weight="700">legacy-analyzer</text>
+<text x="72"  y="484" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="7.5">subagent · detect</text>
 
-<rect x="167" y="453" width="150" height="42" rx="4" fill="#bf360c"/>
-<text x="242" y="467" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="9.5" font-weight="700">unit-migrator</text>
-<text x="242" y="484" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="8">inline · migration loop</text>
+<rect x="141" y="453" width="124" height="42" rx="4" fill="#bf360c"/>
+<text x="203" y="467" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="8.5" font-weight="700">unit-migrator</text>
+<text x="203" y="484" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="7.5">inline · migration loop</text>
 
-<rect x="324" y="453" width="150" height="42" rx="4" fill="#bf360c"/>
-<text x="399" y="467" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="9.5" font-weight="700">parity-reviewer</text>
-<text x="399" y="484" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="8">subagent · parity + security</text>
+<rect x="272" y="453" width="124" height="42" rx="4" fill="#bf360c"/>
+<text x="334" y="466" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="8" font-weight="700">cross-cutting-migrator</text>
+<text x="334" y="484" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="7.5">subagent · foundation</text>
 
-<!-- migration-critic is new in v0.12.0 -->
-<rect x="481" y="453" width="150" height="42" rx="4" fill="#bf360c" stroke="#43a047" stroke-width="2"/>
-<text x="556" y="467" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="9.5" font-weight="700">migration-critic</text>
-<text x="556" y="484" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="8">subagent · idiomatic quality</text>
-<rect x="597" y="447" width="34" height="13" rx="6" fill="#43a047"/>
-<text x="614" y="454" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="7.5" font-weight="700">NEW</text>
+<rect x="403" y="453" width="124" height="42" rx="4" fill="#bf360c"/>
+<text x="465" y="467" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="8.5" font-weight="700">parity-reviewer</text>
+<text x="465" y="484" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="7.5">subagent · parity/sec</text>
 
-<rect x="638" y="453" width="150" height="42" rx="4" fill="#bf360c"/>
-<text x="713" y="467" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="9.5" font-weight="700">permanent-gotchas</text>
-<text x="713" y="484" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="8">reference · bug catalog</text>
+<rect x="534" y="453" width="124" height="42" rx="4" fill="#bf360c"/>
+<text x="596" y="467" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="8.5" font-weight="700">migration-critic</text>
+<text x="596" y="484" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="7.5">subagent · quality+perf</text>
+
+<rect x="665" y="453" width="124" height="42" rx="4" fill="#bf360c"/>
+<text x="727" y="467" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="8.5" font-weight="700">permanent-gotchas</text>
+<text x="727" y="484" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="7.5">reference · catalog</text>
 
 <!-- == FRAMEWORKS  y=505..564 ======================================= -->
 <text x="12" y="507" dominant-baseline="middle" fill="#1b5e20" font-size="11" font-weight="700">Frameworks — 31 .md files  (drop 1 file = add 1 stack, no skill edits needed)</text>
@@ -363,9 +364,7 @@
 
 <!-- Parity + security gate callout -->
 <rect x="455" y="872" width="725" height="26" rx="4" fill="#e0f2f1" stroke="#00695c" stroke-width="1.2"/>
-<rect x="463" y="877" width="34" height="13" rx="6" fill="#43a047"/>
-<text x="480" y="884" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="7.5" font-weight="700">NEW</text>
-<text x="838" y="885" text-anchor="middle" dominant-baseline="middle" fill="#004d40" font-size="8.5">Parity + security gate: parity-reviewer diffs target ↔ legacy (behaviour + authz / injection / secrets); highs block migrated→verified  ·  advisory migration-critic = code quality (/quality-check)</text>
+<text x="817" y="885" text-anchor="middle" dominant-baseline="middle" fill="#004d40" font-size="8.5">Parity + security gate: parity-reviewer diffs target ↔ legacy (behaviour + authz / injection / secrets); highs block migrated→verified  ·  advisory migration-critic = code quality + static perf  ·  opt-in dynamic tier (API replay + E2E)</text>
 
 <!-- Recovery notes (right side) -->
 <text x="830" y="788" dominant-baseline="middle" fill="#37474f" font-size="10.5" font-weight="700">Recovery actions:</text>
@@ -422,7 +421,7 @@
 
 <!-- Footer -->
 <text x="800" y="1007" text-anchor="middle" dominant-baseline="middle" fill="#9e9e9e" font-size="9.5">
-  github.com/balaji-hari/web-mordernize · Plugin namespace: web-modernize · State schema v3 · 17 skills · 5 agents · 31 framework files · 1 workflow
+  github.com/balaji-hari/web-mordernize · Plugin namespace: web-modernize · State schema v3 · 18 skills · 6 agents · 31 framework files · 2 workflows
 </text>
 
 </svg>

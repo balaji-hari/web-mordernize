@@ -36,6 +36,14 @@ Test smoke: `npm test -- --ci --runInBand`.
 |---|---|---|---|
 | 3000 | `npm install` | `npm run dev` | http://localhost:3000 |
 
+## Integration
+
+Read by `/web-modernize:integrate`.
+
+- **Central router:** Next App Router is **file-based** — there's no single router file to reconcile; instead `/integrate` verifies each migrated UI unit owns a route folder under `apps/web-new/app/<route>/page.tsx` and flags any migrated unit with no `page`/`route` file (an orphan).
+- **Nav:** `apps/web-new/app/_components/Nav.tsx` (rendered in `app/layout.tsx`, the root layout the first unit established) — assembled from migrated UI routes' labels.
+- **Strangler proxy (only `strategy: strangler-fig`):** add `rewrites()` in `next.config.js` (or an upstream nginx config) routing not-yet-migrated path prefixes to the legacy origin; migrated prefixes stay on Next. `/integrate` refreshes as units migrate.
+
 ## Recommendation context
 
 Natural target for: `aspnet-mvc`, `aspnet-core-mvc` (convention-over-config controllers map cleanly to file-based App Router routes). Pick when SEO matters (SSR/RSC), when the team is already used to .NET routing conventions, or when the migrated app needs many statically-rendered pages.

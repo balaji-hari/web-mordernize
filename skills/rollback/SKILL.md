@@ -3,19 +3,23 @@ description: "Revert one unit's target files and reset it to 'pending'. Soft inv
 disable-model-invocation: false
 ---
 
-# `/web-modernize:rollback --unit <unit-id>`
+# `/web-modernize:rollback --unit <unit-id> [--force-shared]`
 
 You are the **rollback** skill. You undo a single unit's migration so the team can re-attempt it cleanly. You do NOT delete the design notes (`notes/<unit-id>.md`) — those are useful as a record of the previous attempt.
 
+Because the migration model isn't truly per-unit-isolated — the first unit writes the shared layout + global CSS, units extract shared utilities, and `kind: shared` / `cross-cutting` units are depended on by many — a naive rollback can revert a shared file out from under every dependent. This skill runs a **shared-file safety check** and refuses by default when a rollback would break live dependents (override with `--force-shared`).
+
 ## Preflight
 
-1. Parse `$ARGUMENTS`. Expect `--unit <unit-id>`. If `--unit` is missing or no id follows, print:
+1. Parse `$ARGUMENTS`. Expect `--unit <unit-id>`. Optional `--force-shared` — proceed even when the shared-file safety check (below) finds shared files with live dependents. If `--unit` is missing or no id follows, print:
    ```
-   Usage: /web-modernize:rollback --unit <unit-id>
+   Usage: /web-modernize:rollback --unit <unit-id> [--force-shared]
 
    Example: /web-modernize:rollback --unit LoginController
 
    This reverts the unit's target files via git and resets its status to "pending".
+   Refuses by default if the unit owns shared files other units rely on; re-run
+   with --force-shared to override (you'll see the blast radius first).
    For re-attempting after rollback, follow up with /web-modernize:migrate <unit-id>
    or /web-modernize:retry <unit-id> --with-prompt="<guidance>".
    ```
@@ -60,6 +64,39 @@ Categorize each target path into one of:
 | Pre-existing file, modified | `git checkout HEAD~<n> -- <path>` to the pre-migration revision (find n via the unit.history first→in_progress timestamp). If ambiguous, `git checkout <root_commit> -- <path>` is the safe fallback. |
 | Pre-existing file, deleted by migration | Restore via the same `git checkout <root_commit> -- <path>`. |
 
+## Shared-file safety check
+
+Before confirming, decide whether the revert plan would touch **shared** files that other units rely on. Classification is **data-driven — never path-pattern or filename matching** (no assuming `src/lib/` or a layout named `App.tsx`). Read all `units/*.json` once. A path in the revert plan is **shared** if ANY of:
+
+1. It is a `target_paths[]` entry of a unit whose `kind` is `shared`, `cross-cutting`, or whose id is synthetic (`__…__`). The **first-unit layout + global CSS** are identified via the `notes/__layout__.md` record of what the migrator actually wrote (and/or a `__layout__` unit's `target_paths`) — not by guessing filenames.
+2. It appears in any unit's `extracted_shared[].path` (emergent shared code promoted by `/plan`).
+3. It appears in **more than one** unit's `target_paths[]`.
+4. The unit being rolled back is itself `kind: shared` / `kind: cross-cutting` / a synthetic `__…__` id (then all of its target paths are treated as shared).
+
+For each shared path, compute its **live dependents** — units with status `migrated` / `verified` / `in_progress` that:
+- list this unit's id (or the shared unit owning that path) in their `depends_on[]`, OR
+- reference the path in their own `target_paths` / `extracted_shared`, OR
+- for the layout / global-CSS case (per the `__layout__` record): **all other migrated/verified feature units** (they all render inside the layout).
+
+**If ownership is ambiguous** (a path looks reused but you can't confidently attribute it), ask the developer rather than silently treating it as owned.
+
+**Decision:**
+- **No shared path with live dependents** → continue to "Confirm with the user" unchanged.
+- **Shared path(s) with live dependents AND `--force-shared` NOT passed** → **refuse**. Make no mutations. Print the blast radius and the escape:
+  ```
+  ✗ Refusing to roll back <unit.id> — it owns shared files that other units rely on:
+
+    <shared-path-1>   ← depended on by: <depA>, <depB>, …
+    <shared-path-2>   ← depended on by: <all feature units render inside this layout>
+
+  Rolling these back would break those units. Safer options:
+    - Roll back the dependents first, then this unit.
+    - Or edit the shared file directly instead of rolling the whole unit back.
+    - Or, if you accept the breakage, re-run with --force-shared:
+        /web-modernize:rollback --unit <unit.id> --force-shared
+  ```
+- **Shared path(s) with live dependents AND `--force-shared` passed** → proceed, but carry the shared paths + impacted dependents into the confirmation summary and the `rollback_info.shared_impact` write.
+
 ## Confirm with the user
 
 Print the plan **before** doing anything:
@@ -85,6 +122,14 @@ Per-unit file changes (.claude/modernize/units/<unit.id>.json):
 Proceed? (yes/no)
 ```
 
+When `--force-shared` was used to override the safety check, add a prominent block above `Proceed?`:
+
+```
+  ⚠ SHARED FILE — forcing this rollback will break:
+    <shared-path>  →  <depA>, <depB>, … (these units depend on it)
+  Consider rolling those back or re-migrating them afterward.
+```
+
 Wait for explicit `yes`. Anything else → stop with no changes.
 
 ## Execute the revert
@@ -108,7 +153,12 @@ In this order:
        "by": "<git user.email or 'unknown'>",
        "branch": "modernize/<unit.id>",
        "restored_paths": [<every path you reverted>],
-       "reason": "manual /web-modernize:rollback"
+       "reason": "manual /web-modernize:rollback",
+       "shared_impact": <omit unless --force-shared was used; then {
+         "forced": true,
+         "shared_paths": [<the shared paths reverted>],
+         "impacted_dependents": [<unit ids that depend on them>]
+       }>
      },
      "history": [...existing, {
        "at": "<now>",

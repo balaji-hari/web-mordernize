@@ -49,6 +49,14 @@ Test smoke: `npm run test -- --watch=false --browsers=ChromeHeadless`.
 |---|---|---|---|
 | 4200 | `npm install` | `npm start` | http://localhost:4200 |
 
+## Integration
+
+Read by `/web-modernize:integrate`.
+
+- **Central router:** `apps/web-new/src/app/app.routes.ts` — the `Routes` array reconciled from each migrated UI unit's `routes[]` (lazy `loadComponent`). Wired through `app.config.ts` `provideRouter`.
+- **Nav:** `apps/web-new/src/app/nav/nav.component.ts` (rendered in `app.component.html`, the shell the first unit established) — built from migrated UI routes' labels, preserving legacy menu order from `notes/__layout__.md`.
+- **Strangler proxy (only `strategy: strangler-fig`):** dev — add `proxy.conf.json` (referenced from `angular.json` `serve.options.proxyConfig`) routing not-yet-migrated prefixes to the legacy origin; prod — an upstream nginx config. `/integrate` refreshes as units migrate.
+
 ## Recommendation context
 
 Natural target for: `angularjs-1` — closest mental model for teams coming from AngularJS (modules → modules, services → injectables, directives → components). Also a fit for any team with strong opinionation preferences who want Angular's batteries-included shape.

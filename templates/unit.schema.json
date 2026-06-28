@@ -12,7 +12,11 @@
       "description": "Stable identifier (e.g., LoginController, OrderListPage). Used in /web-modernize:migrate <id>, the file name, and notes_path."
     },
     "kind": {
-      "enum": ["page", "controller", "component", "module", "service", "endpoint", "shared"]
+      "enum": ["page", "controller", "component", "module", "service", "endpoint", "shared", "background", "cross-cutting"]
+    },
+    "trigger": {
+      "description": "Only for kind == 'background': what invokes this non-UI/non-HTTP unit. Drives detection, the migration recipe, and the build+tests-only smoke gate. Absent for request-shaped units.",
+      "enum": ["scheduled", "queue", "hub", "batch", "startup"]
     },
     "source_paths": {
       "type": "array",
@@ -22,6 +26,34 @@
     "target_paths": {
       "type": "array",
       "items": { "type": "string" }
+    },
+    "routes": {
+      "description": "Routes this unit exposes in the composed app, recorded by unit-migrator for routable units (pages/endpoints). /web-modernize:integrate assembles the central router + nav from these; when absent (older units) it infers routes by scanning target_paths. Optional.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path"],
+        "properties": {
+          "path": { "type": "string", "description": "Route path, e.g. /orders or /api/catalog/items." },
+          "label": { "type": "string", "description": "Nav label for UI routes (omit for API/background)." },
+          "kind": { "enum": ["ui", "api"], "description": "Whether this route is a UI page route or an API endpoint." }
+        }
+      }
+    },
+    "extracted_shared": {
+      "description": "Reusable code this unit extracted mid-migration that was NOT seeded as a unit. /web-modernize:plan backfills a kind:shared unit from these on the next run. Concurrency-safe: each discovering unit records in its own per-unit file.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "path"],
+        "properties": {
+          "id": { "type": "string", "description": "Stable id for the would-be shared unit." },
+          "path": { "type": "string", "description": "Target path it was written to (whatever location the migrator chose for this stack)." },
+          "purpose": { "type": "string" }
+        }
+      }
     },
     "depends_on": {
       "type": "array",
@@ -104,7 +136,17 @@
               "items": { "type": "string" },
               "description": "Target files that were reverted (deleted, or restored to pre-migration state)."
             },
-            "reason": { "type": "string" }
+            "reason": { "type": "string" },
+            "shared_impact": {
+              "description": "Present when --force-shared was used to roll back a unit that owned shared files other units rely on. Records the blast radius for the audit trail.",
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "forced": { "type": "boolean" },
+                "shared_paths": { "type": "array", "items": { "type": "string" } },
+                "impacted_dependents": { "type": "array", "items": { "type": "string" } }
+              }
+            }
           }
         }
       ]
@@ -279,7 +321,7 @@
             "description": "Stable, content-derived identifier, e.g. 'jobol:OrderListPage:useeffect-postback-emulation'. Deterministic from kind + the observation, so it survives a re-run on unchanged code and a fixed issue drops off."
           },
           "kind": {
-            "enum": ["jobol", "idiom", "error_handling", "dead_abstraction", "test_quality", "oncall_readiness", "other"]
+            "enum": ["jobol", "idiom", "error_handling", "dead_abstraction", "test_quality", "oncall_readiness", "perf_n_plus_one", "perf_unbounded_data", "perf_waterfall", "perf_blocking", "perf_bundle", "other"]
           },
           "severity": {
             "enum": ["blocker", "high", "medium", "nit"],
@@ -289,6 +331,27 @@
           "why_it_matters": { "type": "string", "description": "Optional: the maintainability / operability cost if left as-is." },
           "suggestion": { "type": "string", "description": "Optional: a concrete change toward the idiomatic target-stack form." },
           "file": { "type": "string", "description": "Target file (optionally :line) the finding is rooted in." }
+        }
+      }
+    },
+    "dynamic_reviewed_at": {
+      "description": "When the opt-in dynamic testing tier (/web-modernize:verify --dynamic) last ran for this unit. Absent/null = never run.",
+      "oneOf": [{ "type": "null" }, { "type": "string", "format": "date-time" }]
+    },
+    "dynamic_findings": {
+      "type": "array",
+      "description": "Results from the opt-in dynamic testing tier (API replay + Playwright E2E), run by /web-modernize:verify --dynamic. ADVISORY ONLY — never blocks the migrated→verified transition. Replaced wholesale on each --dynamic run.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "kind", "severity", "observation"],
+        "properties": {
+          "id": { "type": "string", "description": "Stable, content-derived identifier, e.g. 'dynamic_api_replay:CatalogApi:get-items-200-shape-drift'." },
+          "kind": { "enum": ["dynamic_api_replay", "dynamic_e2e", "dynamic_visual", "other"] },
+          "severity": { "enum": ["high", "medium", "low"], "description": "Advisory grade — never blocks." },
+          "observation": { "type": "string", "description": "What the dynamic run observed (e.g. replay diff, failed E2E step)." },
+          "recommendation": { "type": "string" },
+          "file": { "type": "string" }
         }
       }
     }

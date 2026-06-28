@@ -96,7 +96,7 @@ One-time setup:
                                   via stack-aware AskUserQuestion prompts
   3. /web-modernize:plan       ← generate plan.md and unit list
   4. /web-modernize:scaffold   ← create target project skeleton (UI / optional API / DB) + copy legacy assets
-  5. /web-modernize:auth       ← migrate authentication as the first slice (every feature unit depends on it)
+  5. /web-modernize:foundation ← establish the foundational slice: auth (every feature unit depends on it) + any opted-in cross-cutting concerns
 
 Per-unit loop:
   6. Loop until /web-modernize:status reports "complete":
@@ -104,7 +104,8 @@ Per-unit loop:
        /web-modernize:migrate <unit-id>     ← OR explicitly pick a named unit (e.g., one assigned in standup)
        /web-modernize:verify                ← lint/typecheck/tests + behavioural-parity & security gate (+ advisory quality review)
        /web-modernize:parity-check <id>     ← (optional) on-demand behaviour diff vs legacy; acknowledge intentional changes
-       /web-modernize:quality-check <id>    ← (optional) on-demand idiomatic-code review (advisory; never blocks)
+       /web-modernize:quality-check <id>    ← (optional) on-demand idiomatic-code + static-perf review (advisory; never blocks)
+       /web-modernize:integrate             ← (anytime) assemble migrated units into the composed app (router/nav, whole-app smoke); incremental
 
      /next and /migrate <unit-id> do the same translation work — only unit
      selection differs. Use /next if you want the plugin to pick the next
@@ -149,18 +150,19 @@ Commit the `.claude/modernize/` directory. That's how Alice on Monday and Bob on
 | Command | Purpose | When you run it |
 |---------|---------|-----------------|
 | `/web-modernize:init` | Bootstrap `migration.md` + `.claude/modernize/` (state.json, units/, notes/) | Once per legacy repo |
-| `/web-modernize:analyze` | Detect source stack and entry points (exhaustive loop-until-dry discovery when the Workflow tool is available; single-pass fallback otherwise); auto-fill `migration.md §2` and interactively fill target choices | Immediately after `/init` |
-| `/web-modernize:plan` | Validate `migration.md`, generate `plan.md` (incl. a Mermaid dependency graph), seed unit list (re-runnable; carries history forward) | After `migration.md` is complete; re-run whenever the unit list changes |
+| `/web-modernize:analyze` | Detect source stack and entry points — pages, controllers, APIs **and background/non-UI units** (scheduled jobs, queue consumers, hubs, batch processors) via a separate non-route pass; exhaustive loop-until-dry discovery when the Workflow tool is available, single-pass fallback otherwise; auto-fill `migration.md §2` and interactively fill target choices | Immediately after `/init` |
+| `/web-modernize:plan [--review-mode=plan-first\|auto]` | Validate `migration.md`, generate `plan.md` (incl. a Mermaid dependency graph), seed unit list (re-runnable; carries history forward). Sets the migration-wide **review mode** (the per-unit plan-gate default; sticky across re-plans) | After `migration.md` is complete; re-run whenever the unit list changes |
 | `/web-modernize:scaffold [--assets-only]` | Create target project skeleton (UI, optional API, optional DB) **and** copy legacy assets (images, fonts, favicon) into the target's `public/`. `--assets-only` backfills assets on an already-scaffolded repo. | Once, after `/plan`. Re-run with `--assets-only` if assets were missed. |
-| `/web-modernize:auth` | Migrate authentication as a distinct first slice | Once, after `/scaffold` |
-| `/web-modernize:next` | Pick next pending unit and migrate it | In a loop until migration is complete |
-| `/web-modernize:migrate <id> [--force]` | Migrate a specifically named unit. Blocks on unmet deps unless `--force` | When you need to jump to a unit out of order (debug) |
-| `/web-modernize:retry <id> [--with-prompt="…"]` | Re-attempt a failed unit; preserves diagnostic history | When `/status` shows a unit in `failed` status |
-| `/web-modernize:rollback --unit <id>` | Revert one unit's target files via git; reset to `pending` | When a migrated/verified unit broke and you want a clean re-attempt |
+| `/web-modernize:foundation [--no-plan]` | Establish the foundational slice — **auth** (login/logout/session, dev users) plus any cross-cutting concerns opted into in `migration.md §13` (i18n, feature flags, error handling, telemetry, logging). **Always-on consolidated design gate** (present design for all concerns → approve → write); implements them in parallel when possible; `--no-plan` skips the gate. Replaces the former `/auth`. | Once, after `/scaffold` |
+| `/web-modernize:next [--plan \| --no-plan]` | Pick next pending unit and migrate it. Honors the **plan gate** (presents a plan, waits for approval before writing) per `review_mode`; `--plan`/`--no-plan` overrides for this unit | In a loop until migration is complete |
+| `/web-modernize:migrate <id> [--force] [--plan \| --no-plan]` | Migrate a specifically named unit. Blocks on unmet deps unless `--force`; plan gate as above | When you need to jump to a unit out of order (debug) |
+| `/web-modernize:retry <id> [--with-prompt="…"] [--plan \| --no-plan]` | Re-attempt a failed unit; preserves diagnostic history; plan gate as above | When `/status` shows a unit in `failed` status |
+| `/web-modernize:rollback --unit <id> [--force-shared]` | Revert one unit's target files via git; reset to `pending`. **Refuses by default** if the unit owns shared files other units rely on (layout, shared utilities, `kind: shared`/`cross-cutting` outputs); `--force-shared` overrides after showing the blast radius | When a migrated/verified unit broke and you want a clean re-attempt |
 | `/web-modernize:sync` | Merge latest `state.json` and per-unit files from origin into local | After pulling, when other developers have been working in parallel |
-| `/web-modernize:verify [id] [--no-parity] [--no-quality]` | Lint + typecheck + test a migrated unit, **run a behavioural-parity + security check** and an **advisory migration-quality review**, record evidence, flip to `verified` | After each `/next`, or in batch |
+| `/web-modernize:verify [id] [--no-parity] [--no-quality] [--dynamic] [--capture-baseline]` | Lint + typecheck + test a migrated unit, **run a behavioural-parity + security check** and an **advisory migration-quality + static-perf review**, record evidence, flip to `verified`. `--dynamic` adds the opt-in dynamic tier (API replay + Playwright E2E, advisory); `--capture-baseline` records the legacy baseline | After each `/next`, or in batch |
 | `/web-modernize:parity-check <id> [--all] [--acknowledge <finding-id> --reason "…"]` | Compare a migrated unit's behaviour against the legacy original (validation, output shape, sort order, error handling, UI states, **security: dropped authz / injection / output-encoding / secret-in-bundle / CSRF**); acknowledge intentional diffs | On demand, or when `/verify` reports a parity block |
-| `/web-modernize:quality-check <id> [--all]` | **Advisory** review of a migrated unit's **code quality / idiomaticity** — legacy-paradigm leakage (WebForms-in-React, jQuery-in-a-reactive-framework), ceremonial error handling, dead abstractions, weak tests. Never blocks verification | On demand, when you want the migrated code to read idiomatically |
+| `/web-modernize:quality-check <id> [--all]` | **Advisory** review of a migrated unit's **code quality / idiomaticity + static performance** — legacy-paradigm leakage (WebForms-in-React, jQuery-in-a-reactive-framework), ceremonial error handling, dead abstractions, weak tests, and perf regressions (N+1, unbounded queries, waterfalls, blocking I/O, bundle bloat). Never blocks verification | On demand, when you want the migrated code to read idiomatically |
+| `/web-modernize:integrate [--dry-run] [--final]` | Assemble migrated units into the composed app — central router + nav, whole-app smoke, orphaned-unit + cutover-coverage report, and (strangler-fig) the traffic-splitting proxy. **Idempotent**; run any time to integrate what's migrated so far, or `--final` for the end cutover | Periodically during migration, and at cutover |
 | `/web-modernize:report [--format=md\|json\|html]` | Generate stakeholder progress report (burndown, ETA, risks) | Sprint syncs, exec updates, weekly digests |
 | `/web-modernize:status` | Print progress dashboard (incl. artifact-drift staleness checks — flags when discovery moved but `/plan` wasn't re-run) | Anytime — read-only |
 | `/web-modernize:unlock` | Force-clear a stuck advisory lock on `state.json` (requires typing `force-clear`) | When a Claude session crashed holding the lock and `/plan` or `/scaffold` is blocked |
@@ -168,9 +170,18 @@ Commit the `.claude/modernize/` directory. That's how Alice on Monday and Bob on
 
 ---
 
+### The plan-approval gate (review mode)
+
+Code-generating commands present a plan and **wait for your approval before writing** — `[a]pprove` / `[r]evise` / `[c]ancel` (cancel writes nothing and leaves the unit `pending`). It's applied with judgment: it gates code generation, not read-only or bookkeeping commands (`/status`, `/parity-check`, `/quality-check`, etc. are never gated).
+
+- **Per-unit gate (`/next`, `/migrate`, `/retry`) — opt-out, ON by default.** Set the migration-wide default once at `/plan`: `--review-mode=auto` turns the per-unit gate off for the whole migration (fast `/next` flow), `--review-mode=plan-first` (the default) keeps it on. It's persisted as `state.review_mode`, is **sticky across re-plans**, and can also be declared via an optional `Review mode:` line in `migration.md §6`. Override a single unit with `--plan` / `--no-plan`.
+- **Foundation gate (`/foundation`) — always on.** The cross-cutting concerns (auth + any opted-in) are high-stakes and foundational, so the consolidated design gate runs **regardless of `review_mode`** (a team on `auto` still reviews the foundation). The only way to skip it is the explicit `--no-plan` flag.
+
+---
+
 ## Talk to it naturally
 
-You don't have to memorize the 17 slash-command names above. Every skill's `description:` field includes trigger phrases and lifecycle anchors that Claude Code's native skill auto-invocation uses to route plain-English requests to the right command.
+You don't have to memorize the 18 slash-command names above. Every skill's `description:` field includes trigger phrases and lifecycle anchors that Claude Code's native skill auto-invocation uses to route plain-English requests to the right command.
 
 Examples of utterances that route reliably:
 
@@ -184,6 +195,7 @@ Examples of utterances that route reliably:
 | *"where are we"* / *"show status"* / *"progress"* | `/web-modernize:status` |
 | *"migrate the OrderController"* / *"do the login page"* | `/web-modernize:migrate <name>` |
 | *"verify"* / *"run tests"* / *"is it passing"* | `/web-modernize:verify` |
+| *"assemble the app"* / *"wire up routing"* / *"cutover"* | `/web-modernize:integrate` |
 | *"check parity"* / *"does it behave like the old one"* | `/web-modernize:parity-check <id>` |
 | *"is this idiomatic"* / *"code quality"* / *"check for jobol"* | `/web-modernize:quality-check <id>` |
 | *"retry"* / *"try again"* | `/web-modernize:retry <id>` |
@@ -234,7 +246,7 @@ For source frameworks, also include a `## Detection` section listing strong and 
 | 4. Target API framework | optional | Set to `none` for UI-only migrations — plan skips API work entirely |
 | 5. Database | optional | `unchanged` is the most common; set if replatforming |
 | 6. Migration strategy | **yes** | strangler-fig (default), big-bang (small apps), module-by-module |
-| 7. Auth provider | **yes** | Current and target; drives `/web-modernize:auth` |
+| 7. Auth provider | **yes** | Current and target; drives the auth concern of `/web-modernize:foundation` |
 | 8. Constraints | recommended | Must-keep URLs, compliance, deployment target |
 | 9. Out of scope | optional | Explicit "don't migrate this" list |
 | 9b. Unit rename map | optional | `old_id → new_id` mappings so re-runs of `/plan` carry history across renames |
@@ -279,7 +291,7 @@ Behind the scenes, Alice's work touches only `.claude/modernize/units/PaymentPro
 ### When `/sync` is useful
 
 Per-unit files solve most of the multi-dev pain, but `state.json` itself (top-level: workflow status, scaffold subsystems, advisory lock, `unit_ids` array) is still shared. The few operations that mutate `state.json` are:
-- Phase transitions (`/auth` flipping `state.status` to `auth_done`, `/verify` flipping it to `complete`, etc.).
+- Phase transitions (`/foundation` flipping `state.status` to `foundation_done`, `/verify` flipping it to `complete`, etc.).
 - `/scaffold` updating per-subsystem `scaffold.{ui,api,db}` blocks.
 - `/plan` re-runs updating `unit_ids` and stack fields.
 
@@ -369,7 +381,7 @@ With per-unit files (schema v3), this should be rare — concurrent work on diff
 
 1. **Use `/web-modernize:sync`** (recommended). Run it after `git fetch` instead of `git pull`. It reads the remote `state.json` plus every remote `units/<id>.json`, applies these merge rules deterministically, and writes the result to your working tree for you to review and commit:
    - For each per-unit file: only-on-remote → take; only-on-local → keep; both → field-level merge (most-advanced status wins, freshest heartbeat wins, max `retry_count`, etc.).
-   - For top-level `status`: take the higher of `complete > in_progress > auth_done > scaffolded > planned > analyzed > initialized > uninitialized`.
+   - For top-level `status`: take the higher of `complete > in_progress > foundation_done > scaffolded > planned > analyzed > initialized > uninitialized`.
    - For `unit_ids`: union, preserving remote order with local-only ids appended.
    - For `history[]` (per-unit): concatenate, de-duplicate, sort by `at`.
    - For `failure.diagnostic_history[]`: concatenate.

@@ -80,7 +80,7 @@ Apply these rules in order to produce the merged top-level state.
 
 ### Top-level `status`
 
-Order: `complete > in_progress > auth_done > scaffolded > planned > analyzed > initialized > uninitialized`.
+Order: `complete > in_progress > foundation_done > scaffolded > planned > analyzed > initialized > uninitialized`.
 
 Take the **higher** of `local.status` and `remote.status`.
 

@@ -1,9 +1,9 @@
 ---
-description: "Migrate a specifically named unit, bypassing automatic selection. Optional --force skips dependency checks. Use when state.status is 'auth_done' or 'in_progress' AND the user names a unit. Triggers: 'migrate <unit>', 'do the login page', 'translate <component>', 'migrate the OrderController', 'work on <name>'."
+description: "Migrate a specifically named unit, bypassing automatic selection. Optional --force skips dependency checks. Use when state.status is 'foundation_done' or 'in_progress' AND the user names a unit. Triggers: 'migrate <unit>', 'do the login page', 'translate <component>', 'migrate the OrderController', 'work on <name>'."
 disable-model-invocation: false
 ---
 
-# `/web-modernize:migrate <unit-id> [--force]`
+# `/web-modernize:migrate <unit-id> [--force] [--plan | --no-plan]`
 
 You are the **migrate** skill. You take an explicit unit id as `$ARGUMENTS` and migrate it, overriding the dependency-aware picking that `/web-modernize:next` does.
 
@@ -14,18 +14,20 @@ The translation work itself is shared with `/web-modernize:next` and `/web-moder
 1. Parse `$ARGUMENTS`:
    - First token is `<unit-id>` (required).
    - Optional flag `--force` — override the dependency block.
+   - Optional plan-gate override (default: none): `--plan` → `plan_override = "on"` (force the per-unit plan gate even when `review_mode` is `auto`); `--no-plan` → `plan_override = "off"` (skip the gate even when `review_mode` is `plan-first`); neither → `plan_override = null` (use the migration-wide `state.review_mode` default).
    - If `<unit-id>` is missing, print usage and stop:
      ```
-     Usage: /web-modernize:migrate <unit-id> [--force]
+     Usage: /web-modernize:migrate <unit-id> [--force] [--plan | --no-plan]
 
      Examples:
        /web-modernize:migrate LoginController
        /web-modernize:migrate PaymentProcessor --force   (allow unmet deps; stubs them)
+       /web-modernize:migrate Dashboard --no-plan        (skip the plan-approval gate)
 
      To see available units: /web-modernize:status
      ```
 
-2. Read `.claude/modernize/state.json`. Require `status ∈ {auth_done, in_progress}`. Otherwise redirect to the missing skill.
+2. Read `.claude/modernize/state.json`. Require `status ∈ {foundation_done, in_progress}`. Otherwise redirect to the missing skill.
 
 3. Read `.claude/modernize/units/<unit-id>.json`. If the file does not exist:
    ```
@@ -38,7 +40,7 @@ The translation work itself is shared with `/web-modernize:next` and `/web-moder
 
 Inspect `unit.depends_on`. For each dependency, determine its current status:
 
-- `__auth__` — satisfied if top-level `state.status >= "auth_done"`.
+- `__auth__` — satisfied if top-level `state.status >= "foundation_done"`.
 - Other ids — read `units/<dep-id>.json` and check its `status`. Satisfied if `status ∈ {migrated, verified}`.
 
 If any dependency is **not** satisfied, build a list of `(dep_id, dep_status)` pairs.
@@ -105,8 +107,9 @@ Load `${CLAUDE_PLUGIN_ROOT}/agents/unit-migrator.md` and follow it with:
 - `unit = <the unit object you just read from units/<id>.json>`
 - `retry_prompt = null`
 - `force_deps = <true if --force was passed, else false>`
+- `plan_override = <the value parsed in Preflight step 1>`
 
-The agent reads and writes only `units/<unit.id>.json` for unit-level state and `state.json` only for the top-level `auth_done → in_progress` transition.
+The agent reads and writes only `units/<unit.id>.json` for unit-level state and `state.json` only for the top-level `foundation_done → in_progress` transition. With the plan gate active, the agent presents a plan (§3.5) and waits for approval before writing; cancelling there returns the unit to `pending` with nothing written.
 
 ## Closing message
 
@@ -127,7 +130,14 @@ Suggested next steps:
 
 On failure: the agent already printed the diagnostic and the recovery options (including `/web-modernize:retry`). Do not add a second banner.
 
+On cancel at the plan gate (`unit.status == "pending"`, no files written):
+
+```
+○ <unit.id> not migrated — cancelled at the plan gate. The unit is back to `pending`; no files were written.
+  Re-run /web-modernize:migrate <unit.id> when ready (add --no-plan to skip the gate).
+```
+
 ## State transitions
 
-- Top-level: `auth_done` → `in_progress` (if first migration), unchanged otherwise.
+- Top-level: `foundation_done` → `in_progress` (if first migration), unchanged otherwise.
 - Per-unit file: `pending` (or whatever the user opted out of) → `in_progress` → `migrated` (or `failed`).

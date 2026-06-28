@@ -20,7 +20,7 @@
 <text x="800" y="28" text-anchor="middle" dominant-baseline="middle"
       fill="white" font-size="24" font-weight="700" letter-spacing="0.5">web-modernize — Architecture Overview</text>
 <text x="800" y="55" text-anchor="middle" dominant-baseline="middle"
-      fill="#9fc8fa" font-size="13">Page 1 of 3: Overview &amp; Workflow  ·  v0.13.0  ·  Claude Code Plugin</text>
+      fill="#9fc8fa" font-size="13">Page 1 of 3: Overview &amp; Workflow  ·  v0.15.0  ·  Claude Code Plugin</text>
 
 <!-- ================================================================
      WHAT IS THIS  (y=72..240)
@@ -63,7 +63,7 @@
 <rect x="1008" y="210" width="150" height="26" rx="4" fill="#283593"/>
 <text x="1083" y="223" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="10">31 Framework Files</text>
 <rect x="1166" y="210" width="130" height="26" rx="4" fill="#283593"/>
-<text x="1231" y="223" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="10">5 Agents</text>
+<text x="1231" y="223" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="10">6 Agents</text>
 <rect x="1304" y="210" width="256" height="26" rx="4" fill="#283593"/>
 <text x="1432" y="223" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="10">N Units in Parallel (git-safe)</text>
 
@@ -118,7 +118,7 @@
 <text x="377"  y="315" text-anchor="middle" dominant-baseline="middle" fill="#1b5e20" font-size="10" font-weight="700">/analyze</text>
 <text x="577"  y="315" text-anchor="middle" dominant-baseline="middle" fill="#1b5e20" font-size="10" font-weight="700">/plan</text>
 <text x="777"  y="315" text-anchor="middle" dominant-baseline="middle" fill="#1b5e20" font-size="10" font-weight="700">/scaffold</text>
-<text x="977"  y="315" text-anchor="middle" dominant-baseline="middle" fill="#1b5e20" font-size="10" font-weight="700">/auth</text>
+<text x="977"  y="315" text-anchor="middle" dominant-baseline="middle" fill="#1b5e20" font-size="10" font-weight="700">/foundation</text>
 <text x="1177" y="315" text-anchor="middle" dominant-baseline="middle" fill="#1b5e20" font-size="10" font-weight="700">/next ×N</text>
 <text x="1377" y="315" text-anchor="middle" dominant-baseline="middle" fill="#1b5e20" font-size="10" font-weight="700">all done</text>
 
@@ -194,14 +194,14 @@
 <!-- LEFT PANEL: Plugin Repo subsystems -->
 <!-- Skills row -->
 <rect x="10" y="472" width="770" height="42" rx="5" fill="#1565c0"/>
-<text x="90" y="489" dominant-baseline="middle" fill="white" font-size="12" font-weight="700">Skills  (17 slash commands)</text>
+<text x="90" y="489" dominant-baseline="middle" fill="white" font-size="12" font-weight="700">Skills  (18 slash commands)</text>
 <text x="90" y="506" dominant-baseline="middle" fill="#bbdefb" font-size="9.5">Loaded into Claude's context when the command runs — each enforces a precondition on state.json.status</text>
 <text x="16" y="493" dominant-baseline="middle" fill="white" font-size="18">⌨</text>
 
 <!-- Agents row -->
 <rect x="10" y="522" width="770" height="42" rx="5" fill="#bf360c"/>
-<text x="90" y="539" dominant-baseline="middle" fill="white" font-size="12" font-weight="700">Agents  (5)</text>
-<text x="90" y="556" dominant-baseline="middle" fill="#ffccbc" font-size="9.5">legacy-analyzer (read-only) · unit-migrator (inline loop) · parity-reviewer (parity + security) · migration-critic (quality, advisory) · permanent-gotchas (catalog)</text>
+<text x="90" y="539" dominant-baseline="middle" fill="white" font-size="12" font-weight="700">Agents  (6)</text>
+<text x="90" y="556" dominant-baseline="middle" fill="#ffccbc" font-size="9">legacy-analyzer · unit-migrator · cross-cutting-migrator (concerns, parallel) · parity-reviewer (parity + security) · migration-critic (quality + perf, advisory) · permanent-gotchas</text>
 <text x="16" y="543" dominant-baseline="middle" fill="white" font-size="18">🤖</text>
 
 <!-- Frameworks row -->

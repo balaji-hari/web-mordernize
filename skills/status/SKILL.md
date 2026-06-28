@@ -71,9 +71,9 @@ For every unit with `status: "in_progress"`, print a block:
 
 ### 6. Next up
 
-If `state.status` is `auth_done` or `in_progress` and there are pending units, determine the next unit `/web-modernize:next` would pick by iterating `state.unit_ids` in order and reading each `units/<id>.json`:
+If `state.status` is `foundation_done` or `in_progress` and there are pending units, determine the next unit `/web-modernize:next` would pick by iterating `state.unit_ids` in order and reading each `units/<id>.json`:
 
-- Filter to those with `status: "pending"` AND all `depends_on` ids satisfied (other units with status `migrated`/`verified`, plus `__auth__` if `state.status >= auth_done`).
+- Filter to those with `status: "pending"` AND all `depends_on` ids satisfied (other units with status `migrated`/`verified`, plus `__auth__` if `state.status >= foundation_done`).
 - Take the first.
 
 Print:
@@ -92,7 +92,7 @@ next up: nothing immediately runnable.
   blocked units waiting on: <list of unsatisfied dependency ids>
 ```
 
-If `state.status` is earlier than `auth_done`, print instead:
+If `state.status` is earlier than `foundation_done`, print instead:
 
 ```
 next up: not in migration phase yet. Run /web-modernize:<next-skill-in-flow>.
@@ -103,8 +103,8 @@ next up: not in migration phase yet. Run /web-modernize:<next-skill-in-flow>.
 - `initialized` → `analyze`
 - `analyzed` → `plan`
 - `planned` → `scaffold`
-- `scaffolded` → `auth`
-- `auth_done` → `next`
+- `scaffolded` → `foundation`
+- `foundation_done` → `next`
 - `complete` → (print "Migration complete — nothing to do.")
 
 ### 7. Blockers

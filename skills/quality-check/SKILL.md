@@ -1,5 +1,5 @@
 ---
-description: "Review a migrated unit's TARGET code for idiomatic quality — legacy-paradigm leakage (WebForms-in-React, jQuery-in-a-reactive-framework, scriptlet-shaped controllers), ceremonial error handling, dead abstractions, weak tests, on-call gaps. Advisory only — never blocks verification. Use when a unit is in 'migrated' or 'verified' status. Triggers: 'quality check', 'is this idiomatic', 'code quality', 'review the migration quality', 'is this good code', 'check for jobol'."
+description: "Review a migrated unit's TARGET code for idiomatic quality — legacy-paradigm leakage (WebForms-in-React, jQuery-in-a-reactive-framework, scriptlet-shaped controllers), ceremonial error handling, dead abstractions, weak tests, on-call gaps, and static performance regressions (N+1, unbounded queries, waterfalls, blocking I/O, bundle bloat). Advisory only — never blocks verification. Use when a unit is in 'migrated' or 'verified' status. Triggers: 'quality check', 'is this idiomatic', 'code quality', 'performance review', 'review the migration quality', 'is this good code', 'check for jobol'."
 disable-model-invocation: false
 ---
 

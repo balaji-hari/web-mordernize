@@ -34,7 +34,7 @@ FONT_MONO        = "Consolas"
 FONT_HEADER      = "Segoe UI Semibold"   # slide titles, section banners, table headers
 FONT_HEADER_LIGHT = "Segoe UI Light"     # hero wordmarks on title/closing slides
 
-FOOTER_TEXT = "web-modernize v0.13.0   ·   Balaji Harikrishnan   ·   Cognizant   ·   June 2026"
+FOOTER_TEXT = "web-modernize v0.15.0   ·   Balaji Harikrishnan   ·   Cognizant   ·   June 2026"
 
 
 # ── Low-level helpers ───────────────────────────────────────────────────────
@@ -244,7 +244,7 @@ def slide_01_title(prs):
              size=15, italic=True, color=TEAL, align=PP_ALIGN.CENTER)
 
     add_text(slide, 0.5, 6.55, 12.333, 0.35,
-             "Balaji Harikrishnan   ·   Cognizant   ·   June 2026   ·   v0.13.0",
+             "Balaji Harikrishnan   ·   Cognizant   ·   June 2026   ·   v0.15.0",
              size=12, color=SLATE, font=FONT_HEADER, align=PP_ALIGN.CENTER)
 
 
@@ -316,10 +316,10 @@ def slide_02_intro(prs):
          "Installs via the standard  /plugin install  command  —  no "
          "separate infrastructure, no servers."),
         ("What It Adds",
-         "17 skills exposed as slash commands  ·  5 AI agents (analyzer, "
-         "migrator, parity-reviewer, migration-critic, gotchas catalog)  ·  2 "
-         "automation hooks  ·  a workflows/ orchestration script  ·  9 "
-         "schema-validated templates copied into the team's repo."),
+         "18 skills exposed as slash commands  ·  6 AI agents (analyzer, "
+         "migrator, cross-cutting-migrator, parity-reviewer, migration-critic, "
+         "gotchas catalog)  ·  2 automation hooks  ·  two workflows/ "
+         "orchestration scripts  ·  9 schema-validated templates copied into the team's repo."),
         ("State and Concurrency",
          "All migration state lives in git as JSON. Per-unit file split "
          "(schema v3) lets 20+ developers migrate different units in "
@@ -532,14 +532,14 @@ def slide_05_execution(prs):
     page_chrome(
         slide,
         "From Backlog to Migrated Units",
-        "Set up once with  /scaffold  and  /auth.  Then the team migrates in parallel with  /next  and  /migrate.",
+        "Set up once with  /scaffold  and  /foundation.  Then the team migrates in parallel with  /next  and  /migrate.",
         page_num=5,
     )
 
     # ─── SETUP section banner ─────────────────────────────────────
     add_rect(slide, 0.40, 1.30, 12.533, 0.42, fill=SLATE)
     add_text(slide, 0.55, 1.32, 12.333, 0.38,
-             "SETUP   —   one developer runs   /scaffold   then   /auth",
+             "SETUP   —   one developer runs   /scaffold   then   /foundation",
              size=13, color=WHITE, font=FONT_HEADER,
              anchor=MSO_ANCHOR.MIDDLE)
 
@@ -552,7 +552,7 @@ def slide_05_execution(prs):
     setup_states = [
         ("Backlog Ready",   "From  /plan.\nUnits sized S / M / L / XL."),
         ("Target Scaffold", "Skeleton + toolchain preflight.\nLegacy assets copied in."),
-        ("Auth Working",    "Login migrated first.\nEvery feature depends on it."),
+        ("Foundation Ready", "Auth + cross-cutting slice\nmigrated first."),
     ]
     for i, (title, sub) in enumerate(setup_states):
         x = xs[i]
@@ -567,7 +567,7 @@ def slide_05_execution(prs):
                  align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
 
     # Arrows between setup boxes
-    arrow_labels = ["/scaffold", "/auth"]
+    arrow_labels = ["/scaffold", "/foundation"]
     arrow_xs = [4.05, 8.55]
     for ax, label in zip(arrow_xs, arrow_labels):
         add_arrow_right(slide, ax, flow_y + 0.35, arrow_w, arrow_h, fill=TEAL)
@@ -716,7 +716,7 @@ def slide_07_risk_safety(prs):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Slide 8 — Natural Language + Pluggable Framework Library  (NEW in v0.10.0)
+# Slide 8 — Natural Language + Pluggable Framework Library
 # ══════════════════════════════════════════════════════════════════════════════
 
 def slide_08_extensibility(prs):
@@ -742,7 +742,7 @@ def slide_08_extensibility(prs):
              "Every skill's description now packs intent phrases + a "
              "lifecycle anchor. Claude's native skill matcher routes "
              "plain-English requests to the right command — developers "
-             "stop memorising 17 slash commands.",
+             "stop memorising 18 slash commands.",
              size=11, color=INK, anchor=MSO_ANCHOR.MIDDLE)
 
     # Examples table — "you type → skill fires"
@@ -789,7 +789,7 @@ def slide_08_extensibility(prs):
              line=TEAL, line_w=0.75)
     add_text(slide, 6.92, 1.83, 5.86, 0.87,
              "31 frameworks/<name>.md files — one per supported "
-             "stack — hold the recipes /scaffold, /auth, and "
+             "stack — hold the recipes /scaffold, /foundation, and "
              "legacy-analyzer all read on demand. Adding a new "
              "framework is a one-file drop-in.",
              size=11, color=INK, anchor=MSO_ANCHOR.MIDDLE)
@@ -844,7 +844,7 @@ def slide_08_extensibility(prs):
          "framework, verify commands. Answers persist in "
          "verify.config.json so retries don't re-ask."),
         ("Auth unknown?",
-         "/auth skips the prebuilt password-hashing template, "
+         "/foundation skips the prebuilt password-hashing template, "
          "defers to permanent-gotchas + OWASP guidance. Auth "
          "migration completes; the team supplies code."),
     ]
@@ -1029,14 +1029,14 @@ def slide_06_advantages(prs):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Slide 10 — The 17 Skills (Slash Commands)
+# Slide 10 — The 18 Skills (Slash Commands)
 # ══════════════════════════════════════════════════════════════════════════════
 
 def slide_10_commands(prs):
     slide = blank_slide(prs)
     page_chrome(
         slide,
-        "The 17 Skills  (Slash Commands)",
+        "The 18 Skills  (Slash Commands)",
         "Each skill is exposed as a slash command — or auto-fires from plain English (see slide 8)",
         page_num=10,
     )
@@ -1047,14 +1047,15 @@ def slide_10_commands(prs):
         ("/analyze",   "Auto-detects the legacy technology stack and inventories every component."),
         ("/plan",      "Validates the config and generates the full migration backlog — one item per page or feature."),
         ("/scaffold",  "Creates the blank modern application skeleton and copies legacy images, fonts, and assets."),
-        ("/auth",      "Migrates login and authentication first, because every feature depends on it."),
-        ("/next",      "Picks the next available unit from the backlog and migrates it automatically."),
+        ("/foundation","Establishes the foundational slice first — login/auth plus opted-in cross-cutting concerns (i18n, feature flags, error handling, telemetry, logging, data-access wiring) — via one consolidated design-approval gate, implemented in parallel."),
+        ("/next",      "Picks the next available unit from the backlog and migrates it — presenting a plan for approval first (opt-out)."),
         ("/migrate",   "Migrates a specific unit by name — used when standup assigns work."),
-        ("/verify",    "Runs lint, type-check, tests, a behavioural-parity + security check, and an advisory code-quality review before a unit is declared done."),
+        ("/verify",    "Runs lint, type-check, tests, a behavioural-parity + security gate, and advisory code-quality + static-performance review; an opt-in dynamic tier (API replay + Playwright E2E) adds runtime checks."),
         ("/parity-check", "Compares a migrated unit's behaviour against the legacy original — validation, output shape, errors, UI states, security — and lets the team acknowledge intentional differences."),
-        ("/quality-check", "Advisory review of the migrated code's idiomaticity — flags legacy patterns carried into the new stack. Never blocks."),
+        ("/quality-check", "Advisory review of the migrated code's idiomaticity and static performance — flags legacy patterns and N+1/bundle/blocking regressions. Never blocks."),
+        ("/integrate", "Assembles the migrated units into the composed app — central router + nav, whole-app smoke, orphaned-unit + cutover-coverage report, and the strangler traffic-split proxy. Runs any time; idempotent."),
         ("/retry",     "Re-attempts a failed unit, optionally with team-supplied corrective guidance."),
-        ("/rollback",  "Reverts a single unit back to its original state in one git command."),
+        ("/rollback",  "Reverts a single unit back to its original state in one git command — refusing by default when it owns shared files others depend on."),
         ("/sync",      "Merges teammates' parallel progress into the local copy with deterministic rules."),
         ("/report",    "Generates a stakeholder report — burndown, ETA, risk — in Markdown, JSON, or HTML."),
         ("/status",    "Shows a real-time dashboard of every unit, owner, and blocker (read-only)."),
@@ -1063,12 +1064,12 @@ def slide_10_commands(prs):
     ]
 
     add_table(
-        slide, 0.40, 1.30, 12.533, 5.75,
+        slide, 0.40, 1.26, 12.533, 5.95,
         headers, rows,
         col_ratios=[0.18, 0.82],
-        header_size=13, body_size=11,
+        header_size=13, body_size=10,
         mono_col0=True,
-        row_height=0.33,
+        row_height=0.305,
     )
 
 
@@ -1085,28 +1086,30 @@ def slide_11_inventory(prs):
         page_num=11,
     )
 
-    add_text(slide, 0.40, 1.22, 12.5, 0.32,
-             "5 AI Agents   (specialised AIs that read your code, translate it, verify behaviour & quality, and steer around known pitfalls)",
-             size=15, color=COBALT, font=FONT_HEADER)
+    add_text(slide, 0.40, 1.20, 12.5, 0.30,
+             "6 AI Agents   (specialised AIs that read your code, translate it, verify behaviour, quality & performance, and steer around known pitfalls)",
+             size=14, color=COBALT, font=FONT_HEADER)
     add_table(
-        slide, 0.40, 1.55, 12.533, 1.62,
+        slide, 0.40, 1.50, 12.533, 1.60,
         ["Agent", "What It Does"],
         [
             ("legacy-analyzer",
              "Read-only AI agent that inspects the legacy codebase and produces a structured stack inventory."),
             ("unit-migrator",
              "Core migration engine that translates one page or feature from legacy code to the modern target stack."),
+            ("cross-cutting-migrator",
+             "Establishes one cross-cutting concern (auth / i18n / flags / error-handling / telemetry / logging / data-wiring); fanned out in parallel by /foundation."),
             ("parity-reviewer",
              "Read-only AI that compares migrated vs legacy for behavioural AND security differences tests can't catch."),
             ("migration-critic",
-             "Read-only, advisory AI that reviews the migrated code's idiomaticity — flags legacy patterns leaking into the new stack."),
+             "Read-only, advisory AI reviewing the migrated code's idiomaticity AND static performance — flags legacy patterns and N+1/bundle/blocking regressions."),
             ("permanent-gotchas",
              "Curated read-only catalog of bugs the AI cannot reliably discover on its own — first-run crashes and silent failures."),
         ],
         col_ratios=[0.22, 0.78],
-        header_size=12, body_size=11,
+        header_size=12, body_size=10,
         mono_col0=True,
-        row_height=0.26,
+        row_height=0.215,
     )
 
     add_text(slide, 0.40, 3.15, 12.5, 0.32,
@@ -1127,26 +1130,27 @@ def slide_11_inventory(prs):
         row_height=0.31,
     )
 
-    add_text(slide, 0.40, 4.52, 12.5, 0.32,
-             "9 Templates  ·  31 Framework Files  ·  1 Workflow Script",
-             size=15, color=COBALT, font=FONT_HEADER)
+    add_text(slide, 0.40, 4.50, 12.5, 0.30,
+             "9 Templates  ·  31 Framework Files  ·  2 Workflow Scripts",
+             size=14, color=COBALT, font=FONT_HEADER)
     add_table(
-        slide, 0.40, 4.85, 12.533, 2.25,
+        slide, 0.40, 4.82, 12.533, 2.45,
         ["Artifact", "What It Does"],
         [
-            ("migration.md",                          "The team-editable configuration: target stack, strategy, auth, acceptance criteria."),
+            ("migration.md",                          "The team-editable configuration: target stack, strategy, auth, cross-cutting concerns, acceptance criteria."),
             ("migration-interview.json",              "Declarative question catalog driving /analyze's interactive setup interview."),
-            ("frameworks/<name>.md  ×31",             "One file per supported framework — detection signals, scaffold recipe, test framework, auth notes."),
-            ("workflows/analyze-discovery.js",        "Workflow-tool orchestration script — exhaustive loop-until-dry entry-point discovery driving /analyze."),
+            ("frameworks/<name>.md  ×31",             "One file per supported framework — detection signals, scaffold/integration recipes, test framework, auth notes."),
+            ("workflows/analyze-discovery.js",        "Workflow-tool script — exhaustive loop-until-dry entry-point discovery driving /analyze."),
+            ("workflows/foundation-establish.js",     "Workflow-tool script — fans out cross-cutting-migrator per concern, in parallel, for /foundation."),
             ("state.schema.json  +  unit.schema.json", "Schemas for the workflow ledger and per-unit state — one JSON file per unit, conflict-free in git."),
             ("plan.md  +  report.md  +  notes-template.md", "Templates for the auto-generated plan, stakeholder reports, and per-unit design notes."),
-            ("verify.config.json",                    "Per-stack lint, type-check, and test commands used by /verify."),
+            ("verify.config.json",                    "Per-stack lint, type-check, test, and dynamic (E2E + API-replay) commands used by /verify."),
             ("permanent-gotchas/fastapi/pyproject.toml", "Reference asset that bypasses a known FastAPI install gotcha automatically."),
         ],
         col_ratios=[0.34, 0.66],
-        header_size=12, body_size=10,
+        header_size=12, body_size=9,
         mono_col0=True,
-        row_height=0.25,
+        row_height=0.235,
     )
 
 
@@ -1198,7 +1202,7 @@ def slide_12_closing(prs):
              "Balaji Harikrishnan   ·   balaji.harikrishnan@cognizant.com",
              size=13, color=WHITE, align=PP_ALIGN.CENTER)
     add_text(slide, 0.5, 6.70, 12.333, 0.32,
-             "web-modernize v0.13.0   ·   github.com/balaji-hari/web-mordernize",
+             "web-modernize v0.15.0   ·   github.com/balaji-hari/web-mordernize",
              size=11, italic=True, color=SLATE, align=PP_ALIGN.CENTER)
 
 
@@ -1209,17 +1213,17 @@ def slide_12_closing(prs):
 def build():
     prs = new_prs()
 
-    print("Building 12-slide leadership deck (v0.13.0)...")
+    print("Building 12-slide leadership deck (v0.15.0)...")
     slide_01_title(prs);            print("  [1/12] Title")
     slide_02_intro(prs);            print("  [2/12] What is web-modernize")
     slide_03_need(prs);             print("  [3/12] Why we need it")
     slide_04_analyze(prs);          print("  [4/12] From legacy codebase to migration backlog")
     slide_05_execution(prs);        print("  [5/12] From backlog to migrated units")
     slide_06_advantages(prs);       print("  [6/12] What the plugin adds to Claude Code")
-    slide_07_risk_safety(prs);      print("  [7/12] Risk, safety, and reversibility (NEW)")
+    slide_07_risk_safety(prs);      print("  [7/12] Risk, safety, and reversibility")
     slide_08_extensibility(prs);    print("  [8/12] Natural language + pluggable framework library")
     slide_09_planning(prs);         print("  [9/12] Built for sprint and PI planning")
-    slide_10_commands(prs);         print("  [10/12] 17 skills (slash commands)")
+    slide_10_commands(prs);         print("  [10/12] 18 skills (slash commands)")
     slide_11_inventory(prs);        print("  [11/12] Agents, hooks, templates, framework library")
     slide_12_closing(prs);          print("  [12/12] Closing / next step")
 

@@ -87,6 +87,7 @@ Pick one. Write a paragraph explaining the trade-offs you weighed.
 - **Strategy**: <!-- strangler-fig | big-bang | module-by-module -->
 - **Rationale**:
 - **Cutover plan** (one paragraph — when does legacy get retired?):
+- **Review mode** (OPTIONAL): <!-- plan-first (default) | auto. plan-first gates each unit (/next, /migrate, /retry) — the migrator presents its plan and waits for your approval before writing. auto migrates without the per-unit gate. Override a single unit at run time with --plan / --no-plan. Leave blank to default to plan-first. -->
 
 ## 7. Auth provider — REQUIRED
 
@@ -164,7 +165,21 @@ Suggestions per target stack (override if you have a reason — the plugin uses 
 - **UI test framework**: <!-- vitest | jest | karma-jasmine | other: ___ -->
 - **API test framework**: <!-- pytest | xunit | junit5 | jest | nunit | mstest | other: ___ -->
 - **Target coverage %**: <!-- integer 0–100; recommended 80 -->
+- **Dynamic testing (E2E + API replay)**: <!-- yes | no (default no). yes → /scaffold installs Playwright (UI E2E) + an API-replay harness; then /web-modernize:verify --dynamic runs them as an advisory, non-blocking tier. Needs a legacy baseline for API replay (capture with /verify --capture-baseline). -->
 
 Notes:
 - If `migration.md §4 Target API framework` is `none` or `reuse-existing`, the API test framework field can be `n/a`.
 - If the team uses a runner the plugin does not have a recipe for (any "other:" value), `/scaffold` will record `"test_harness": "manual"` and skip auto-installing — the team is expected to wire the runner up by hand. Unit-migrator will likewise record `tests.framework = "manual"` and skip the per-unit coverage check (soft-skip, never hard-fail).
+
+## 13. Cross-cutting concerns — OPTIONAL
+
+`/web-modernize:foundation` establishes these as the foundational slice (the first thing migrated, before feature units) so every feature unit inherits them instead of reinventing them. **Auth is always established** (configured in §7 above) — check any *additional* concerns you want established up front:
+
+- [ ] **Data layer** — data-access **wiring only**: ORM/client setup, connection/pool config, and the migration-tooling harness + base entity conventions. (The bulk schema / query / stored-proc / ORM-mapping translation is a separate later phase — this just lays the foundation feature units build on.)
+- [ ] **i18n / localization** — message catalog + locale provider/switcher
+- [ ] **Feature flags** — a flag client/provider wired to your flag source
+- [ ] **Global error handling** — error boundary / global handler + a consistent error surface
+- [ ] **Telemetry / analytics** — analytics SDK init + a thin event API
+- [ ] **Logging / observability** — structured logger + (optional) request/trace correlation
+
+`/web-modernize:plan` reads this list, **confirms the final set with you**, and seeds one synthetic unit per concern. `/web-modernize:foundation` then discovers each concern in the legacy app, shows you a single consolidated design for all of them, and (on approval) implements them — in parallel when possible. Leave everything unchecked to establish auth only (the pre-existing behaviour).

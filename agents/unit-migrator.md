@@ -24,7 +24,7 @@ You are executing the unit-migration procedure. The calling skill has already do
 
 - **Picked a unit** to migrate. The unit object is referred to below as `unit`. It was read from `.claude/modernize/units/<unit.id>.json`.
 - **Read** `state.json`, `migration.md`, `.claude/modernize/plan.md`.
-- **Verified** the top-level workflow status is one of `auth_done` / `in_progress`.
+- **Verified** the top-level workflow status is one of `foundation_done` / `in_progress`.
 
 The calling skill also passes a **mode** and an optional **force_deps** flag:
 
@@ -38,6 +38,17 @@ Optional inputs:
 
 - `retry_prompt` (retry mode only) — free-text override the user provided via `/web-modernize:retry --with-prompt="…"`. When set, treat it as **additional guidance** layered on top of `migration.md`. Record it in `unit.last_retry_prompt`.
 - `force_deps` (migrate mode only) — boolean. When `true`, proceed even if `depends_on` is unsatisfied; stub the missing dep imports with TODO comments. When `false` or absent, the caller would have blocked already; assume deps are met.
+- `plan_override` (all modes) — `"on"`, `"off"`, or `null`/absent. The caller parses a per-invocation `--plan` (→ `"on"`) / `--no-plan` (→ `"off"`) flag and passes it through. It overrides the migration-wide `state.review_mode` for this one unit. See **§3.5 Plan gate** for how it resolves.
+
+## Resolve the plan gate
+
+Before the migration body, decide whether this unit is **gated** (you present a plan and wait for the user's approval before writing any target files) using `plan_override` and `state.review_mode` (read from `state.json`; treat absent/null as `"plan-first"`):
+
+- `plan_override == "on"` → **gated** (force the gate even if `review_mode == "auto"`).
+- `plan_override == "off"` → **not gated** (skip the gate even if `review_mode == "plan-first"`).
+- `plan_override` absent/null → **gated** when `review_mode != "auto"` (i.e. `plan-first` or unset); **not gated** when `review_mode == "auto"`.
+
+Remember this `gated` decision; act on it at **§3.5** (after the target layout is designed, before any file is written). When not gated, §3.5 is skipped entirely and the loop behaves exactly as before.
 
 ## 0. Secret handling (applies to every note and file you write)
 
@@ -129,7 +140,7 @@ Then for all modes, update `unit`:
 
 **Save the per-unit file immediately**: write the mutated unit object back to `.claude/modernize/units/<unit.id>.json`. This is what concurrent `/web-modernize:status` and the heartbeat hook read.
 
-If top-level `state.status` is `auth_done` (i.e., this is the first feature unit), also flip it to `in_progress` and save `state.json`. This is the only top-level mutation this agent makes during normal operation.
+If top-level `state.status` is `foundation_done` (i.e., this is the first feature unit), also flip it to `in_progress` and save `state.json`. This is the only top-level mutation this agent makes during normal operation.
 
 ## 3. Migrate body
 
@@ -146,6 +157,34 @@ This is the actual translation work.
    - React/Vue/Svelte component → `apps/web-new/src/features/<feature>/` or `apps/web-new/src/pages/`.
    - API endpoint → `apps/api-new/src/routes/<area>/<verb>.ts` or framework equivalent.
    - Shared utility → `apps/web-new/src/lib/`.
+   - Background unit (`kind: "background"`) → the target's non-request mechanism (see "Background units" below) under `apps/api-new/src/jobs/` (or `workers/` / framework equivalent), plus any platform manifest (cron schedule, queue binding) the target needs.
+
+4.5. **Plan gate — present the plan and wait for approval (only when `gated`, see "Resolve the plan gate" above).** If not gated, skip this step entirely and go straight to step 5.
+
+   You have now read the source, decided the target layout, and made the key design decisions — but you have **not written any target file yet** (and have not created a branch). Present a concise plan and stop for the user's explicit approval before writing:
+
+   ```
+   Plan gate — <unit.id>  (review_mode: <plan-first|auto>; <how it was set: default | migration.md | --plan/--no-plan>)
+
+   Target files to create:
+     - <path>  — <one-line purpose>
+     ...
+   Approach & key decisions:
+     - <e.g. ViewState → useReducer; <asp:GridView> → TanStack Table; cookie session reused>
+   Tests to write:
+     - <translated from <legacy test> | generated for <behaviour>>
+   Dependencies relied on: <dep ids, or "none beyond __auth__">
+   Open questions / risks: <ambiguities you resolved and how, or "none">
+
+   Proceed?  [a] approve and write   [r] revise (give feedback)   [c] cancel (don't migrate)
+   ```
+
+   - In **retry** mode, fold `retry_prompt` into the "Approach & key decisions" and "Open questions" lines so the user sees how their guidance shaped the plan.
+   - **[a] approve** → continue to step 5 and write the files.
+   - **[r] revise** → treat the user's feedback exactly like a `retry_prompt` (it biases every decision below), re-derive the layout/decisions, and **re-present this gate**. Loop until approved or cancelled.
+   - **[c] cancel** → **release the unit without writing anything**: set `units/<unit.id>.json` `status = "pending"`, `in_flight = null`, append history `{ from: "in_progress", to: "pending", reason: "cancelled at plan gate" }`, save the per-unit file. If this run had flipped top-level `state.status` from `foundation_done` to `in_progress` in §2 and no other unit is in progress/migrated, that flip is harmless — leave it. Return to the caller reporting **not migrated (cancelled at plan gate)**; do not take the §4 failure path (a cancel is not a failure). Default to `[c]` on unclear input — never write on ambiguity.
+   - On **approve**, record the approved plan in `notes/<unit.id>.md` under a `## Approved plan` section (audit trail of what the user signed off on) when you reach the notes-writing step 9. Mask any credential values per §0.
+
 5. **Create a feature branch** (recommended): `git checkout -b modernize/<unit.id>` — only if git is clean and the team allows. For `retry` mode, prefer a fresh branch name (e.g., suffix with `-retry-<retry_count>`) to keep failed-attempt history reviewable.
 6. **Write target files**. Update `in_flight.files_touched_so_far` and `current_step` as you go and save the per-unit file periodically; the heartbeat hook keeps `last_heartbeat` fresh on every Write tool call.
 7. **Translate semantics, not syntax** (data and logic):
@@ -259,6 +298,28 @@ This is the actual translation work.
 
    **Behaviour contract (only when the unit has real rules).** If the legacy unit encodes business rules — calculations, validations, eligibility checks, defaults, state transitions — capture them in the notes' `## Behaviour contract (Given/When/Then)` section as concrete Given/When/Then statements (with real values) **before/while you translate**, so the extracted semantics become an inspectable, git-tracked spec instead of living only in this run's context. The `parity-reviewer` later reads this section as the spec. Skip it for trivial units (a CRUD list, a static display) — leave the section empty rather than inventing rules. Mask any credential values per §0.
 
+   **Emergent reusable-code extraction (record it so `/plan` can backfill a shared unit).** During translation you may extract code you expect to reuse — a helper, hook, formatter, validator, or small component — that was **not** seeded as its own unit. When you do:
+   - **First, reuse don't re-create.** Re-read the existing shared modules you already know about (the ones surfaced in step 2) — if an equivalent already exists, import it instead of writing a new one.
+   - **Place it in the target stack's conventional shared location.** Do **not** assume a fixed path like `src/lib/` — infer the idiomatic shared location from the target framework's conventions and the existing project layout, and **surface the chosen path to the developer at the §3.5 plan gate** (when gated) so it's confirmed, not guessed.
+   - **Record it in `notes/<unit.id>.md`** under a `## Shared code extracted` subsection (what, where, why).
+   - **Append it to this unit's `extracted_shared[]`** as `{ "id": "<StableId>", "path": "<the path you chose>", "purpose": "<one line>" }` and save the per-unit file. This is concurrency-safe — you only touch your own unit file — and it's the signal `/web-modernize:plan` reads to backfill a `kind: "shared"` unit on its next run so other devs reuse it instead of duplicating it. Mask any credential values per §0.
+
+   **Record the unit's routes (so `/web-modernize:integrate` can assemble the app).** If this unit exposes routes — a UI page route or an API endpoint — record them on the unit as `routes[]`: `{ "path": "<route path>", "label": "<nav label, UI only>", "kind": "ui" | "api" }`. UI page → its route path + the nav label (preserve the legacy menu label). API → each endpoint's method/path as `kind: "api"` (label optional). Leave `routes[]` empty for non-routable units (shared utilities, background jobs, components rendered inside a page). This is what lets `/integrate` build the central router + nav without re-scanning target code; record it in the §5b migrated record.
+
+### Background units (`kind: "background"`)
+
+A background unit runs **without an HTTP request and without a rendered page** — its trigger is in `unit.trigger` (`scheduled` | `queue` | `hub` | `batch` | `startup`). Steps 7 (translate semantics) and 7c (tests) still apply; steps 2b (chrome/CSS), 7b (visuals), and the page/endpoint smoke paths do **not**. Translate the *trigger* to the target stack's idiomatic mechanism, preserving the business logic and schedule/queue semantics exactly:
+
+- **Prefer the target framework's declared recipe when present.** If `frameworks/<state.target_stack.api>.md` has a `## Background jobs` section, follow it. Otherwise use the generic mapping below.
+- **Generic trigger → target mapping** (pick by `unit.trigger` and the target stack):
+  - `scheduled` → a cron-triggered serverless/platform function, a Node `node-cron` / BullMQ repeatable job, NestJS `@Cron`, a FastAPI APScheduler job, a Spring `@Scheduled` bean, or a .NET `BackgroundService`/`PeriodicTimer`. Preserve the exact schedule (cron expression / interval) and timezone.
+  - `queue` → the target's consumer for the same broker (BullMQ/RabbitMQ/SQS/Service Bus/Kafka). Preserve the queue/topic name, ack/retry/dead-letter semantics, and concurrency.
+  - `hub` → the target's realtime layer (Socket.IO, native WebSocket, SignalR-on-target, SSE). Preserve channel/group names and the message contract.
+  - `batch` → a worker entry point or CLI command (`npm run job:<name>`, a `python -m`, a `dotnet run -- <verb>`). Preserve the input source (folder/glob, DB cursor) and idempotency.
+  - `startup` → the target's startup hook (`IHostedService.StartAsync`, framework lifecycle event). Keep one-shot startup work out of the request path.
+- **Config & secrets:** schedules, queue names, and connection strings move to the target's config/env per §0 — never inline a credential.
+- **Record in notes:** the trigger translation (legacy mechanism → target mechanism + schedule/queue identifiers), and any platform manifest written (cron YAML, queue binding). Populate the Behaviour contract for real rules as above.
+
 ### Honor `retry_prompt` when set
 
 If `retry_prompt` is set (retry mode only), it is the **first** thing you should read after the source files, and it should bias every design decision below. Treat it like a senior engineer's design note: "the prior attempt assumed X — try Y instead". Do not silently ignore it; if any part conflicts with `migration.md`, surface the conflict to the user and ask which wins.
@@ -340,6 +401,12 @@ Tear the server down (kill the background process group) regardless of outcome.
 
 **Cross-cutting unit** (paths in both UI and API): run both blocks; either failing is a smoke failure.
 
+**Background unit** (`unit.kind == "background"`): there is **no endpoint to curl and no page to build**, and the unit must **not be invoked** (background jobs have real side effects and often need infra — a queue, a DB, a file drop — that may be absent at verify time). Instead:
+
+1. **Compile/build check** for the target stack so a worker that doesn't even build still hard-fails: `npm run build && npm run typecheck` (TS worker), `dotnet build` (.NET), `./mvnw -q -DskipTests package` (Spring), or `python -c "import <module>"` (Python). A non-zero exit is a smoke failure (record like the UI build failure: `smoke.kind = "background"`, `build_command`, `build_stderr_tail`).
+2. Then run the unit's **scoped tests + coverage** exactly as below (the standard test/coverage gate still applies).
+3. Set `smoke.kind = "background-tests-only"` and print an **explicit, non-silent** note: `ℹ <unit.id> is a background unit (trigger: <trigger>) — functional smoke (invoking the job) was intentionally skipped; verified by build + unit tests only. Confirm the schedule/queue wiring in a real environment.` Never silently treat this as fully smoke-tested.
+
 **No-recipe stack** (custom/other API, or unit touches neither subsystem): record `"smoke": "skipped — no recipe"` on the unit and proceed to §5b. Graceful degrade — never block unknown stacks.
 
 **Run the unit's scoped tests + coverage.** After the boot+curl / build-and-typecheck steps pass, re-run the scoped coverage command from step 7c (the same command that produced `unit.tests.coverage`). The 7c run was a one-shot during the migration body; this re-run is the gate, so it must produce a fresh result the gate can act on.
@@ -415,7 +482,7 @@ Write to `.claude/modernize/units/<unit.id>.json`:
   "in_flight": null,
   "smoke": {
     "ran_at": "<now>",
-    "kind": "api" | "ui" | "both" | "skipped",
+    "kind": "api" | "ui" | "both" | "background-tests-only" | "skipped",
     "endpoints_hit": [{ "method": "GET", "path": "/catalog/items", "status": 200, "schema_ok": true }],
     "build":   { "command": "npm run build && npm run typecheck", "exit_code": 0 },
     "tests":   { "runner": "<vitest|pytest|...>", "passed": <X>, "total": <Y>, "exit_code": 0 },
@@ -439,7 +506,7 @@ Write to `.claude/modernize/units/<unit.id>.json`:
 }
 ```
 
-Omit the irrelevant sub-fields (e.g., `endpoints_hit` for a pure UI unit, `build` for a pure API unit). For a no-recipe functional smoke stack, `smoke.kind = "skipped"` with `smoke.reason = "no recipe for <stack>"`. For a `manual` / `n/a` test framework, omit `smoke.tests` and `smoke.coverage_check`, and set `tests.framework = "<value>"` with `tests.skipped_reason = "<manual|n/a>"`.
+Omit the irrelevant sub-fields (e.g., `endpoints_hit` for a pure UI unit, `build` for a pure API unit). For a background unit, `smoke.kind = "background-tests-only"`, include `build` and `tests`/`coverage_check`, omit `endpoints_hit`, and set `smoke.functional_skipped = "background unit — job not invoked at verify time"`. For a no-recipe functional smoke stack, `smoke.kind = "skipped"` with `smoke.reason = "no recipe for <stack>"`. For a `manual` / `n/a` test framework, omit `smoke.tests` and `smoke.coverage_check`, and set `tests.framework = "<value>"` with `tests.skipped_reason = "<manual|n/a>"`.
 
 If `coverage_check.below_threshold == true`, print the yellow warning from §5a after the §5b write completes. The unit is still finalised as `migrated` — this is the soft-fail policy.
 
@@ -449,8 +516,8 @@ Update `state.json.updated_at`. Do not touch any other top-level field (status s
 
 The caller (`/next`, `/migrate`, or `/retry`) is responsible for the user-facing closing message — they each have slightly different next-step nudges. Hand back:
 
-- The final `unit.status` (`migrated` or `failed`).
-- The list of target paths actually written.
+- The final `unit.status` (`migrated`, `failed`, or — if the user chose `[c]` at the §3.5 plan gate — `pending`, with an explicit **"cancelled at plan gate"** indication).
+- The list of target paths actually written (empty on cancel).
 - The notes file path.
 
-The caller will print the success/failure banner appropriate to its mode.
+The caller will print the success/failure banner appropriate to its mode. On a plan-gate cancel, no files were written and the unit is back to `pending` — the caller should report that the unit was not migrated (not a failure) and that it can be re-run later.

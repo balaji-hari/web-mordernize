@@ -104,7 +104,7 @@ def slide_onepager(prs):
     flow_y = 3.96
     box_h = 0.54
     arrow_w = 0.34
-    setup_cmds = ["/init", "/analyze", "/plan", "/scaffold", "/auth"]
+    setup_cmds = ["/init", "/analyze", "/plan", "/scaffold", "/foundation"]
     box_w = 1.45
     gap = arrow_w + 0.10
     x = CONTENT_L
@@ -175,7 +175,7 @@ def slide_onepager(prs):
     add_rect(slide, CONTENT_L, 6.78, CONTENT_W, 0.40, fill=COBALT)
     add_text(slide, CONTENT_L + 0.10, 6.80, CONTENT_W - 0.20, 0.36,
              "Same Claude Code engine.  A structured, sprint-by-sprint migration "
-             "workflow on top.        Balaji Harikrishnan · Cognizant · v0.13.0",
+             "workflow on top.        Balaji Harikrishnan · Cognizant · v0.15.0",
              size=11, bold=True, color=WHITE,
              align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
 
@@ -186,7 +186,7 @@ def slide_onepager(prs):
 
 def build():
     prs = new_prs()
-    print("Building 1-slide one-pager (v0.13.0)...")
+    print("Building 1-slide one-pager (v0.15.0)...")
     slide_onepager(prs)
     out = r"C:\1\web-mordernize\docs\decks\web-modernize-onepager-v2.pptx"
     prs.save(out)

@@ -6,7 +6,9 @@ description: >
   structure that leaked into the new stack ("JOBOL": WebForms-in-React,
   jQuery-style imperative DOM in a reactive framework, JSP-scriptlet shape in a
   controller), ceremonial error handling, single-use abstractions, tests that
-  exercise paths instead of pinning behaviour, and on-call/operability gaps.
+  exercise paths instead of pinning behaviour, on-call/operability gaps, and
+  static performance regressions (N+1, unbounded queries, request waterfalls,
+  blocking I/O, bundle bloat — detectable by reading the code, no runtime needed).
   Invoked by /web-modernize:verify (as an ADVISORY, non-blocking pass) and by
   /web-modernize:quality-check. Returns a single JSON block of quality_findings[]
   plus a one-line headline; emits an empty list when the code is idiomatic. This
@@ -72,6 +74,15 @@ Your findings are written to the git-tracked `quality_findings[]` on the unit an
 
 **On-call readiness** (`kind: "oncall_readiness"`) — what the 3am responder needs that isn't here: no logging at failure points, silent fallbacks that hide outages, magic numbers/timeouts with no name or comment, config read in a way that fails opaquely when unset.
 
+**Static performance regressions** — patterns that make the migrated code measurably slower than the legacy original, detectable by *reading* the code (no runtime measurement — that's the dynamic tier's job). Flag only concrete, named patterns:
+- **`kind: "perf_n_plus_one"`** — a DB/HTTP call inside a loop, or per-row lazy-loading (ORM relationship accessed per item) where the legacy did one set-based query / a join. The classic correct-but-slow migration.
+- **`kind: "perf_unbounded_data"`** — a query/fetch with no limit/pagination where the legacy paged, or loading a whole table/collection into memory.
+- **`kind: "perf_waterfall"`** — sequential awaits/requests that have no data dependency and could run concurrently (serial `await` chain, request-after-request render).
+- **`kind: "perf_blocking"`** — blocking/synchronous I/O (sync file/DB/network) on a hot path or the request thread / UI render path.
+- **`kind: "perf_bundle"`** — a heavy synchronous import pulling a large library into the initial client bundle where the legacy loaded it lazily or not at all (e.g. importing all of a charting/date lib at module top for one page).
+
+Hold these to the same refute discipline: name the *likely* cost (rows × queries, payload size, blocked path) — not a vague "could be faster". Like every other finding here, they are **advisory and never block**.
+
 `other` — a real maintainability issue that fits none of the above.
 
 ### Severity rubric (advisory grades — none of these block verification)
@@ -121,7 +132,7 @@ For each **blocker** and **high**, state the concrete maintenance/operability co
 }
 ```
 
-- `kind` must be one of: `jobol`, `idiom`, `error_handling`, `dead_abstraction`, `test_quality`, `oncall_readiness`, `other`.
+- `kind` must be one of: `jobol`, `idiom`, `error_handling`, `dead_abstraction`, `test_quality`, `oncall_readiness`, `perf_n_plus_one`, `perf_unbounded_data`, `perf_waterfall`, `perf_blocking`, `perf_bundle`, `other`.
 - `severity` must be one of: `blocker`, `high`, `medium`, `nit`.
 - `id` is `<kind>:<unit_id>:<slug>`, where `<slug>` is a short kebab summary of the **issue itself**, derived from the observation (not a counter) — so a re-run on unchanged code yields the same id and a fixed issue drops off.
 - `why_it_matters` and `suggestion` are optional but strongly encouraged for `blocker`/`high`.

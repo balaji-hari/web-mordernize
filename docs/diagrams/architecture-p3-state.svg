@@ -32,7 +32,7 @@
 <text x="800" y="28" text-anchor="middle" dominant-baseline="middle"
       fill="white" font-size="24" font-weight="700" letter-spacing="0.5">web-modernize — State Machine &amp; Data Flow</text>
 <text x="800" y="55" text-anchor="middle" dominant-baseline="middle"
-      fill="#9fc8fa" font-size="13">Page 3 of 3: Per-Unit States · State File Schema · Multi-Developer Model · Data Flow  ·  v0.13.0</text>
+      fill="#9fc8fa" font-size="13">Page 3 of 3: Per-Unit States · State File Schema · Multi-Developer Model · Data Flow  ·  v0.15.0</text>
 
 <!-- ================================================================
      PER-UNIT STATE MACHINE  y=72..310
@@ -147,7 +147,7 @@
 <text x="397" y="367" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="12" font-weight="700">state.json  (top-level workflow ledger  ·  schema_version: 3 const)</text>
 
 <text x="24"  y="387" dominant-baseline="middle" fill="#e1bee7" font-size="10" font-family="'Cascadia Code','Consolas',monospace">status         </text>
-<text x="200" y="387" dominant-baseline="middle" fill="#ffeb3b" font-size="10">"uninitialized|initialized|analyzed|planned|scaffolded|auth_done|in_progress|complete"</text>
+<text x="200" y="387" dominant-baseline="middle" fill="#ffeb3b" font-size="10">"uninitialized|initialized|analyzed|planned|scaffolded|foundation_done|in_progress|complete"</text>
 
 <text x="24"  y="405" dominant-baseline="middle" fill="#e1bee7" font-size="10" font-family="'Cascadia Code','Consolas',monospace">unit_ids[]     </text>
 <text x="200" y="405" dominant-baseline="middle" fill="white" font-size="10">Ordered list of unit IDs — set by /plan, order determines migration sequence</text>
@@ -299,7 +299,7 @@
 <text x="1343" y="833" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="11" font-weight="700">◀  PAGE 3 of 3: State &amp; Data Flow  (you are here)</text>
 
 <text x="800" y="860" text-anchor="middle" dominant-baseline="middle" fill="#9e9e9e" font-size="9.5">
-  github.com/balaji-hari/web-mordernize  ·  Plugin namespace: web-modernize  ·  State schema v3  ·  17 skills  ·  5 agents  ·  31 framework files  ·  1 workflow
+  github.com/balaji-hari/web-mordernize  ·  Plugin namespace: web-modernize  ·  State schema v3  ·  18 skills  ·  6 agents  ·  31 framework files  ·  2 workflows
 </text>
 
 </svg>

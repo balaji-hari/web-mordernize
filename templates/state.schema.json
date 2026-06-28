@@ -32,6 +32,7 @@
         "planned",
         "scaffolded",
         "auth_done",
+        "foundation_done",
         "in_progress",
         "complete"
       ]
@@ -66,6 +67,37 @@
     },
     "strategy": {
       "enum": ["strangler-fig", "big-bang", "module-by-module"]
+    },
+    "review_mode": {
+      "description": "Migration-wide default for the per-unit plan-approval gate used by /next, /migrate, /retry. 'plan-first' (the default — also assumed when this field is absent) presents each unit's plan and waits for approval before writing; 'auto' skips the gate. Set optionally at /plan; a per-unit --plan / --no-plan flag overrides it for a single unit. (The /foundation design gate is always-on and independent of this setting.)",
+      "enum": ["plan-first", "auto"]
+    },
+    "foundation": {
+      "description": "The set of cross-cutting concerns the team confirmed at /plan, established as the foundational slice by /web-modernize:foundation (which replaces the old /auth command). 'auth' is always present; others are opt-in via migration.md §13.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "concerns": {
+          "type": "array",
+          "items": { "enum": ["auth", "data", "i18n", "feature-flags", "error-handling", "telemetry", "logging"] },
+          "description": "Concern ids to establish. Each maps to a synthetic unit __<concern>__ (auth keeps kind 'service'; others kind 'cross-cutting'). 'data' establishes data-access WIRING only (ORM/client/connection/migration harness) — the bulk schema/query/proc translation is a separate later phase."
+        },
+        "established_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "integration": {
+      "description": "Composed-app integration state, written by /web-modernize:integrate (an idempotent reconciliation runnable at any stage). Does not change top-level status.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "status": { "enum": ["pending", "partial", "complete"] },
+        "assembled_at": { "type": "string", "format": "date-time" },
+        "router_path": { "type": "string", "description": "The central router file the integrate step reconciles." },
+        "nav_path": { "type": "string", "description": "The nav/menu file assembled from migrated routes." },
+        "strangler_config_path": { "type": "string", "description": "Reverse-proxy / route-table file, present only when strategy is strangler-fig." },
+        "orphaned_units": { "type": "array", "items": { "type": "string" }, "description": "Migrated units with no route / unreachable from nav." },
+        "coverage_pct": { "type": "integer", "minimum": 0, "maximum": 100, "description": "Share of in-scope routes now served by the new app (cutover progress)." }
+      }
     },
     "scaffold": {
       "type": "object",

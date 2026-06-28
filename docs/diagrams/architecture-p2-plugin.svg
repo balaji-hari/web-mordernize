@@ -12,7 +12,7 @@
 <text x="800" y="28" text-anchor="middle" dominant-baseline="middle"
       fill="white" font-size="24" font-weight="700" letter-spacing="0.5">web-modernize — Plugin Components</text>
 <text x="800" y="55" text-anchor="middle" dominant-baseline="middle"
-      fill="#9fc8fa" font-size="13">Page 2 of 3: Skills · Agents · Framework Files · Templates · Hooks  ·  v0.13.0</text>
+      fill="#9fc8fa" font-size="13">Page 2 of 3: Skills · Agents · Framework Files · Templates · Hooks  ·  v0.15.0</text>
 
 <!-- ================================================================
      SKILLS SECTION  y=72..592  (17 commands, 6 rows)
@@ -20,7 +20,7 @@
 <rect x="0" y="72" width="1600" height="520" fill="#e8edf8"/>
 <rect x="0" y="72" width="1600" height="32" fill="#1565c0"/>
 <text x="800" y="88" text-anchor="middle" dominant-baseline="middle"
-      fill="white" font-size="14" font-weight="700">Skills — 17 Slash Commands  (each is a SKILL.md loaded into Claude's context)</text>
+      fill="white" font-size="14" font-weight="700">Skills — 18 Slash Commands  (each is a SKILL.md loaded into Claude's context)</text>
 
 <!-- Skills grid: 3 cols, 6 rows  ·  Col x: 12(w=500), 556(w=500), 1100(w=500)  ·  rows y: 112,184,256,328,400,472  box h=64 -->
 
@@ -47,14 +47,14 @@
 <text x="32"   y="239" dominant-baseline="middle" fill="#bbdefb" font-size="10">copies legacy assets. Writes verify.config.json. Precondition: planned.</text>
 
 <rect x="556"  y="184" width="500" height="64" rx="5" fill="#0d47a1"/>
-<text x="576"  y="205" dominant-baseline="middle" fill="white" font-size="12" font-weight="700">/web-modernize:auth</text>
-<text x="576"  y="225" dominant-baseline="middle" fill="#bbdefb" font-size="10">Migrates authentication end-to-end (login · logout · session · password hashing).</text>
-<text x="576"  y="239" dominant-baseline="middle" fill="#bbdefb" font-size="10">Reads API target's auth notes. Creates __auth__ unit. Precondition: scaffolded.</text>
+<text x="576"  y="205" dominant-baseline="middle" fill="white" font-size="12" font-weight="700">/web-modernize:foundation</text>
+<text x="576"  y="225" dominant-baseline="middle" fill="#bbdefb" font-size="10">Establishes the foundational slice: auth + opt-in cross-cutting concerns (i18n,</text>
+<text x="576"  y="239" dominant-baseline="middle" fill="#bbdefb" font-size="10">flags, errors, telemetry, logging, data-wiring). One design gate. Precondition: scaffolded.</text>
 
 <rect x="1100" y="184" width="500" height="64" rx="5" fill="#0d47a1"/>
 <text x="1120" y="205" dominant-baseline="middle" fill="white" font-size="12" font-weight="700">/web-modernize:next</text>
 <text x="1120" y="225" dominant-baseline="middle" fill="#bbdefb" font-size="10">Auto-selects next eligible unit (respects depends_on graph); delegates to</text>
-<text x="1120" y="239" dominant-baseline="middle" fill="#bbdefb" font-size="10">unit-migrator agent inline. Precondition: auth_done or in_progress.</text>
+<text x="1120" y="239" dominant-baseline="middle" fill="#bbdefb" font-size="10">unit-migrator agent inline. Precondition: foundation_done or in_progress.</text>
 
 <!-- ROW 3 -->
 <rect x="12"   y="256" width="500" height="64" rx="5" fill="#1976d2"/>
@@ -112,13 +112,13 @@
 
 <rect x="556"  y="472" width="500" height="64" rx="5" fill="#00838f"/>
 <text x="576"  y="493" dominant-baseline="middle" fill="white" font-size="12" font-weight="700">/web-modernize:quality-check  [unit-id] [--all]</text>
-<text x="576"  y="513" dominant-baseline="middle" fill="#b2ebf2" font-size="10">Advisory idiomatic-code review — flags "JOBOL" / legacy-paradigm leakage in the</text>
-<text x="576"  y="527" dominant-baseline="middle" fill="#b2ebf2" font-size="10">migrated code. Never blocks. Same critic /verify runs as advisory step 5b.</text>
+<text x="576"  y="513" dominant-baseline="middle" fill="#b2ebf2" font-size="10">Advisory idiomatic-code + static-performance review — flags "JOBOL" leakage and</text>
+<text x="576"  y="527" dominant-baseline="middle" fill="#b2ebf2" font-size="10">N+1/bundle/blocking regressions. Never blocks. Same critic /verify runs at step 5b.</text>
 
-<rect x="1100" y="472" width="500" height="64" rx="5" fill="#e8edf8" stroke="#00838f" stroke-width="1.5"/>
-<text x="1120" y="497" dominant-baseline="middle" fill="#00695c" font-size="11" font-weight="700">Verification stack (new in v0.11–v0.13)</text>
-<text x="1120" y="515" dominant-baseline="middle" fill="#37474f" font-size="9.5">tests → behavioural-parity → security → advisory quality.</text>
-<text x="1120" y="528" dominant-baseline="middle" fill="#37474f" font-size="9.5">Only high parity/security diffs block; quality never blocks.</text>
+<rect x="1100" y="472" width="500" height="64" rx="5" fill="#00838f"/>
+<text x="1120" y="493" dominant-baseline="middle" fill="white" font-size="12" font-weight="700">/web-modernize:integrate  [--dry-run|--final]</text>
+<text x="1120" y="513" dominant-baseline="middle" fill="#b2ebf2" font-size="10">Assembles migrated units into the composed app: central router + nav, whole-app</text>
+<text x="1120" y="527" dominant-baseline="middle" fill="#b2ebf2" font-size="10">smoke, orphan + coverage report, strangler proxy. Idempotent; run any time.</text>
 
 <!-- Skill inheritance note -->
 <rect x="12" y="548" width="1576" height="28" rx="4" fill="#e3f2fd" stroke="#1565c0" stroke-width="1"/>
@@ -127,43 +127,49 @@
 </text>
 
 <!-- ================================================================
-     AGENTS SECTION  y=600..730  (5 agents)
+     AGENTS SECTION  y=600..730  (6 agents)
      ================================================================ -->
 <rect x="0" y="600" width="1600" height="130" fill="#fbe9e7"/>
 <rect x="0" y="600" width="1600" height="32" fill="#bf360c"/>
 <text x="800" y="616" text-anchor="middle" dominant-baseline="middle"
-      fill="white" font-size="14" font-weight="700">Agents  (reusable procedures — 5 total)</text>
+      fill="white" font-size="14" font-weight="700">Agents  (reusable procedures — 6 total)</text>
 
-<!-- 5 agent boxes side by side  y=640, h=82  ·  x: 12,330,648,966,1284  w=306  centers: 165,483,801,1119,1437 -->
-<rect x="12"   y="640" width="306" height="82" rx="5" fill="#bf360c"/>
-<text x="165" y="658" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="11.5" font-weight="700">legacy-analyzer</text>
-<text x="165" y="676" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="9">subagent · spawned by /analyze</text>
-<text x="165" y="692" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="9">read-only · scores frameworks/*.md</text>
-<text x="165" y="708" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="9">detection signals → analysis.json</text>
+<!-- 6 agent boxes side by side  y=640, h=82  ·  x: 12,276,540,804,1068,1332  w=252  centers: 138,402,666,930,1194,1458 -->
+<rect x="12"   y="640" width="252" height="82" rx="5" fill="#bf360c"/>
+<text x="138" y="658" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="11" font-weight="700">legacy-analyzer</text>
+<text x="138" y="676" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="8.5">subagent · spawned by /analyze</text>
+<text x="138" y="692" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="8.5">read-only · scores frameworks/*.md</text>
+<text x="138" y="708" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="8.5">detection → analysis.json</text>
 
-<rect x="330"  y="640" width="306" height="82" rx="5" fill="#bf360c"/>
-<text x="483" y="658" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="11.5" font-weight="700">unit-migrator</text>
-<text x="483" y="676" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="9">inline procedure (not a subagent)</text>
-<text x="483" y="692" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="9">per-unit translation loop</text>
-<text x="483" y="708" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="9">collision A/B/C · port · finalize</text>
+<rect x="276"  y="640" width="252" height="82" rx="5" fill="#bf360c"/>
+<text x="402" y="658" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="11" font-weight="700">unit-migrator</text>
+<text x="402" y="676" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="8.5">inline procedure (not a subagent)</text>
+<text x="402" y="692" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="8.5">per-unit translation loop</text>
+<text x="402" y="708" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="8.5">collision A/B/C · port · finalize</text>
 
-<rect x="648"  y="640" width="306" height="82" rx="5" fill="#bf360c"/>
-<text x="801" y="658" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="11.5" font-weight="700">parity-reviewer  (v0.11)</text>
-<text x="801" y="676" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="9">subagent · read-only</text>
-<text x="801" y="692" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="9">behavioural + security diff vs legacy</text>
-<text x="801" y="708" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="9">high diffs gate migrated → verified</text>
+<rect x="540"  y="640" width="252" height="82" rx="5" fill="#bf360c"/>
+<text x="666" y="658" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="11" font-weight="700">cross-cutting-migrator</text>
+<text x="666" y="676" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="8.5">establishes 1 cross-cutting concern</text>
+<text x="666" y="692" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="8.5">auth/i18n/flags/error/telemetry/log/data</text>
+<text x="666" y="708" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="8.5">fanned out in parallel by /foundation</text>
 
-<rect x="966"  y="640" width="306" height="82" rx="5" fill="#bf360c"/>
-<text x="1119" y="658" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="11.5" font-weight="700">migration-critic  (v0.12)</text>
-<text x="1119" y="676" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="9">subagent · read-only · advisory</text>
-<text x="1119" y="692" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="9">idiomatic-quality review (JOBOL)</text>
-<text x="1119" y="708" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="9">never blocks · /verify 5b + /quality-check</text>
+<rect x="804"  y="640" width="252" height="82" rx="5" fill="#bf360c"/>
+<text x="930" y="658" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="11" font-weight="700">parity-reviewer</text>
+<text x="930" y="676" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="8.5">subagent · read-only</text>
+<text x="930" y="692" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="8.5">behavioural + security diff vs legacy</text>
+<text x="930" y="708" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="8.5">high diffs gate migrated → verified</text>
 
-<rect x="1284" y="640" width="304" height="82" rx="5" fill="#bf360c"/>
-<text x="1436" y="658" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="11.5" font-weight="700">permanent-gotchas</text>
-<text x="1436" y="676" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="9">reference catalog (no model-invocation)</text>
-<text x="1436" y="692" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="9">load-bearing framework bugs</text>
-<text x="1436" y="708" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="9">e.g. passlib+bcrypt≥4, hatchling install</text>
+<rect x="1068" y="640" width="252" height="82" rx="5" fill="#bf360c"/>
+<text x="1194" y="658" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="11" font-weight="700">migration-critic</text>
+<text x="1194" y="676" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="8.5">subagent · read-only · advisory</text>
+<text x="1194" y="692" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="8.5">idiomatic-quality + static-perf review</text>
+<text x="1194" y="708" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="8.5">never blocks · /verify 5b + /quality-check</text>
+
+<rect x="1332" y="640" width="256" height="82" rx="5" fill="#bf360c"/>
+<text x="1460" y="658" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="11" font-weight="700">permanent-gotchas</text>
+<text x="1460" y="676" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="8.5">reference catalog (no model-invocation)</text>
+<text x="1460" y="692" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="8.5">load-bearing framework bugs</text>
+<text x="1460" y="708" text-anchor="middle" dominant-baseline="middle" fill="#ffccbc" font-size="8.5">e.g. passlib+bcrypt≥4, hatchling install</text>
 
 <!-- ================================================================
      FRAMEWORK FILES  y=730..880
@@ -194,7 +200,7 @@
 <text x="1336" y="803" text-anchor="middle" dominant-baseline="middle" fill="#c8e6c9" font-size="10">Sections: Scaffold · Auth notes · Test framework · Dev server</text>
 <text x="1336" y="820" text-anchor="middle" dominant-baseline="middle" fill="#a5d6a7" font-size="9.5">dotnet-minimal-api · spring-boot-3 · nestjs</text>
 <text x="1336" y="836" text-anchor="middle" dominant-baseline="middle" fill="#a5d6a7" font-size="9.5">fastapi · express · hono</text>
-<text x="1336" y="858" text-anchor="middle" dominant-baseline="middle" fill="#a5d6a7" font-size="9.5">Auth notes read by /auth; unknown → OWASP + permanent-gotchas</text>
+<text x="1336" y="858" text-anchor="middle" dominant-baseline="middle" fill="#a5d6a7" font-size="9.5">Auth notes read by /foundation; unknown → OWASP + permanent-gotchas</text>
 
 <!-- ================================================================
      TEMPLATES + WORKFLOWS + HOOKS  y=880..964
@@ -216,8 +222,8 @@
 <text x="501" y="943" text-anchor="middle" dominant-baseline="middle" fill="#d1c4e9" font-size="8.5">/analyze interview Q&amp;A catalog</text>
 
 <rect x="604" y="912" width="181" height="44" rx="4" fill="#5e35b1"/>
-<text x="694" y="928" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="10" font-weight="600">workflows/*.js</text>
-<text x="694" y="943" text-anchor="middle" dominant-baseline="middle" fill="#d1c4e9" font-size="8.5">analyze-discovery (Workflow tool)</text>
+<text x="694" y="928" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="10" font-weight="600">workflows/*.js  (2)</text>
+<text x="694" y="943" text-anchor="middle" dominant-baseline="middle" fill="#d1c4e9" font-size="8.5">analyze-discovery · foundation-establish</text>
 
 <rect x="805" y="880" width="795" height="84" fill="#e0f2f1"/>
 <rect x="805" y="880" width="795" height="26" fill="#00695c"/>

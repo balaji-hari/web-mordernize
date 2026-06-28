@@ -1,9 +1,9 @@
 ---
-description: "Pick the next pending unit (respecting depends_on) and migrate it. Workhorse of the iteration loop. Use when state.status is 'auth_done' or 'in_progress'. Triggers: 'what's next', 'continue', 'keep going', 'migrate the next one', 'next page', 'next unit', 'next iteration'."
+description: "Pick the next pending unit (respecting depends_on) and migrate it. Workhorse of the iteration loop. Use when state.status is 'foundation_done' or 'in_progress'. Triggers: 'what's next', 'continue', 'keep going', 'migrate the next one', 'next page', 'next unit', 'next iteration'."
 disable-model-invocation: false
 ---
 
-# `/web-modernize:next`
+# `/web-modernize:next [--plan | --no-plan]`
 
 You are the **next** skill. You select and migrate one unit per invocation. Across many invocations (possibly by different developers across many days), the team migrates the whole codebase.
 
@@ -26,7 +26,11 @@ Refusing would block the team until the slowest updater catches up — that's a 
 
 ## Preflight
 
-1. Read `.claude/modernize/state.json`. Require `status` to be one of `auth_done`, `in_progress`, or `complete`.
+0. Parse `$ARGUMENTS` for an optional plan-gate override (default: none):
+   - `--plan` → `plan_override = "on"` (force the per-unit plan gate for this unit, even when `review_mode` is `auto`).
+   - `--no-plan` → `plan_override = "off"` (skip the gate for this unit, even when `review_mode` is `plan-first`).
+   - neither → `plan_override = null` (use the migration-wide `state.review_mode` default).
+1. Read `.claude/modernize/state.json`. Require `status` to be one of `foundation_done`, `in_progress`, or `complete`.
    - If earlier, redirect: "Run /web-modernize:<missing-skill> first."
    - If `complete`, tell user the migration is done; suggest `/web-modernize:status` for the recap.
 2. Read `migration.md` (for target stack + constraints) and `.claude/modernize/plan.md` (for context).
@@ -39,6 +43,7 @@ Iterate `state.unit_ids[]` and read each `.claude/modernize/units/<id>.json`. Fi
 - `unit = <the in-flight unit object you just read>`
 - `retry_prompt = null`
 - `force_deps = false`
+- `plan_override = <the value parsed in Preflight step 0>`
 
 The agent procedure handles Cases A/B/C (resume own work, warn about another developer, reclaim stale). After the agent returns, jump to "Closing message" below.
 
@@ -48,7 +53,7 @@ Iterate `state.unit_ids[]` in order, reading each `units/<id>.json`. A unit is a
 
 - `unit.status == "pending"`, AND
 - every id in `unit.depends_on[]` either:
-  - is `__auth__` and the synthetic auth unit's per-unit file shows status `migrated`/`verified` (or top-level `state.status >= "auth_done"` as a fast-path check), OR
+  - is `__auth__` and the synthetic auth unit's per-unit file shows status `migrated`/`verified` (or top-level `state.status >= "foundation_done"` as a fast-path check), OR
   - corresponds to another unit with status `migrated` or `verified`.
 
 If no candidate has all dependencies satisfied:
@@ -65,8 +70,9 @@ Load `${CLAUDE_PLUGIN_ROOT}/agents/unit-migrator.md` and follow it with:
 - `unit = <the candidate you just picked>`
 - `retry_prompt = null`
 - `force_deps = false`
+- `plan_override = <the value parsed in Preflight step 0>`
 
-The agent handles unit acquisition (status + in_flight write to `units/<id>.json`), the translation body, stop conditions, and finalization. When it returns, the unit is either `migrated` or `failed`.
+The agent handles unit acquisition (status + in_flight write to `units/<id>.json`), the optional plan gate (§3.5), the translation body, stop conditions, and finalization. When it returns, the unit is `migrated`, `failed`, or — if you cancelled at the plan gate — back to `pending`.
 
 ## Closing message
 
@@ -88,8 +94,15 @@ Suggested next steps:
 
 On failure (`unit.status == "failed"`): the agent already printed the diagnostic and the recovery options. Do not add a second banner — just return.
 
+On cancel at the plan gate (`unit.status == "pending"`, no files written):
+
+```
+○ <unit.id> not migrated — cancelled at the plan gate. The unit is back to `pending`; no files were written.
+  Re-run /web-modernize:next when ready (add --no-plan to skip the gate for it).
+```
+
 ## State transitions
 
-- Pre: `state.status` ∈ {`auth_done`, `in_progress`}
+- Pre: `state.status` ∈ {`foundation_done`, `in_progress`}
 - Post: top-level `state.status` = `in_progress` (or `complete` if this was the last unit)
 - Per-unit file: `pending` → `in_progress` → `migrated` (or `failed`)

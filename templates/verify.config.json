@@ -17,6 +17,13 @@
     "typecheck_must_pass": true,
     "coverage_floor": null
   },
+  "dynamic": {
+    "_comment": "Opt-in higher-fidelity tier run by /web-modernize:verify --dynamic. ADVISORY — never blocks. Populated by /scaffold when 'Dynamic testing' is enabled in migration.md §12; null/empty entries are skipped with setup guidance.",
+    "enabled": false,
+    "e2e": null,
+    "api_replay": null,
+    "baseline_dir": ".claude/modernize/baseline"
+  },
   "global_post_checks": [
     {
       "name": "build",

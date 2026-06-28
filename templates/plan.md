@@ -27,12 +27,12 @@
 
 ### Phase 1 — Foundation
 
-Goal: get a deployable shell of the new app, with auth working, before any feature migration.
+Goal: get a deployable shell of the new app, with the foundation (auth + any cross-cutting concerns) working, before any feature migration.
 
 | Step | Skill | Notes |
 |------|-------|-------|
 | 1.1 | `/web-modernize:scaffold` | Creates target UI{{IF_API}} + API{{END_IF_API}}{{IF_DB}} + DB migrations{{END_IF_DB}} skeleton |
-| 1.2 | `/web-modernize:auth`     | Migrates auth provider; subsequent units depend on this |
+| 1.2 | `/web-modernize:foundation` | Establishes auth + any opted-in cross-cutting concerns (i18n, flags, error handling, telemetry, logging); subsequent units depend on this |
 
 ### Phase 2 — {{PHASE_2_NAME}}
 
@@ -51,6 +51,8 @@ Goal: {{PHASE_4_GOAL}}
 ### Phase N — Cutover
 
 Goal: retire legacy app, redirect production traffic.
+
+Run `/web-modernize:integrate` to assemble the migrated units into the composed app (central router + nav), run a whole-app smoke, and flag orphaned units. For `strategy: strangler-fig` it also maintains the traffic-splitting proxy (migrated routes → new app, rest → legacy). `/integrate` is incremental — run it any time to integrate what's migrated so far; run `/web-modernize:integrate --final` for the end cutover once everything is verified.
 
 ## Unit table
 
@@ -83,7 +85,7 @@ Mirrored from `migration.md §9`:
 ## How to use this plan
 
 1. Review the unit table above. If a unit is misnamed, in the wrong phase, or has wrong dependencies, edit `migration.md` and re-run `/web-modernize:plan`.
-2. Once the plan looks right, run `/web-modernize:scaffold`, then `/web-modernize:auth`.
+2. Once the plan looks right, run `/web-modernize:scaffold`, then `/web-modernize:foundation`.
 3. From there, run `/web-modernize:next` in a loop. The plugin picks the next unit respecting `depends_on` and writes notes/checkpoints as it goes.
 4. After each unit migrates, run `/web-modernize:verify` to record evidence against §10 acceptance criteria.
 5. Use `/web-modernize:status` any time to see progress.

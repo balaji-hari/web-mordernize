@@ -34,11 +34,27 @@ The migrator imports `API_URL` when porting fetch calls.
 
 Test smoke: `npm run test -- --run`.
 
+## Dynamic tests
+
+Read by `/web-modernize:scaffold` (when `migration.md §12` "Dynamic testing" is `yes`) and run by `/web-modernize:verify --dynamic` (advisory, never blocks).
+
+- **E2E (Phase B):** `npm i -D @playwright/test && npx playwright install --with-deps chromium`. Write `playwright.config.ts` (`testDir: "e2e"`, `webServer` running `npm run dev` on 5173, `baseURL`). Specs in `apps/web-new/e2e/<route>.spec.ts`. Script: `"test:e2e": "playwright test"`. verify.config `dynamic.e2e`: `npm --prefix ${ui_root} run test:e2e`.
+- **API replay (Phase A):** scaffold `apps/web-new/e2e/replay.mjs` (or under the API app) — reads recorded request/response fixtures from `${baseline_dir}`, replays each request against `VITE_API_URL`, and diffs the JSON response (status + body shape) against the recording; exits non-zero with a diff report on mismatch. verify.config `dynamic.api_replay`: `node apps/web-new/e2e/replay.mjs --baseline ${baseline_dir}`.
+- **Baseline:** `/web-modernize:verify --capture-baseline` records the legacy app's responses into `${baseline_dir}` (`.claude/modernize/baseline/`, gitignored). Phase A skips with guidance until a baseline exists.
+
 ## Dev server
 
 | Dev port | Install/activate | Dev command | URL |
 |---|---|---|---|
 | 5173 | `npm install` | `npm run dev` | http://localhost:5173 |
+
+## Integration
+
+Read by `/web-modernize:integrate` to assemble the composed app from migrated units.
+
+- **Central router:** `apps/web-new/src/router.tsx` — a React Router v6 `createBrowserRouter([...])` (or `<Routes>`) reconciled from each migrated UI unit's `routes[]`. Mount it inside the root layout the first unit established (`src/App.tsx` / see `notes/__layout__.md`), not a fresh tree.
+- **Nav:** `apps/web-new/src/components/Nav.tsx` — built from the UI routes that carry a `label`, rendered in the layout. Preserve the legacy menu order/grouping recorded in `notes/__layout__.md`.
+- **Strangler proxy (only when `strategy: strangler-fig`):** dev — add a `server.proxy` map in `vite.config.ts` routing not-yet-migrated path prefixes to the legacy origin; prod — emit an nginx (or equivalent) reverse-proxy config mapping **migrated** route prefixes → the new app and **everything else → legacy**. `/integrate` refreshes both as more units migrate.
 
 ## Recommendation context
 
