@@ -110,6 +110,17 @@ performance/a11y parity, dynamic testing, parallel migration).
   - *Gap:* porting WebForms/legacy → React can lose ARIA/labels/keyboard semantics; nothing checks.
     `future-additional-agents.md` suggests this as an opt-in `/verify` post-check, not an always-on agent.
 
+- [ ] **CSS audit** — `NEW` · effort M · value med
+  - *Approach A — legacy sizing in `/analyze`* (`legacy-analyzer` CSS pass): detect CSS frameworks
+    (Bootstrap, Tailwind, Material), preprocessors (SASS/LESS), approximate rule count, CSS-in-JS vs
+    stylesheets, utility-class usage. Feed `analysis.json` so `/plan` can size CSS migration as explicit units.
+  - *Approach B — quality findings in `migration-critic` (Tier 2)*: add `css_*` finding kinds — unported
+    rules, specificity leakage, missing responsive breakpoints, dead selectors in the migrated output.
+    Surfaces in `/verify` step 5b and `/quality-check`. No new command needed.
+  - *Recommendation:* ship A + B together — A gives upfront sizing (CSS is often 20–30% of migration
+    effort and gets silently dropped from backlogs), B catches regressions during verification.
+  - *Out of scope:* visual/pixel regression (deferred to Phase C of the dynamic tier).
+
 - [x] **E2E · API-replay testing (dynamic tier, Phase A+B)** — `DONE` (v0.15.0, see `CHANGELOG.md`) · effort M · value med
   - *Shipped:* opt-in `/web-modernize:verify --dynamic` (advisory step 5c) — **Phase A API replay** (vs a
     recorded legacy baseline; `--capture-baseline`) + **Phase B Playwright E2E**. `dynamic_findings[]`;
@@ -134,4 +145,4 @@ performance/a11y parity, dynamic testing, parallel migration).
 7. ~~**Static performance review**~~ — ✅ **DONE (v0.15.0)**: `perf_*` kinds in `migration-critic`.
 8. ~~**Dynamic testing tier (Phase A+B)**~~ — ✅ **DONE (v0.15.0)**: `/verify --dynamic` (API replay + Playwright E2E).
 
-**Remaining open:** configuration migration · global/shared client state · accessibility (a11y) check · data-layer **bulk** migration · runtime perf (Tier-2) · visual regression (Phase C) · parallel migration (+ `unit-migrator` subagent conversion).
+**Remaining open:** configuration migration · global/shared client state · CSS audit (legacy sizing + critic findings) · accessibility (a11y) check · data-layer **bulk** migration · runtime perf (Tier-2) · visual regression (Phase C) · parallel migration (+ `unit-migrator` subagent conversion).

@@ -25,6 +25,7 @@ INK     = RGBColor(0x1F, 0x29, 0x37)
 GREEN   = RGBColor(0x10, 0xB9, 0x81)
 AMBER   = RGBColor(0xF5, 0x9E, 0x0B)
 RED     = RGBColor(0xEF, 0x44, 0x44)
+PURPLE  = RGBColor(0x7C, 0x3A, 0xED)
 LIGHT_B = RGBColor(0xEB, 0xF2, 0xFF)
 LIGHT_G = RGBColor(0xF4, 0xF6, 0xF8)
 BAND_BG = RGBColor(0xE6, 0xEC, 0xF2)
@@ -123,7 +124,7 @@ def page_chrome(slide, title, subtitle=None, page_num=None):
              size=9, color=SLATE, anchor=MSO_ANCHOR.MIDDLE)
     if page_num is not None:
         add_text(slide, 12.30, 7.24, 0.85, 0.24,
-                 f"{page_num:02d}  /  12",
+                 f"{page_num:02d}  /  13",
                  size=9, color=SLATE, font=FONT_HEADER,
                  anchor=MSO_ANCHOR.MIDDLE, align=PP_ALIGN.RIGHT)
 
@@ -377,7 +378,7 @@ def slide_03_need(prs):
         slide,
         "Why We Need This Plugin",
         "Ad-hoc AI prompting and one-off tooling don't scale to enterprise modernization — six things the plugin adds",
-        page_num=3,
+        page_num=5,
     )
 
     advantages = [
@@ -428,7 +429,7 @@ def slide_04_analyze(prs):
         slide,
         "From Legacy Codebase to Migration Backlog",
         "Two plugin commands  —  /analyze  and  /plan  —  produce a sized, prioritised backlog",
-        page_num=4,
+        page_num=8,
     )
 
     # Three-phase flow at the top
@@ -533,7 +534,7 @@ def slide_05_execution(prs):
         slide,
         "From Backlog to Migrated Units",
         "Set up once with  /scaffold  and  /foundation.  Then the team migrates in parallel with  /next  and  /migrate.",
-        page_num=5,
+        page_num=9,
     )
 
     # ─── SETUP section banner ─────────────────────────────────────
@@ -641,16 +642,16 @@ def slide_05_execution(prs):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Slide 7 — Risk, Safety, and Reversibility
+# Slide 8 — Risk, Safety, and Reversibility
 # ══════════════════════════════════════════════════════════════════════════════
 
-def slide_07_risk_safety(prs):
+def slide_08_risk_safety(prs):
     slide = blank_slide(prs)
     page_chrome(
         slide,
         "Risk, Safety, and Reversibility",
         "What if the AI gets it wrong?  —  every change is reviewable, reversible, and auditable",
-        page_num=7,
+        page_num=6,
     )
 
     cards = [
@@ -722,16 +723,16 @@ def slide_07_risk_safety(prs):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Slide 8 — Natural Language + Pluggable Framework Library
+# Slide 9 — Natural Language + Pluggable Framework Library
 # ══════════════════════════════════════════════════════════════════════════════
 
-def slide_08_extensibility(prs):
+def slide_09_extensibility(prs):
     slide = blank_slide(prs)
     page_chrome(
         slide,
         "Natural Language  &  Pluggable Framework Library",
         "Two improvements in v0.10.0 that make the plugin easier to use and easier to extend",
-        page_num=8,
+        page_num=3,
     )
 
     # ─── LEFT HALF: Natural-Language Routing ──────────────────────
@@ -874,16 +875,16 @@ def slide_08_extensibility(prs):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Slide 9 — Built for Sprint & PI Planning
+# Slide 10 — Built for Sprint & PI Planning
 # ══════════════════════════════════════════════════════════════════════════════
 
-def slide_09_planning(prs):
+def slide_10_planning(prs):
     slide = blank_slide(prs)
     page_chrome(
         slide,
         "Built for Sprint and PI Planning",
         "The plugin speaks backlog, dependencies, sprints, and burndown natively",
-        page_num=9,
+        page_num=7,
     )
 
     pairings = [
@@ -924,16 +925,158 @@ def slide_09_planning(prs):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Slide 6 — What the Plugin Adds to Claude Code (before / after)
+# Slide 6 — Three Verification Tiers
 # ══════════════════════════════════════════════════════════════════════════════
 
-def slide_06_advantages(prs):
+def slide_06_verification_tiers(prs):
+    slide = blank_slide(prs)
+    page_chrome(
+        slide,
+        "Three Verification Tiers",
+        "/verify runs all three in order — each tier has a different role, depth, and gate behaviour",
+        page_num=10,
+    )
+
+    # Section banner
+    add_rect(slide, 0.40, 1.30, 12.533, 0.42, fill=NAVY)
+    add_text(slide, 0.55, 1.32, 12.333, 0.38,
+             "Every migrated unit passes through up to three verification layers  ·  "
+             "Tier 1 blocks  ·  Tier 2 advises  ·  Tier 3 adds runtime confidence (opt-in)",
+             size=12, color=WHITE, font=FONT_HEADER,
+             anchor=MSO_ANCHOR.MIDDLE)
+
+    card_w   = 4.04
+    card_gap = 0.20
+    card_top = 1.82
+    card_h   = 4.82
+    left     = 0.40
+
+    tiers = [
+        {
+            "num": "1",
+            "label": "Parity + Security",
+            "tag": "GATING",
+            "accent": RED,
+            "card_fill": RGBColor(0xFD, 0xEB, 0xEB),
+            "description": (
+                "A read-only AI (parity-reviewer) compares migrated code vs the legacy "
+                "original across validation logic, output shape, error handling, UI "
+                "structure, and five security dimensions: dropped auth, injection, "
+                "encoding, CSRF, and exposed secrets."
+            ),
+            "bullets": [
+                "Behavioural diff: logic, responses, error shapes match legacy",
+                "Security: auth, injection, encoding, CSRF, secret leakage",
+                "Adversarial refute pass on every high-severity finding",
+                "Unacknowledged highs BLOCK the unit from being verified",
+            ],
+            "commands": "/verify  ·  /parity-check",
+        },
+        {
+            "num": "2",
+            "label": "Quality + Static Perf",
+            "tag": "ADVISORY",
+            "accent": COBALT,
+            "card_fill": LIGHT_B,
+            "description": (
+                "A read-only AI (migration-critic) reviews for two orthogonal concerns: "
+                "idiomatic quality (legacy patterns leaking into modern code, e.g. jQuery "
+                "patterns in React) and static-performance regressions detectable "
+                "without running the app."
+            ),
+            "bullets": [
+                "Idiomatic review: legacy paradigm leakage in modern code",
+                "N+1 queries, unbounded data fetches, waterfall I/O",
+                "Bundle bloat and blocking synchronous operations",
+                "Findings reported to the developer — never blocks migration",
+            ],
+            "commands": "/verify  ·  /quality-check",
+        },
+        {
+            "num": "3",
+            "label": "Dynamic Testing",
+            "tag": "OPT-IN",
+            "accent": PURPLE,
+            "card_fill": RGBColor(0xF3, 0xE8, 0xFF),
+            "description": (
+                "Runtime verification enabled per migration in migration.md §12 or with "
+                "--dynamic. Adds two phases on top of the static tiers: recorded-baseline "
+                "API replay against the new API, and browser-driven Playwright "
+                "end-to-end tests."
+            ),
+            "bullets": [
+                "API replay: records legacy responses, diffs new API outputs",
+                "Playwright E2E: browser-driven suite vs the running new app",
+                "Enable with /verify --dynamic or migration.md §12",
+                "Run --capture-baseline before the first comparison",
+            ],
+            "commands": "/verify --dynamic  ·  --capture-baseline",
+        },
+    ]
+
+    for i, tier in enumerate(tiers):
+        x      = left + i * (card_w + card_gap)
+        accent = tier["accent"]
+
+        # Card body
+        add_rect(slide, x, card_top, card_w, card_h, fill=tier["card_fill"],
+                 line=accent, line_w=0.75)
+
+        # Top accent strip
+        add_rect(slide, x, card_top, card_w, 0.60, fill=accent)
+        # Tier number (large)
+        add_text(slide, x + 0.10, card_top + 0.02, 0.52, 0.56,
+                 tier["num"], size=26, bold=True, color=WHITE,
+                 font=FONT_HEADER, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+        # Tier name
+        add_text(slide, x + 0.72, card_top + 0.04, card_w - 0.84, 0.32,
+                 tier["label"], size=13, bold=True, color=WHITE,
+                 font=FONT_HEADER, anchor=MSO_ANCHOR.MIDDLE)
+        # Tag badge row
+        add_text(slide, x + 0.72, card_top + 0.36, card_w - 0.84, 0.20,
+                 tier["tag"], size=9, bold=True, color=WHITE,
+                 font=FONT_HEADER, anchor=MSO_ANCHOR.MIDDLE)
+
+        # Description paragraph
+        add_text(slide, x + 0.20, card_top + 0.70, card_w - 0.35, 1.48,
+                 tier["description"], size=10.5, color=INK, anchor=MSO_ANCHOR.TOP)
+
+        # Four bullet points
+        bullet_y = card_top + 2.26
+        for bullet in tier["bullets"]:
+            add_text(slide, x + 0.20, bullet_y, 0.22, 0.40,
+                     "▸", size=10, bold=True, color=accent)
+            add_text(slide, x + 0.44, bullet_y, card_w - 0.58, 0.44,
+                     bullet, size=10, color=INK)
+            bullet_y += 0.46
+
+        # Commands badge at bottom of card
+        cmd_top = card_top + card_h - 0.52
+        add_rect(slide, x + 0.12, cmd_top, card_w - 0.24, 0.42, fill=accent)
+        add_text(slide, x + 0.12, cmd_top + 0.02, card_w - 0.24, 0.38,
+                 tier["commands"], size=10, bold=True, color=WHITE,
+                 font=FONT_MONO, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+
+    # Bottom takeaway strip
+    add_rect(slide, 0.40, 6.78, 12.533, 0.36, fill=NAVY)
+    add_text(slide, 0.50, 6.80, 12.333, 0.32,
+             "Tier 1 guards correctness and security.  Tier 2 guards code quality and performance.  "
+             "Tier 3 adds runtime confidence.  Any combination is valid.",
+             size=11, bold=True, color=WHITE,
+             align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Slide 7 — What the Plugin Adds to Claude Code (before / after)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def slide_07_advantages(prs):
     slide = blank_slide(prs)
     page_chrome(
         slide,
         "What the Plugin Adds to Claude Code",
         "Every developer already has Claude Code — here is what changes when you add web-modernize",
-        page_num=6,
+        page_num=4,
     )
 
     # 3-column before / after comparison
@@ -1035,16 +1178,16 @@ def slide_06_advantages(prs):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Slide 10 — The 18 Skills (Slash Commands)
+# Slide 11 — The 18 Skills (Slash Commands)
 # ══════════════════════════════════════════════════════════════════════════════
 
-def slide_10_commands(prs):
+def slide_11_commands(prs):
     slide = blank_slide(prs)
     page_chrome(
         slide,
         "The 18 Skills  (Slash Commands)",
-        "Each skill is exposed as a slash command — or auto-fires from plain English (see slide 8)",
-        page_num=10,
+        "Each skill is exposed as a slash command — or auto-fires from plain English (see slide 3)",
+        page_num=11,
     )
 
     headers = ["Command", "What It Does (Plain English)"]
@@ -1080,16 +1223,16 @@ def slide_10_commands(prs):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Slide 11 — Agents · Hooks · Templates · Framework Library
+# Slide 12 — Agents · Hooks · Templates · Framework Library
 # ══════════════════════════════════════════════════════════════════════════════
 
-def slide_11_inventory(prs):
+def slide_12_inventory(prs):
     slide = blank_slide(prs)
     page_chrome(
         slide,
         "Agents · Hooks · Templates · Framework Library",
         "Every other custom artifact built into the plugin — one English sentence each",
-        page_num=11,
+        page_num=12,
     )
 
     add_text(slide, 0.40, 1.20, 12.5, 0.30,
@@ -1161,10 +1304,10 @@ def slide_11_inventory(prs):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Slide 12 — Closing / Next Step
+# Slide 13 — Closing / Next Step
 # ══════════════════════════════════════════════════════════════════════════════
 
-def slide_12_closing(prs):
+def slide_13_closing(prs):
     slide = blank_slide(prs)
     add_rect(slide, 0, 0, 13.333, 7.5, fill=NAVY)
     add_rect(slide, 0, 0, 13.333, 0.07, fill=TEAL)
@@ -1219,19 +1362,20 @@ def slide_12_closing(prs):
 def build():
     prs = new_prs()
 
-    print("Building 12-slide leadership deck (v0.15.0)...")
-    slide_01_title(prs);            print("  [1/12] Title")
-    slide_02_intro(prs);            print("  [2/12] What is web-modernize")
-    slide_03_need(prs);             print("  [3/12] Why we need it")
-    slide_04_analyze(prs);          print("  [4/12] From legacy codebase to migration backlog")
-    slide_05_execution(prs);        print("  [5/12] From backlog to migrated units")
-    slide_06_advantages(prs);       print("  [6/12] What the plugin adds to Claude Code")
-    slide_07_risk_safety(prs);      print("  [7/12] Risk, safety, and reversibility")
-    slide_08_extensibility(prs);    print("  [8/12] Natural language + pluggable framework library")
-    slide_09_planning(prs);         print("  [9/12] Built for sprint and PI planning")
-    slide_10_commands(prs);         print("  [10/12] 18 skills (slash commands)")
-    slide_11_inventory(prs);        print("  [11/12] Agents, hooks, templates, framework library")
-    slide_12_closing(prs);          print("  [12/12] Closing / next step")
+    print("Building 13-slide leadership deck (v0.15.0)...")
+    slide_01_title(prs);                    print("  [1/13]  Title")
+    slide_02_intro(prs);                    print("  [2/13]  What is web-modernize")
+    slide_09_extensibility(prs);            print("  [3/13]  Natural language + pluggable framework library")
+    slide_07_advantages(prs);               print("  [4/13]  What the plugin adds to Claude Code")
+    slide_03_need(prs);                     print("  [5/13]  Why we need it")
+    slide_08_risk_safety(prs);              print("  [6/13]  Risk, safety, and reversibility")
+    slide_10_planning(prs);                 print("  [7/13]  Built for sprint and PI planning")
+    slide_04_analyze(prs);                  print("  [8/13]  From legacy codebase to migration backlog")
+    slide_05_execution(prs);                print("  [9/13]  From backlog to migrated units")
+    slide_06_verification_tiers(prs);       print("  [10/13] Three verification tiers")
+    slide_11_commands(prs);                 print("  [11/13] 18 skills (slash commands)")
+    slide_12_inventory(prs);                print("  [12/13] Agents, hooks, templates, framework library")
+    slide_13_closing(prs);                  print("  [13/13] Closing / next step")
 
     out = r"C:\1\web-mordernize\docs\decks\web-modernize-presentation.pptx"
     prs.save(out)
