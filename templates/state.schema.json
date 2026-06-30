@@ -141,6 +141,24 @@
       "type": "array",
       "items": { "type": "string" }
     },
+    "open_decisions": {
+      "description": "Cross-cutting architectural decisions the team must make (e.g. one responsive layout vs. a separate mobile component tree, state-management approach, routing strategy). Collected by /web-modernize:plan and surfaced at its approval gate; unit-migrator refuses to resolve an unresolved one unilaterally and records the chosen option here so it is decided once for the whole migration.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "question", "status"],
+        "properties": {
+          "id": { "type": "string", "description": "Stable identifier, e.g. 'mobile-layout-strategy'." },
+          "question": { "type": "string", "description": "The decision to be made, in plain language." },
+          "status": { "enum": ["open", "resolved"] },
+          "decision": { "type": "string", "description": "The chosen option; present when status == resolved." },
+          "affects": { "type": "array", "items": { "type": "string" }, "description": "Optional: unit ids or areas this decision bears on." },
+          "resolved_by": { "type": "string" },
+          "resolved_at": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
     "lock": {
       "description": "Advisory lock for full-repo operations (plan, scaffold). null when no lock held.",
       "oneOf": [

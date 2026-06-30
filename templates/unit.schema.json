@@ -321,7 +321,7 @@
             "description": "Stable, content-derived identifier, e.g. 'jobol:OrderListPage:useeffect-postback-emulation'. Deterministic from kind + the observation, so it survives a re-run on unchanged code and a fixed issue drops off."
           },
           "kind": {
-            "enum": ["jobol", "idiom", "error_handling", "dead_abstraction", "test_quality", "oncall_readiness", "perf_n_plus_one", "perf_unbounded_data", "perf_waterfall", "perf_blocking", "perf_bundle", "other"]
+            "enum": ["jobol", "idiom", "error_handling", "dead_abstraction", "duplication", "test_quality", "oncall_readiness", "perf_n_plus_one", "perf_unbounded_data", "perf_waterfall", "perf_blocking", "perf_bundle", "other"]
           },
           "severity": {
             "enum": ["blocker", "high", "medium", "nit"],
@@ -352,6 +352,28 @@
           "observation": { "type": "string", "description": "What the dynamic run observed (e.g. replay diff, failed E2E step)." },
           "recommendation": { "type": "string" },
           "file": { "type": "string" }
+        }
+      }
+    },
+    "e2e": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Playwright E2E spec authored for this UI unit by unit-migrator §7d (opt-in dynamic testing). AUTHORING only — the spec is RUN by /web-modernize:verify --dynamic, which records pass/fail/skip into e2e_results. Absent for non-UI/background units or when dynamic testing is disabled.",
+      "properties": {
+        "spec_path": { "type": "string", "description": "Path to the authored spec, e.g. apps/web-new/e2e/<unit.id>.spec.ts (keyed by unit id, not route)." },
+        "authored_count": { "type": "integer", "minimum": 0, "description": "Number of test() blocks authored." },
+        "routes_covered": { "type": "array", "items": { "type": "string" } },
+        "authored_at": { "type": "string", "format": "date-time" },
+        "e2e_results": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Pass/fail/skip from the most recent /web-modernize:verify --dynamic run. Advisory — never blocks.",
+          "properties": {
+            "passed": { "type": "integer", "minimum": 0 },
+            "failed": { "type": "integer", "minimum": 0 },
+            "skipped": { "type": "integer", "minimum": 0 },
+            "ran_at": { "type": "string", "format": "date-time" }
+          }
         }
       }
     }

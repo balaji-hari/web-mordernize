@@ -61,12 +61,15 @@ Your findings are written to the git-tracked `quality_findings[]` on the unit an
 **JOBOL / legacy-shape leakage** (`kind: "jobol"`) — the highest-value lens. The legacy structure survived the translation instead of being rethought for the target stack:
 - **WebForms-in-React/Vue**: a `useEffect`/watcher chain that re-implements the postback lifecycle; component state shaped like ViewState; a single giant handler that mirrors `Page_Load`; controls translated 1:1 into stateful wrappers instead of derived/declarative UI.
 - **jQuery-in-a-reactive-framework**: imperative DOM manipulation (`document.querySelector`, `ref.current.innerHTML =`, manual `.classList` toggling, manual event wiring) where the framework's declarative rendering/binding is the idiom.
+- **Full-page navigation in a SPA**: `window.location.href = …` / `location.assign` / a full form submit used for *in-app* navigation where the target's client router (`navigate()` / `<Link>` / router push) is the idiom. A carried-over `Response.Redirect`-shaped post-submit reload re-downloads the whole app and drops client state — name it as postback-shaped navigation leakage.
 - **Scriptlet/code-behind shape in a controller/endpoint**: business logic, data access, and HTTP concerns mashed into one handler the way a JSP scriptlet or `.aspx.cs` code-behind mixed them, instead of separated into the target's layers.
 - **God-component / God-handler**: one file that is the legacy page transliterated whole, rather than decomposed into the target's natural units.
 
 **Idiom** (`kind: "idiom"`) — non-idiomatic patterns short of full paradigm leakage: not using the framework's data-fetching/state/routing primitives, reinventing something the stack provides, fighting the framework, ignoring the target language's conventions (e.g. untyped `any` walls in a TS migration, mutable shared state where the stack expects immutable).
 
 **Error handling** (`kind: "error_handling"`) — ceremonial vs meaningful: `catch {}` that swallows, errors logged-and-ignored, a generic 500 where the legacy distinguished cases, no error/empty/loading affordance in a component that fetches.
+
+**Duplication** (`kind: "duplication"`) — the same exported symbol defined more than once instead of shared: identical (or near-identical) type/interface/DTO declarations (`CatalogItemDto`-shaped types), validation functions, formatters, or constants copy-pasted across this unit's files or repeated from an already-migrated unit. Per-unit translation makes this easy to miss — each page redeclares the shape it needs. Flag the duplicate set and point at the shared location it should be extracted to (or imported from, when a prior unit already exports it). Don't flag genuinely coincidental same-shaped-but-unrelated types.
 
 **Dead abstraction** (`kind: "dead_abstraction"`) — an interface/factory/wrapper/hook with exactly one implementation and no second caller in sight; indirection that adds a hop without adding value; premature generalisation carried over or newly invented.
 
@@ -132,7 +135,7 @@ For each **blocker** and **high**, state the concrete maintenance/operability co
 }
 ```
 
-- `kind` must be one of: `jobol`, `idiom`, `error_handling`, `dead_abstraction`, `test_quality`, `oncall_readiness`, `perf_n_plus_one`, `perf_unbounded_data`, `perf_waterfall`, `perf_blocking`, `perf_bundle`, `other`.
+- `kind` must be one of: `jobol`, `idiom`, `error_handling`, `dead_abstraction`, `duplication`, `test_quality`, `oncall_readiness`, `perf_n_plus_one`, `perf_unbounded_data`, `perf_waterfall`, `perf_blocking`, `perf_bundle`, `other`.
 - `severity` must be one of: `blocker`, `high`, `medium`, `nit`.
 - `id` is `<kind>:<unit_id>:<slug>`, where `<slug>` is a short kebab summary of the **issue itself**, derived from the observation (not a counter) — so a re-run on unchanged code yields the same id and a fixed issue drops off.
 - `why_it_matters` and `suggestion` are optional but strongly encouraged for `blocker`/`high`.

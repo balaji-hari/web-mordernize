@@ -130,6 +130,22 @@ Bundlers (Vite, Next, Angular CLI) serve `public/` as static assets but don't au
 
 This rule is shape-agnostic on purpose. New legacy stacks (PHP, ColdFusion, Struts, Razor) hit the same pattern — Claude identifies the wrapping template + global CSS for whatever the team's source happens to be and applies the same five steps.
 
+### A config-referenced value missing from the target config breaks silently
+
+**Symptom:** the app builds, typechecks, and parity review passes, but at runtime something is quietly wrong — every product image renders broken, a base URL resolves to a bare filename, a feature toggle reads `false`, a link points nowhere. No error, no failed test.
+
+**Root cause:** legacy code reads a config value (an `appSettings`/`Web.config` key, `application.properties` entry, env var) and the migration ports the *code* that reads it but never carries the *value* into the target config (`appsettings*.json`, `.env`, `application.yml`). The key resolves to null/empty, the code takes a fallback path, and the result looks plausible but wrong. A static parity review compares code, not config files, so it can't see the gap; a build doesn't exercise the value.
+
+**Fix (shape-agnostic):** for every config key the migrated code references, confirm the key exists **with a value** in the target config and carry the legacy default across. If no safe default exists, add an explicit `// TODO: set <key>` placeholder and record it in `notes/<unit.id>.md` under "Gotchas — config carried over". The runtime counterpart is the asset-resolution assertion in the unit's E2E spec (`unit-migrator` §7d) — `naturalWidth > 0` catches the broken-image case that a missing image-base-URL key produces.
+
+### A migration that compiles can still look wrong — compare against the legacy, don't just re-style
+
+**Symptom:** the new page works and the data is correct, but it doesn't look like the old page — spacing, colours, layout, or whole decorative classes are gone. No error; the team only notices on a side-by-side glance.
+
+**Root cause:** translating markup + logic without porting the legacy stylesheets and class semantics produces a clean-room redesign, not a migration. The visual definition lives in CSS the migrator didn't read or silently flattened to generic utilities.
+
+**Fix:** follow `unit-migrator` §7b — read every stylesheet the source depends on, detect the legacy design system (class-name prefixes), and preserve the *semantic class names and visual result* when translating to the target styling system (don't flatten custom classes to anonymous utilities). When in doubt, compare the rendered target against the legacy and reconcile the difference rather than inventing a new look. The E2E spec (§7d) asserts the key legacy elements/classes are present so dropped chrome surfaces at runtime; pixel-diff visual regression remains out of scope.
+
 ### CORS and `/health` are on the agent
 
 No default API scaffold (`dotnet new webapi`, `nest new`, Spring Initializr, FastAPI from scratch) serves `GET /health` returning 200, and none configure CORS for the dev UI ports. The scaffold smoke gate hits `/health` and the dev UI hits the API cross-origin, so both must be wired up at scaffold time. The agent generates the right shape per stack — no template files for this.

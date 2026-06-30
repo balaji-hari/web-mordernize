@@ -26,6 +26,26 @@
 | Skipped | {{COUNT_SKIPPED}} |
 | **Completion** | **{{PERCENT_COMPLETE}}%** |
 
+## Pending verification
+
+Units that are migrated but not yet verified, and why:
+
+| Unit | Reasons not yet verified |
+|---|---|
+{{PENDING_VERIFICATION_TABLE}}
+
+## Dynamic / E2E results
+
+| Unit | E2E authored | E2E pass/fail/skip | Dynamic findings (H/M/L) |
+|---|---|---|---|
+{{DYNAMIC_RESULTS_TABLE}}
+
+## Behavioural parity & code-quality findings
+
+{{PARITY_FINDINGS_BLOCK}}
+
+{{QUALITY_FINDINGS_BLOCK}}
+
 ## Burndown
 
 By phase:

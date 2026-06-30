@@ -92,8 +92,9 @@ Translate the legacy implementation to the target's **idiomatic mechanism** plac
 
 1. **Wire every concern into the composition root** — one edit to the target's root/entry (providers, error boundary wrapper, logger/telemetry init, i18n provider). Apply each concern's returned `root_wiring`. This is the only shared file and it is touched exactly once, here.
 2. **Smoke** — from the UI root run the target's build + typecheck; for API auth, the relevant `verify.config.json` checks (lint/typecheck + a login smoke). Any failure → mark the failing concern's unit `failed` with a diagnostic, **do not advance `state.status`**, stop.
-3. **Auth dev-user seeding** — run the auth concern's dev-user seeding (see "Auth concern specifics").
-4. **Finalize each concern unit** — set `status = "migrated"`, clear `in_flight`, append history, record `target_paths`, write `notes/__<concern>__.md`.
+3. **Run DB migrations (before any seeding)** — when the auth concern uses a local password store (a DB), bring the schema up **before** seeding so the users table exists. Run the migration step established by the `data` concern's harness if present, else the per-stack default (`alembic upgrade head` / `dotnet ef database update` / `./mvnw flyway:migrate` / `npx typeorm migration:run` / `npx prisma migrate deploy`). If the migration step itself **fails** (not "no migrations to run"), this is a **loud blocker**: mark `__auth__` `failed` with a diagnostic carrying the stderr tail (`DB migration failed before seeding — <tail>; run/​fix migrations then re-run /web-modernize:foundation`), **do not advance `state.status`**, and stop. Do not proceed to seeding on a broken schema. (Skip this step for external-IdP auth with no local DB, and for unknown API stacks with no migration recipe — in the latter case print an explicit note that schema setup could not be automated.)
+4. **Auth dev-user seeding** — run the auth concern's dev-user seeding (see "Auth concern specifics").
+5. **Finalize each concern unit** — set `status = "migrated"`, clear `in_flight`, append history, record `target_paths`, write `notes/__<concern>__.md`.
 
 ## Auth concern specifics (preserved from the former /auth)
 
@@ -122,8 +123,8 @@ Write an **idempotent** seed script (`INSERT … ON CONFLICT DO NOTHING` / `find
 
 Run the script once and branch on exit code:
 - **0** → write `.claude/modernize/dev-credentials.md` (the `.claude/modernize/` dir is gitignored) and include the credentials in the closing message.
-- **2 (USERS_TABLE_MISSING)** → record `tests.seed_skipped_reason` + `tests.seed_rerun_command` on `__auth__.json`; replace the credentials block in the closing message with "run DB migrations, then re-run `<command>`". **Still finalize** — the auth code is fine; only the convenience seed deferred.
-- **other non-zero** → record `tests.seed_failed_reason` with the stderr tail; advise investigation; don't block finalize.
+- **2 (USERS_TABLE_MISSING)** → the users table is still missing **even though step 3 ran migrations** — the schema is genuinely not set up, so do **not** quietly finalize as if foundation were healthy. Treat it as a **loud, non-silent** outcome: print a prominent `⚠ AUTH SCHEMA NOT READY — dev-user seeding could not run (users table missing after migrations)` banner, record `tests.seed_blocked_reason = "<USERS_TABLE_MISSING tail>"` + `tests.seed_rerun_command` on `__auth__.json`, and **surface it in the foundation summary** (a top-line callout, not buried). If migrations were skipped because the stack has no recipe (unknown API), say so explicitly and tell the user to set up the schema and re-run `/web-modernize:foundation`. The auth *code* may be sound, but the foundation is not silently "done" — the user must act.
+- **other non-zero** → record `tests.seed_failed_reason` with the stderr tail; print a non-silent warning and advise investigation; surface it in the summary.
 
 ## Finalize
 
@@ -146,7 +147,7 @@ Print:
   Unit files: .claude/modernize/units/__*__.json
 ```
 
-If auth seeding succeeded, append the seeded dev users + the `curl` login example and the `⚠ DEV ONLY — credentials in .claude/modernize/dev-credentials.md` note. If seeding deferred (exit 2), append the "run DB migrations, then re-run `<command>`" block instead.
+If auth seeding succeeded, append the seeded dev users + the `curl` login example and the `⚠ DEV ONLY — credentials in .claude/modernize/dev-credentials.md` note. If seeding was blocked (exit 2) or failed (other non-zero), append the prominent `⚠ AUTH SCHEMA NOT READY` callout at the **top** of the summary with the schema-setup + re-run instruction — do not let it read as a clean, fully-finished foundation.
 
 Always close with:
 

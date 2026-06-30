@@ -259,6 +259,8 @@ Compose 3-5 open questions for the team based on:
 - Ambiguous mappings (e.g., legacy `MasterPage` → ???).
 - Items in `migration.md §11 Risks & open questions` that look unresolved.
 
+**Separate out cross-cutting architectural decisions** — open questions whose answer changes *how units get built* and that would otherwise be decided unilaterally, mid-migration, by whoever happens to hit the affected unit first. Typical examples: one responsive layout vs. a separate mobile component tree (legacy `*.Mobile.Master` / view-switcher), the state-management approach, the routing strategy, REST-vs-RPC for the new API surface. Record each as a `state.open_decisions[]` entry `{ id, question, status: "open", affects: [<unit ids/areas>] }` (written in the state-write step below) and present them **prominently in the plan for an explicit team decision at the approval gate** — not buried in the generic open-questions list. A decision the team resolves now is recorded `status: "resolved"` with the choice; otherwise `unit-migrator` surfaces the still-open one when it reaches an affected unit (it refuses to pick an option unilaterally) and writes the resolution back. This is what stops the "mobile strategy got decided silently during SiteLayout" class of surprise.
+
 ### Out of scope
 
 Mirror `migration.md §9` list verbatim into the plan's "Out of scope" section.
@@ -301,10 +303,13 @@ Do **not** prompt interactively — keep the bootstrap path friction-free. (`rev
   "scaffold": "<see rule below>",
   "unit_ids": [ <foundation units (__auth__ first, then other concerns) then feature units, ordered phase asc, list_index asc> ],
   "out_of_scope": [ <from §9> ],
+  "open_decisions": [ <architectural decisions from the Open-questions step: { "id", "question", "status": "open" | "resolved", "decision"?, "affects"? }> ],
   "lock": null,
   "updated_at": "<ISO now>"
 }
 ```
+
+On a re-plan, **preserve** any `open_decisions[]` entries already `resolved` (don't re-ask a decision the team made); carry forward still-`open` ones and add newly-surfaced decisions.
 
 The `foundation.concerns` list is the set `/web-modernize:foundation` will establish (Step 2b). On a re-plan, preserve any already-established concerns (their synthetic units carry status `migrated` and are preserved by the Step-4 merge); add newly-checked concerns as new `pending` foundation units.
 

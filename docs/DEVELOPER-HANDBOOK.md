@@ -100,7 +100,7 @@ Commit `.claude/modernize/` after each unit. That's how the whole team shares pr
 | `/abandon [--soft\|--hard\|--unit <id>]` | Drop a unit or reset the workspace. Destructive forms need a two-step confirm. |
 | `/sync` | After `git fetch`, reconcile `state.json` + per-unit files with deterministic merge rules. |
 | `/status` | Read-only dashboard: progress, in-flight units, stalls, blockers, locks, **artifact-drift staleness**, and the next command. |
-| `/report [--format=md\|json\|html]` | Stakeholder report: burndown, velocity, ETA, risk heat-map. |
+| `/report [--format=html\|json\|md]` | Stakeholder report (defaults to HTML): burndown, velocity, ETA, risk heat-map, pending verification, E2E/parity/quality findings. |
 | `/unlock` | Force-clear a stuck advisory lock (type `force-clear`). |
 
 ---
@@ -241,8 +241,16 @@ plain English routes to the right command:
 
 ---
 
-## 13. What's new (v0.12.0 – v0.15.0)
+## 13. What's new (v0.12.0 – v0.16.0)
 
+- **Auto-authored E2E + richer reporting (v0.16.0)** — when dynamic testing is enabled, `unit-migrator`
+  (§7d) now authors a per-unit Playwright spec (`e2e/<unit.id>.spec.ts`) from the unit's routes +
+  Given/When/Then contract, asserting asset resolution (`naturalWidth > 0`) and key elements — no more
+  hand-writing specs. `/verify --dynamic` records pass/fail/skip into `unit.e2e.e2e_results`. `/report`
+  **defaults to HTML** and gains Pending-verification, Dynamic/E2E, and parity/quality findings sections.
+  Plus: silent-config + CSS-fidelity gotchas, `state.open_decisions[]` (architectural decisions decided
+  at `/plan`, never unilaterally mid-migration), a `duplication` quality dimension, foundation gating DB
+  migrations before seeding, and reactive auth + SPA-nav idioms.
 - **Plan-approval gate (v0.15.0)** — `/next`, `/migrate`, `/retry` present a plan and wait for
   approval before writing (opt-out; migration-wide default `review_mode` set at `/plan`, per-unit
   `--plan`/`--no-plan`). `/foundation` has an always-on consolidated design gate (`--no-plan` to skip).

@@ -41,7 +41,7 @@ Per-concern recipe (target-idiomatic; examples, not mandates):
 
 | Concern | Write (own files) | root_wiring to return |
 |---|---|---|
-| `auth` | client/hook (`useAuth`/`AuthService`), login page + logout, protected-route primitive, token/session refresh, role/claim mapping; for a local password store, the API login/register + hashing (per the framework `## Auth notes` + `permanent-gotchas.md`) | mount the auth provider + protected-route wrapper at the root; register `/login` route |
+| `auth` | a **reactive** auth context/store + hook (`useAuth`/`AuthService`) — auth state must be reactive so consumers re-render on mid-session login/logout, **not** a one-shot synchronous read; login page + logout, protected-route primitive, token/session refresh, role/claim mapping; for a local password store, the API login/register + hashing (per the framework `## Auth notes` + `permanent-gotchas.md`) | mount the auth provider + protected-route wrapper at the root; register `/login` route |
 | `data` | **data-access WIRING only** — the ORM/data-access client + connection/pool config, the migration-tooling harness (e.g. Alembic / EF migrations / Flyway / TypeORM), and base entity/repository conventions. Do **NOT** translate tables, queries, or stored procs — that is the separate bulk data-migration phase. | initialise the DB connection/pool + ORM at startup; expose the data client to feature units |
 | `i18n` | locale catalogs, an i18n config/init module, a locale switcher component | wrap the app in the i18n provider; set default locale |
 | `feature-flags` | a flag client/init module + a typed `useFlag`/accessor | mount the flag provider at the root |

@@ -38,7 +38,8 @@ Test smoke: `npm run test -- --run`.
 
 Read by `/web-modernize:scaffold` (when `migration.md §12` "Dynamic testing" is `yes`) and run by `/web-modernize:verify --dynamic` (advisory, never blocks).
 
-- **E2E (Phase B):** `npm i -D @playwright/test && npx playwright install --with-deps chromium`. Write `playwright.config.ts` (`testDir: "e2e"`, `webServer` running `npm run dev` on 5173, `baseURL`). Specs in `apps/web-new/e2e/<route>.spec.ts`. Script: `"test:e2e": "playwright test"`. verify.config `dynamic.e2e`: `npm --prefix ${ui_root} run test:e2e`.
+- **E2E (Phase B):** `npm i -D @playwright/test && npx playwright install --with-deps chromium`. Write `playwright.config.ts` (`testDir: "e2e"`, `webServer` running `npm run dev` on 5173, `baseURL`). Script: `"test:e2e": "playwright test"`. verify.config `dynamic.e2e`: `npm --prefix ${ui_root} run test:e2e`.
+  - **Per-unit authoring:** `/web-modernize:scaffold` writes ONE seed sample spec; thereafter `unit-migrator` §7d authors one spec per UI unit at `apps/web-new/e2e/<unit.id>.spec.ts` (keyed by **unit id**, not route, to avoid collisions when units share a route prefix), driven by the unit's `routes[]` + its `## Behaviour contract (Given/When/Then)`. Assert asset `src` resolution (`naturalWidth > 0`) and key-element/class visibility — **not** pixel diffs.
 - **API replay (Phase A):** scaffold `apps/web-new/e2e/replay.mjs` (or under the API app) — reads recorded request/response fixtures from `${baseline_dir}`, replays each request against `VITE_API_URL`, and diffs the JSON response (status + body shape) against the recording; exits non-zero with a diff report on mismatch. verify.config `dynamic.api_replay`: `node apps/web-new/e2e/replay.mjs --baseline ${baseline_dir}`.
 - **Baseline:** `/web-modernize:verify --capture-baseline` records the legacy app's responses into `${baseline_dir}` (`.claude/modernize/baseline/`, gitignored). Phase A skips with guidance until a baseline exists.
 

@@ -173,6 +173,7 @@ This is the actual translation work.
      - <e.g. ViewState → useReducer; <asp:GridView> → TanStack Table; cookie session reused>
    Tests to write:
      - <translated from <legacy test> | generated for <behaviour>>
+     - <for a UI unit with dynamic testing enabled: the Playwright E2E spec `e2e/<unit.id>.spec.ts` covering routes <…>>
    Dependencies relied on: <dep ids, or "none beyond __auth__">
    Open questions / risks: <ambiguities you resolved and how, or "none">
 
@@ -194,6 +195,8 @@ This is the actual translation work.
    - Server-side validators → client + server validation.
    - JSP scriptlets → typed view models + template logic.
    - AngularJS controllers → modern composables / hooks.
+   - Auth/session reads (server-side `User.Identity`, `Session["user"]`, `request.user`) → consume the foundation's **reactive** auth context/hook (e.g. `useAuth()`), established by `/web-modernize:foundation`'s auth concern — not synchronous one-shot reads in the render body. A component that reads auth state imperatively at render time won't re-render on mid-session login/logout; bind to the reactive context so it does.
+   - Server-side navigation (`Response.Redirect`, `RedirectToAction`, `forward`/`sendRedirect`, `header("Location: …")`, `window.location.href = …` carried over verbatim) → the target SPA's **client router** navigation (the framework's `navigate()` / `<Link>` / router push), not a full-page reload. A post-submit `window.location.href = '/'` re-downloads the whole app and drops client state; use the router so navigation stays in-SPA. (The `migration-critic` flags surviving full-page reloads as legacy-paradigm leakage.)
 
 7b. **Translate visuals, not just logic — preserve the legacy design.** This is as important as step 7. The user expectation is "the new page looks like the old page", not a clean-room re-design. A migration that produces correct data and broken-looking pages is a half-done migration.
 
@@ -212,6 +215,7 @@ This is the actual translation work.
      - If the path points at a directory under the legacy `Pics/`, `images/`, `Content/`, `wwwroot/`, `fonts/`, etc., the file should already exist in the target's `public/` (copied by `/web-modernize:scaffold`'s asset-copy step).
      - If the asset is missing, do NOT silently break the reference. Add a `// TODO: asset missing — copy from <legacy path>` comment near the reference and add a "Gotchas — missing assets" note in `notes/<unit.id>.md` with the expected target path.
      - If the legacy uses absolute URLs like `/Content/Pics/foo.png` and the target framework serves `public/` at a different base path (e.g., Next.js basePath, Vite base config, custom prefix), surface the discrepancy in the unit's notes.
+   - **Verify config-driven values resolve (not just assets).** When the legacy code reads a config value (a `Web.config`/`appSettings` key, `application.properties` entry, env var) and the migrated code references the equivalent key, ensure that key actually exists **with a value** in the target's config (`appsettings*.json`, `.env`, `application.yml`). A referenced-but-absent config key is a **silent runtime bug** that neither a build nor a static parity review catches — e.g. an image-base-URL key missing makes every image fall back to a bare filename and render broken. If a referenced key has no target value, add it carrying the legacy default (or a `// TODO: set <key>` placeholder when no default is safe) and record it in `notes/<unit.id>.md` under "Gotchas — config carried over". This is the static counterpart to the asset-resolution E2E assertion in step 7d.
    - **Record the design translation in notes.** Append to `notes/<unit.id>.md` a "Design translation" section. Format: a short table mapping each legacy custom class used in this unit to its target translation (Tailwind utilities, CSS module class, component library equivalent), plus any rules that ended up in shared CSS rather than per-component styles.
 
 7c. **Tests — translate legacy first, then top up to coverage threshold.** Read `state.testing.ui_framework`, `state.testing.api_framework`, and `state.testing.target_pct` (seeded by `/web-modernize:plan` from `migration.md §12`). Pick the framework that matches this unit's `target_paths` (UI framework if paths fall under `state.scaffold.ui.path`, API framework if under `state.scaffold.api.path`, or run both for cross-cutting units). If the relevant framework is `"manual"` or `"n/a"`, record `unit.tests = { "framework": "<value>", "skipped_reason": "<manual|n/a>" }` and skip the rest of 7c.
@@ -291,15 +295,24 @@ This is the actual translation work.
    }
    ```
 
-   Update `in_flight.current_step = "tests written"` and save the per-unit file. Proceed to step 8.
+   Update `in_flight.current_step = "tests written"` and save the per-unit file. Proceed to step 7d.
+
+7d. **E2E specs — author Playwright specs for UI units (advisory, never blocks).** Skip this step entirely unless **all** of these hold: `verify.config.json.dynamic.enabled == true`, `dynamic.e2e` is set, AND this unit has a UI surface (`unit.kind` in `page` / `component` / `cross-cutting`, OR any `target_paths` fall under `state.scaffold.ui.path`, OR `routes[]` has an entry with `kind == "ui"`). When skipped, print one explicit, non-silent line (`ℹ <unit.id>: E2E spec authoring skipped (<dynamic testing disabled | non-UI unit>)`) and proceed to step 8.
+
+   Otherwise author **one** Playwright spec for this unit at the path the target framework's `## Dynamic tests` section prescribes (generic fallback `apps/web-new/e2e/<unit.id>.spec.ts`). Key the file by **`unit.id`**, not by route, so two units that share a route prefix never collide. The `/web-modernize:scaffold` sample spec is the seed; this accretes alongside it.
+
+   - **Drive the test cases from** (in priority order): the unit's UI `routes[]`; the `## Behaviour contract (Given/When/Then)` in `notes/<unit.id>.md` (written in step 9 — if you reach here before it exists, derive the same Given/When/Then from the rules you just translated); `migration.md §10` acceptance criteria; the visual/parity reasoning from step 7b. Emit one `test()` per Given/When/Then: navigate (Given) → act (When) → assert (Then). For a trivial unit with no behaviour contract, author a **minimal smoke spec** (the route renders, a key landmark element is visible, no console errors).
+   - **Assert visually load-bearing facts** (this is what catches the silent-breakage class — broken images, dropped chrome — that build + static parity review miss). For routes that render images or asset-backed elements, assert the asset actually resolves: e.g. `await expect(img).toHaveJSProperty('naturalWidth')` is `> 0` (a broken `src` yields `0`). Also assert the key legacy elements/classes identified in step 7b are visible. Presence + resolution only — **no pixel-diff** (visual regression is out of scope, consistent with `/verify` §5c).
+   - **Author only — never run the spec here** (running stays in `/web-modernize:verify --dynamic` §5c), and never take the §4 failure path because of E2E. If route data is thin, write the smoke-only spec and note it.
+   - Record on the unit: `unit.e2e = { "spec_path": "<path>", "authored_count": <number of test() blocks>, "routes_covered": [<route paths>], "authored_at": "<now>" }` and save the per-unit file. Proceed to step 8.
 
 8. **Add a placeholder test** (smoke test at minimum). The `migration.md §10` acceptance criteria should drive what is asserted. (Step 7c may have already produced this — skip if `unit.tests.translated_count + unit.tests.generated_count > 0`.)
 9. **Append to `notes/<unit.id>.md`**: design decisions, source-to-target symbol map, gotchas. For `retry` mode, add a "Retry #<N>" section that records what was different this time and (if `retry_prompt` was set) quote the user's override verbatim. The "Design translation" section from step 7b lives in this same notes file.
 
    **Behaviour contract (only when the unit has real rules).** If the legacy unit encodes business rules — calculations, validations, eligibility checks, defaults, state transitions — capture them in the notes' `## Behaviour contract (Given/When/Then)` section as concrete Given/When/Then statements (with real values) **before/while you translate**, so the extracted semantics become an inspectable, git-tracked spec instead of living only in this run's context. The `parity-reviewer` later reads this section as the spec. Skip it for trivial units (a CRUD list, a static display) — leave the section empty rather than inventing rules. Mask any credential values per §0.
 
-   **Emergent reusable-code extraction (record it so `/plan` can backfill a shared unit).** During translation you may extract code you expect to reuse — a helper, hook, formatter, validator, or small component — that was **not** seeded as its own unit. When you do:
-   - **First, reuse don't re-create.** Re-read the existing shared modules you already know about (the ones surfaced in step 2) — if an equivalent already exists, import it instead of writing a new one.
+   **Emergent reusable-code extraction (record it so `/plan` can backfill a shared unit).** During translation you may extract code you expect to reuse — a helper, hook, formatter, validator, small component, or a **shared type / interface / DTO** — that was **not** seeded as its own unit. When you do:
+   - **First, reuse don't re-create.** Re-read the existing shared modules you already know about (the ones surfaced in step 2) — if an equivalent already exists, import it instead of writing a new one. This applies especially to **types/DTOs**: do not redefine an interface (a `CatalogItemDto`-shaped type, a request/response shape) inline when a prior unit already exported it from a shared location — import it. Duplicated type/validator definitions across units are exactly what the `migration-critic` flags.
    - **Place it in the target stack's conventional shared location.** Do **not** assume a fixed path like `src/lib/` — infer the idiomatic shared location from the target framework's conventions and the existing project layout, and **surface the chosen path to the developer at the §3.5 plan gate** (when gated) so it's confirmed, not guessed.
    - **Record it in `notes/<unit.id>.md`** under a `## Shared code extracted` subsection (what, where, why).
    - **Append it to this unit's `extracted_shared[]`** as `{ "id": "<StableId>", "path": "<the path you chose>", "purpose": "<one line>" }` and save the per-unit file. This is concurrency-safe — you only touch your own unit file — and it's the signal `/web-modernize:plan` reads to backfill a `kind: "shared"` unit on its next run so other devs reuse it instead of duplicating it. Mask any credential values per §0.
@@ -308,7 +321,7 @@ This is the actual translation work.
 
 ### Background units (`kind: "background"`)
 
-A background unit runs **without an HTTP request and without a rendered page** — its trigger is in `unit.trigger` (`scheduled` | `queue` | `hub` | `batch` | `startup`). Steps 7 (translate semantics) and 7c (tests) still apply; steps 2b (chrome/CSS), 7b (visuals), and the page/endpoint smoke paths do **not**. Translate the *trigger* to the target stack's idiomatic mechanism, preserving the business logic and schedule/queue semantics exactly:
+A background unit runs **without an HTTP request and without a rendered page** — its trigger is in `unit.trigger` (`scheduled` | `queue` | `hub` | `batch` | `startup`). Steps 7 (translate semantics) and 7c (tests) still apply; steps 2b (chrome/CSS), 7b (visuals), 7d (E2E specs — no UI surface), and the page/endpoint smoke paths do **not**. Translate the *trigger* to the target stack's idiomatic mechanism, preserving the business logic and schedule/queue semantics exactly:
 
 - **Prefer the target framework's declared recipe when present.** If `frameworks/<state.target_stack.api>.md` has a `## Background jobs` section, follow it. Otherwise use the generic mapping below.
 - **Generic trigger → target mapping** (pick by `unit.trigger` and the target stack):
@@ -329,6 +342,15 @@ If `retry_prompt` is set (retry mode only), it is the **first** thing you should
 If `force_deps == true` (set by `/migrate --force` after the user explicitly overrode the dependency block), expect symbols imported from unmet deps to be unavailable. Stub them, leave a `// TODO: provided by <dep.id>` comment, and record the workaround in `notes/<unit.id>.md` under "Gotchas — out-of-order migration". Do not fail just because a dep is missing.
 
 If `force_deps` is `false` or absent, assume the caller verified deps are satisfied. If you still discover a missing symbol during translation that should have been provided by a dep, fail in §4 with a diagnostic explaining the discrepancy.
+
+### Surface unresolved architectural decisions — never decide them unilaterally
+
+`/web-modernize:plan` records cross-cutting architectural decisions the team must make (e.g. one responsive layout vs. a separate mobile component tree, the state-management approach, routing strategy) in `state.open_decisions[]` — each `{ id, question, status, decision, affects }`. Before translating, check whether any **unresolved** decision (`status != "resolved"`) materially affects this unit. If one does, do **not** silently pick an option:
+
+- When **gated** (§3.5), add it to the plan gate's "Open questions / risks" and let the user decide there.
+- When **not gated**, pause and ask the user that single question before writing any file.
+
+Record the chosen resolution back into `state.open_decisions[]` (`status: "resolved"`, `decision: <choice>`, `resolved_by`, `resolved_at`) and save `state.json` so it is decided **once** for the whole migration, not re-litigated per unit. A decision the user (or `/plan`) already resolved is authoritative — follow it without re-asking.
 
 ## 4. Stop conditions (failure)
 
@@ -502,11 +524,17 @@ Write to `.claude/modernize/units/<unit.id>.json`:
       "uncovered_regions": [...]  // only when below_threshold
     }
   },
+  "e2e": {
+    "spec_path": "apps/web-new/e2e/<unit.id>.spec.ts",
+    "authored_count": <N>,
+    "routes_covered": [<route paths>],
+    "authored_at": "<now>"
+  },
   "history": [...existing, { "at": "<now>", "by": "<user>", "from": "in_progress", "to": "migrated", "session_id": "<sid>" }]
 }
 ```
 
-Omit the irrelevant sub-fields (e.g., `endpoints_hit` for a pure UI unit, `build` for a pure API unit). For a background unit, `smoke.kind = "background-tests-only"`, include `build` and `tests`/`coverage_check`, omit `endpoints_hit`, and set `smoke.functional_skipped = "background unit — job not invoked at verify time"`. For a no-recipe functional smoke stack, `smoke.kind = "skipped"` with `smoke.reason = "no recipe for <stack>"`. For a `manual` / `n/a` test framework, omit `smoke.tests` and `smoke.coverage_check`, and set `tests.framework = "<value>"` with `tests.skipped_reason = "<manual|n/a>"`.
+Omit the irrelevant sub-fields (e.g., `endpoints_hit` for a pure UI unit, `build` for a pure API unit; **omit `e2e` entirely for non-UI units or when dynamic testing is disabled** — it is written only when step 7d authored a spec). For a background unit, `smoke.kind = "background-tests-only"`, include `build` and `tests`/`coverage_check`, omit `endpoints_hit`, and set `smoke.functional_skipped = "background unit — job not invoked at verify time"`. For a no-recipe functional smoke stack, `smoke.kind = "skipped"` with `smoke.reason = "no recipe for <stack>"`. For a `manual` / `n/a` test framework, omit `smoke.tests` and `smoke.coverage_check`, and set `tests.framework = "<value>"` with `tests.skipped_reason = "<manual|n/a>"`.
 
 If `coverage_check.below_threshold == true`, print the yellow warning from §5a after the §5b write completes. The unit is still finalised as `migrated` — this is the soft-fail policy.
 

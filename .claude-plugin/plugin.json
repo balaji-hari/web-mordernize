@@ -1,7 +1,7 @@
 {
   "name": "web-modernize",
   "description": "Guides teams through migrating legacy web applications (ASP.NET WebForms, Java/JSP, AngularJS 1.x, etc.) to modern stacks. Provides slash commands for analyze (exhaustive entry-point discovery, incl. background/non-UI jobs), plan (with a dependency graph + review-mode default), scaffold (legacy-asset copy + toolchain preflight), unit-by-unit migration (UI, API, and background units like schedulers/queues/hubs, with an opt-out per-unit plan-approval gate), a foundation phase that establishes auth + cross-cutting concerns behind an always-on design gate, incremental app integration/cutover, behavioural-parity + security review, advisory migration-quality + static-performance review, an opt-in dynamic testing tier (API replay + E2E), rollback, retry, sync, status (with staleness checks), and progress reporting. State is split across per-unit files for multi-developer concurrency.",
-  "version": "0.15.0",
+  "version": "0.16.0",
   "author": {
     "name": "Balaji Harikrishnan",
     "email": "balaji.harikrishnan@cognizant.com"
