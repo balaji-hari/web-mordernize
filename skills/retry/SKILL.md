@@ -71,7 +71,7 @@ If the user provided `--with-prompt`, repeat their override back to them verbati
 
 ## Run the shared migration procedure
 
-Load `${CLAUDE_PLUGIN_ROOT}/agents/unit-migrator.md` and follow it with:
+Follow `${CLAUDE_PLUGIN_ROOT}/agents/unit-migrator.md` **Part A**, inline, starting at §A1, with:
 
 - `mode = "retry"`
 - `unit = <the failed unit object you just read from units/<id>.json>`
@@ -79,15 +79,15 @@ Load `${CLAUDE_PLUGIN_ROOT}/agents/unit-migrator.md` and follow it with:
 - `force_deps = false`
 - `plan_override = <the value parsed in Preflight step 1>`
 
-The shared agent will:
+Part A will:
 
-1. Move the current `unit.failure.diagnostic` into `unit.failure.diagnostic_history[]` (preserving the prior `retry_count` on that entry).
+1. Move the current `unit.failure.diagnostic` into `unit.failure.diagnostic_history[]` (preserving the prior `retry_count` on that entry) — §A2.
 2. Increment `unit.retry_count`.
 3. Set `unit.last_retry_prompt = retry_prompt` (or leave unchanged if null).
 4. Reset `unit.failure.diagnostic` and `unit.failure.branch` to empty.
 5. Acquire the unit (status → `in_progress`, populate `in_flight`) and write `units/<unit.id>.json`.
-6. Bias the migration design by `retry_prompt` if set.
-7. Either finish as `migrated` or stop as `failed` (with the new diagnostic in `failure.diagnostic`, the old one already preserved in `failure.diagnostic_history`).
+6. Launch `unit-migrator`'s Part B (once, or twice around a plan-gate approval) to bias the migration design by `retry_prompt` and either finish as `migrated` or stop as `failed`.
+7. At §A7, write the final record — the new diagnostic in `failure.diagnostic` if it failed again, the old one already preserved in `failure.diagnostic_history`.
 
 ## Closing message
 
@@ -129,7 +129,7 @@ the pattern across attempts. Possible next steps:
     human needs to migrate this unit manually.
 ```
 
-On cancel at the plan gate (the user chose `[c]` in §3.5 — `unit.status` is now `pending`, no new files written):
+On cancel at the plan gate (the user chose `[c]` in `agents/unit-migrator.md` Part A §A6 — `unit.status` is now `pending`, no new files written):
 
 ```
 ○ Retry cancelled at the plan gate — <unit.id> is back to `pending`; nothing was written.

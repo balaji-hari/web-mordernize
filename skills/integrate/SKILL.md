@@ -44,7 +44,7 @@ The router/nav/proxy files are **shared** — they're now owned by the integrati
 
 ## Whole-app smoke
 
-Build + boot the composed app (UI: `npm run build && npm run typecheck` from `state.scaffold.ui.path`; API: boot + `/health` per the same recipe `unit-migrator` §5a uses). Then:
+Build + boot the composed app (UI: `npm run build && npm run typecheck` from `state.scaffold.ui.path`; API: boot + `/health` per the same recipe `unit-migrator` Part B §B7a uses). Then:
 - Hit a **sample of migrated routes** (UI: confirm they render inside the layout; API: 2xx on a representative request).
 - Assert the **nav renders** and there are **no broken imports** and **no dangling links** to not-yet-migrated pages (a nav entry pointing at a route with no migrated unit is a finding).
 

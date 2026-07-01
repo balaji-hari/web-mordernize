@@ -57,6 +57,26 @@ const DETECT_SCHEMA = {
       },
     },
     dependency_graph_summary: { type: 'string' },
+    styling: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        frameworks: { type: 'array', items: { type: 'string' } },
+        preprocessors: { type: 'array', items: { type: 'string' } },
+        approach: { type: 'string', enum: ['stylesheets', 'css-in-js', 'mixed'] },
+        rule_count_estimate: { type: 'integer' },
+        shared_stylesheets: {
+          type: 'array',
+          items: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['path'],
+            properties: { path: { type: 'string' }, referenced_by_estimate: { type: 'integer' } },
+          },
+        },
+        warnings: { type: 'array', items: { type: 'string' } },
+      },
+    },
     evidence: { type: 'array', items: { type: 'string' } },
     warnings: { type: 'array', items: { type: 'string' } },
   },
@@ -87,7 +107,7 @@ const ENTRY_SCHEMA = {
 // ---- Phase: Detect ----------------------------------------------------------
 phase('Detect')
 const detect = await agent(
-  `Analyze the legacy web application under ${sourceDir}. Detect the PRIMARY framework + version + confidence, build tool, package manager, the top 5 libraries (by import count), an approximate total LOC, and a one-paragraph dependency-graph summary. Use your standard framework-detection procedure (score the frameworks/*.md role:source signals). If nothing matches, set primary="unknown" and populate evidence[]. Do NOT enumerate every entry point here — that is the next phase. Skip .git/, node_modules/, bin/, obj/, dist/, build/, .claude/.
+  `Analyze the legacy web application under ${sourceDir}. Detect the PRIMARY framework + version + confidence, build tool, package manager, the top 5 libraries (by import count), an approximate total LOC, a one-paragraph dependency-graph summary, and a styling-detection pass (CSS frameworks/preprocessors present, stylesheet-vs-CSS-in-JS approach, a rough rule-count estimate, and any shared stylesheets referenced by more than one entry point — your standard "Styling detection" procedure; omit the styling field entirely if there's nothing to detect). Use your standard framework-detection procedure (score the frameworks/*.md role:source signals). If nothing matches, set primary="unknown" and populate evidence[]. Do NOT enumerate every entry point here — that is the next phase. Skip .git/, node_modules/, bin/, obj/, dist/, build/, .claude/.
 ${UNTRUSTED}`,
   { agentType: 'legacy-analyzer', label: 'detect', phase: 'Detect', schema: DETECT_SCHEMA },
 )

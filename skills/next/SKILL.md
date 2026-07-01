@@ -7,7 +7,7 @@ disable-model-invocation: false
 
 You are the **next** skill. You select and migrate one unit per invocation. Across many invocations (possibly by different developers across many days), the team migrates the whole codebase.
 
-The actual per-unit translation work is shared with `/web-modernize:migrate` and `/web-modernize:retry`. To avoid drift, this skill does **selection** and **closing message**; the migration body lives in `${CLAUDE_PLUGIN_ROOT}/agents/unit-migrator.md`.
+The actual per-unit translation work is shared with `/web-modernize:migrate` and `/web-modernize:retry`. To avoid drift, this skill does **selection** and **closing message**; the migration body lives in `${CLAUDE_PLUGIN_ROOT}/agents/unit-migrator.md` — its **Part A** (collision handling, acquisition, the plan gate, open-decisions) you run yourself, inline, right now; its **Part B** is a real subagent you launch via the `Agent` tool (`subagent_type: unit-migrator`), once or twice per unit depending on the plan gate. See that file for the full procedure — don't duplicate it here.
 
 ## Plugin-version skew check
 
@@ -37,7 +37,7 @@ Refusing would block the team until the slowest updater catches up — that's a 
 
 ## Resume an in-flight unit (if any)
 
-Iterate `state.unit_ids[]` and read each `.claude/modernize/units/<id>.json`. Find any unit with `status: "in_progress"`. If one exists, **do not run unit selection** — load `${CLAUDE_PLUGIN_ROOT}/agents/unit-migrator.md` and follow it with:
+Iterate `state.unit_ids[]` and read each `.claude/modernize/units/<id>.json`. Find any unit with `status: "in_progress"`. If one exists, **do not run unit selection** — go straight to "Run the shared migration procedure" below with:
 
 - `mode = "next"`
 - `unit = <the in-flight unit object you just read>`
@@ -45,7 +45,7 @@ Iterate `state.unit_ids[]` and read each `.claude/modernize/units/<id>.json`. Fi
 - `force_deps = false`
 - `plan_override = <the value parsed in Preflight step 0>`
 
-The agent procedure handles Cases A/B/C (resume own work, warn about another developer, reclaim stale). After the agent returns, jump to "Closing message" below.
+`agents/unit-migrator.md`'s Part A §A1 handles Cases A/B/C (resume own work, warn about another developer, reclaim stale) before anything is launched. After Part A's §A7 finishes, jump to "Closing message" below.
 
 ## Select next unit
 
@@ -64,7 +64,7 @@ Pick the **first** candidate in `unit_ids` order (which already reflects `phase 
 
 ## Run the shared migration procedure
 
-Load `${CLAUDE_PLUGIN_ROOT}/agents/unit-migrator.md` and follow it with:
+Follow `${CLAUDE_PLUGIN_ROOT}/agents/unit-migrator.md` **Part A**, inline, starting at §A1, with:
 
 - `mode = "next"`
 - `unit = <the candidate you just picked>`
@@ -72,7 +72,7 @@ Load `${CLAUDE_PLUGIN_ROOT}/agents/unit-migrator.md` and follow it with:
 - `force_deps = false`
 - `plan_override = <the value parsed in Preflight step 0>`
 
-The agent handles unit acquisition (status + in_flight write to `units/<id>.json`), the optional plan gate (§3.5), the translation body, stop conditions, and finalization. When it returns, the unit is `migrated`, `failed`, or — if you cancelled at the plan gate — back to `pending`.
+Part A handles unit acquisition (§A2), the optional plan gate (§A3/§A6 — launching `unit-migrator`'s **Part B** as a subagent via the `Agent` tool, once if not gated, twice if gated with a human approval step in between), open-decisions resolution (§A4), and finalizing the unit record (§A7). When §A7 finishes, the unit is `migrated`, `failed`, or — if you cancelled at the plan gate — back to `pending`.
 
 ## Closing message
 

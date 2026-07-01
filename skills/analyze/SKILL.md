@@ -32,7 +32,7 @@ It returns one object in the **same shape as `analysis.json`** (detect metadata 
 
 Delegate to the `legacy-analyzer` subagent (defined at `${CLAUDE_PLUGIN_ROOT}/agents/legacy-analyzer.md`). Invoke it with a prompt like:
 
-> Analyze the legacy web application in the current working directory. Report: primary framework + version + confidence; build tool / package manager; top 5 libraries; approximate LOC; entry points (pages/controllers/components); rough dependency graph (which files import which). Load detection rules from `${CLAUDE_PLUGIN_ROOT}/frameworks/*.md` files where `role: source`. If no rule matches, return `primary: "unknown"` with the `evidence[]` array populated. Format the report as JSON matching the schema in the agent's own preamble. Skip `.git/`, `node_modules/`, `bin/`, `obj/`, `dist/`, `build/`, `.claude/`.
+> Analyze the legacy web application in the current working directory. Report: primary framework + version + confidence; build tool / package manager; top 5 libraries; approximate LOC; entry points (pages/controllers/components); rough dependency graph (which files import which); and a styling-detection pass (CSS frameworks/preprocessors, stylesheet-vs-CSS-in-JS approach, rule-count estimate, shared stylesheets referenced by more than one entry point). Load detection rules from `${CLAUDE_PLUGIN_ROOT}/frameworks/*.md` files where `role: source`. If no rule matches, return `primary: "unknown"` with the `evidence[]` array populated. Format the report as JSON matching the schema in the agent's own preamble (including its `## Styling detection` section). Skip `.git/`, `node_modules/`, `bin/`, `obj/`, `dist/`, `build/`, `.claude/`.
 
 Run the subagent, then validate the JSON it returns. If invalid, fix obvious errors and ask the subagent to retry once.
 
@@ -65,10 +65,19 @@ Write a complete payload. Schema:
   "entry_points": [
     { "id": "LoginController", "kind": "controller", "files": ["..."] }
   ],
+  "styling": {
+    "frameworks": ["bootstrap"],
+    "preprocessors": ["sass"],
+    "approach": "stylesheets",
+    "rule_count_estimate": 0,
+    "shared_stylesheets": [{ "path": "...", "referenced_by_estimate": 0 }]
+  },
   "dependency_graph_summary": "<one-paragraph description>",
   "warnings": ["<any caveats, e.g., 'mixed asp.net mvc and webforms'>"]
 }
 ```
+
+Omit `styling` entirely (not an empty object) when the analyzer found no stylesheets to report.
 
 `entry_points[]` is the seed list that `/web-modernize:plan` will turn into per-unit files under `.claude/modernize/units/<id>.json` plus an ordered `state.json.unit_ids` array. Be thorough but not exhaustive — large repos can have hundreds; cap at the top 100 by importance heuristic (route registration, "Main" pages, controllers with many actions).
 
@@ -177,6 +186,7 @@ Print a one-screen summary. Two shapes depending on whether the interview comple
   Build tool: <tool>     LOC estimate: <n>
   Top libraries: <comma-separated top 3>
   Entry points found: <n> (will become migration units in /plan)
+  <if analysis.styling present: "CSS: ~<rule_count_estimate> rules (<frameworks joined>) — <n> shared stylesheet(s) detected; /plan will offer to size them as a unit.">
 
 ✓ migration.md filled: <N of M required fields answered via interview>
 

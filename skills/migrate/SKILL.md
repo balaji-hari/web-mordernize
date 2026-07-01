@@ -7,7 +7,7 @@ disable-model-invocation: false
 
 You are the **migrate** skill. You take an explicit unit id as `$ARGUMENTS` and migrate it, overriding the dependency-aware picking that `/web-modernize:next` does.
 
-The translation work itself is shared with `/web-modernize:next` and `/web-modernize:retry` and lives in `${CLAUDE_PLUGIN_ROOT}/agents/unit-migrator.md`. This skill handles **explicit selection**, **dependency gating**, and **status-specific gating**; the migration body is delegated.
+The translation work itself is shared with `/web-modernize:next` and `/web-modernize:retry` and lives in `${CLAUDE_PLUGIN_ROOT}/agents/unit-migrator.md`. This skill handles **explicit selection**, **dependency gating**, and **status-specific gating**; the migration body is delegated — its **Part A** you run inline, its **Part B** is a subagent you launch via the `Agent` tool.
 
 ## Preflight
 
@@ -101,7 +101,7 @@ Decide whether to invoke the shared agent based on `unit.status`:
 
 ## Run the shared migration procedure
 
-Load `${CLAUDE_PLUGIN_ROOT}/agents/unit-migrator.md` and follow it with:
+Follow `${CLAUDE_PLUGIN_ROOT}/agents/unit-migrator.md` **Part A**, inline, starting at §A1, with:
 
 - `mode = "migrate"`
 - `unit = <the unit object you just read from units/<id>.json>`
@@ -109,7 +109,7 @@ Load `${CLAUDE_PLUGIN_ROOT}/agents/unit-migrator.md` and follow it with:
 - `force_deps = <true if --force was passed, else false>`
 - `plan_override = <the value parsed in Preflight step 1>`
 
-The agent reads and writes only `units/<unit.id>.json` for unit-level state and `state.json` only for the top-level `foundation_done → in_progress` transition. With the plan gate active, the agent presents a plan (§3.5) and waits for approval before writing; cancelling there returns the unit to `pending` with nothing written.
+Part A reads and writes only `units/<unit.id>.json` for unit-level state and `state.json` only for the top-level `foundation_done → in_progress` transition (plus the open-decisions resolution at §A4, if any). With the plan gate active, Part A launches `unit-migrator`'s Part B as a `plan_only` subagent call, presents the returned plan (§A6), and waits for approval before launching the `full` call that actually writes; cancelling there returns the unit to `pending` with nothing written.
 
 ## Closing message
 

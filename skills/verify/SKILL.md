@@ -34,9 +34,30 @@ Refusing would block the team until the slowest updater catches up — that's a 
    - The remaining non-flag token, if any, is `<unit-id>` → read `.claude/modernize/units/<unit-id>.json`. If the file does not exist, list valid ids (`ls .claude/modernize/units/*.json`) and stop.
    - No `<unit-id>` → verify ALL units currently in status `migrated`. Iterate `state.unit_ids[]`, read each `units/<id>.json`, filter to `status == "migrated"`.
 
-## Per-unit verification
+## Verification strategy
 
-For each unit to verify:
+Steps 1 through 5c below compute each unit's results (thresholds + the three independent reviewer dimensions). The output is the same per-unit shape either way — pick the method by what's available. Once computed (by either method), "Finalize each unit" (steps 6-8) always runs the same way, inline, regardless of which method produced the inputs.
+
+### Method A — Workflow orchestration (preferred when the Workflow tool is available)
+
+Running `/web-modernize:verify` is your authorization to use the **Workflow tool**. When available, invoke it instead of looping yourself:
+
+```
+Workflow({ scriptPath: "${CLAUDE_PLUGIN_ROOT}/workflows/verify-run.js", args: {
+  units: [<each unit object to verify>],
+  verifyConfig: <verify.config.json>,
+  flags: { noParity: <bool>, noQuality: <bool>, dynamic: <bool> },
+  targetStack: <state.target_stack>
+} })
+```
+
+Per unit, it runs the lint/typecheck/test thresholds first; **only if those pass** (and the corresponding flag wasn't set), it fans out the three independent, disjoint-write reviewer dimensions — `parity-reviewer`, `migration-critic`, and (when `flags.dynamic`) the dynamic tier — **concurrently**, since none of them depend on each other's output. Across multiple units, one unit's reviewers can be running while another unit is still running its test suite (no barrier between units) — this is the wall-clock win for `--all`/multi-unit runs; the parallel reviewer fan-out is a win even for a single unit. The workflow's `parity-reviewer`/`migration-critic` agents are **read-only** (same as everywhere else they're used) — the workflow only **returns** data; it never writes `units/<id>.json` itself. Tell the user the unit count before launching. Surface its `log()` lines.
+
+It returns `{ results: [{ unit_id, thresholds_met, verification, raw_output_tail, parity_findings, parity_summary, blocking_parity_count, quality_findings, quality_headline, dynamic_findings, e2e_results }] }` — one entry per unit. Workflow scripts cannot generate timestamps, so `parity_reviewed_at`/`quality_reviewed_at`/`dynamic_reviewed_at`/`verified_at` are **not** in the returned object — stamp them yourself with "now" when you write each unit's file in "Finalize each unit" below, exactly as Method B already does inline. If the Workflow tool is NOT available (older Claude Code build, headless run), fall through to Method B automatically.
+
+### Method B — sequential fallback
+
+For each unit to verify, run steps 1 through 5c yourself, in order, exactly as below:
 
 1. **Check status**. Unit must be in status `migrated` (or `verified` for re-runs). If in some other status, print:
    - `pending` / `in_progress` → "Cannot verify — unit has not been migrated yet."
@@ -104,6 +125,10 @@ For each unit to verify:
    - **Persist:** write the findings to `unit.dynamic_findings` (replace wholesale), set `unit.dynamic_reviewed_at = <now>`, `unit.e2e.e2e_results` (per above, when Phase B ran), and `verification.dynamic = "clean" | "<H> high · <M> medium · <L> low" | "skipped" | "unavailable"`. Phase C (visual diff) is out of scope.
    - **Does NOT affect the transition** (step 6 depends only on lint/typecheck/tests + parity).
 
+## Finalize each unit
+
+Runs the same way regardless of which method (A or B) produced the per-unit results — for Method A, once per entry in the returned `results[]`; for Method B, inline as you finish each unit's steps 1-5c.
+
 6. **Decide unit status transition** and write `.claude/modernize/units/<unit-id>.json`:
    - lint/typecheck/test thresholds (`lint_must_pass`, `typecheck_must_pass`, `tests_must_pass`) NOT met → keep `status = "migrated"`, record the detail in `verification.failures[]` and `notes_path`. (Parity was skipped per step 5.)
    - Thresholds met AND no blocking parity findings → set `status = "verified"`. Record `verification.parity` as `"clean"` (zero findings) or `"<A> acknowledged / <I> info"`.
@@ -129,7 +154,7 @@ Common post-check: a full `npm run build` to catch cross-unit type errors that p
 
 In addition to whatever the team configured in `verify.config.json`, automatically run an aggregate coverage check at `run_when: "before_complete"` if `state.testing.target_pct` is set and at least one unit has a `tests.coverage` block.
 
-1. Pick the runner-wide coverage command from `state.testing` (mirror the per-unit commands in `agents/unit-migrator.md` §3 step 7c, but without `target_paths` scoping — measure the whole project):
+1. Pick the runner-wide coverage command from `state.testing` (mirror the per-unit commands in `agents/unit-migrator.md` Part B step 7c, but without `target_paths` scoping — measure the whole project):
 
    | Runner | Project-wide coverage command (working dir = scaffold path) |
    |---|---|

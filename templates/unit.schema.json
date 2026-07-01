@@ -321,7 +321,7 @@
             "description": "Stable, content-derived identifier, e.g. 'jobol:OrderListPage:useeffect-postback-emulation'. Deterministic from kind + the observation, so it survives a re-run on unchanged code and a fixed issue drops off."
           },
           "kind": {
-            "enum": ["jobol", "idiom", "error_handling", "dead_abstraction", "duplication", "test_quality", "oncall_readiness", "perf_n_plus_one", "perf_unbounded_data", "perf_waterfall", "perf_blocking", "perf_bundle", "other"]
+            "enum": ["jobol", "idiom", "error_handling", "dead_abstraction", "duplication", "test_quality", "oncall_readiness", "perf_n_plus_one", "perf_unbounded_data", "perf_waterfall", "perf_blocking", "perf_bundle", "css_unported_rules", "css_specificity_leakage", "css_missing_breakpoint", "css_dead_selector", "other"]
           },
           "severity": {
             "enum": ["blocker", "high", "medium", "nit"],

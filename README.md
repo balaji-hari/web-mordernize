@@ -155,6 +155,7 @@ Commit the `.claude/modernize/` directory. That's how Alice on Monday and Bob on
 | `/web-modernize:scaffold [--assets-only]` | Create target project skeleton (UI, optional API, optional DB) **and** copy legacy assets (images, fonts, favicon) into the target's `public/`. `--assets-only` backfills assets on an already-scaffolded repo. | Once, after `/plan`. Re-run with `--assets-only` if assets were missed. |
 | `/web-modernize:foundation [--no-plan]` | Establish the foundational slice — **auth** (login/logout/session, dev users) plus any cross-cutting concerns opted into in `migration.md §13` (i18n, feature flags, error handling, telemetry, logging). **Always-on consolidated design gate** (present design for all concerns → approve → write); implements them in parallel when possible; `--no-plan` skips the gate. Replaces the former `/auth`. | Once, after `/scaffold` |
 | `/web-modernize:next [--plan \| --no-plan]` | Pick next pending unit and migrate it. Honors the **plan gate** (presents a plan, waits for approval before writing) per `review_mode`; `--plan`/`--no-plan` overrides for this unit | In a loop until migration is complete |
+| `/web-modernize:next-batch [--n=K]` | Migrate up to K (default 3, max 8) independent pending units **in parallel** via the Workflow tool. **Always skips the per-unit plan gate** — parallel review of K plans doesn't compose; use `/next` for reviewed, one-at-a-time migration | When you want N× wall-clock speedup on the embarrassingly-parallel portion of a migration |
 | `/web-modernize:migrate <id> [--force] [--plan \| --no-plan]` | Migrate a specifically named unit. Blocks on unmet deps unless `--force`; plan gate as above | When you need to jump to a unit out of order (debug) |
 | `/web-modernize:retry <id> [--with-prompt="…"] [--plan \| --no-plan]` | Re-attempt a failed unit; preserves diagnostic history; plan gate as above | When `/status` shows a unit in `failed` status |
 | `/web-modernize:rollback --unit <id> [--force-shared]` | Revert one unit's target files via git; reset to `pending`. **Refuses by default** if the unit owns shared files other units rely on (layout, shared utilities, `kind: shared`/`cross-cutting` outputs); `--force-shared` overrides after showing the blast radius | When a migrated/verified unit broke and you want a clean re-attempt |
@@ -181,7 +182,7 @@ Code-generating commands present a plan and **wait for your approval before writ
 
 ## Talk to it naturally
 
-You don't have to memorize the 18 slash-command names above. Every skill's `description:` field includes trigger phrases and lifecycle anchors that Claude Code's native skill auto-invocation uses to route plain-English requests to the right command.
+You don't have to memorize the 19 slash-command names above. Every skill's `description:` field includes trigger phrases and lifecycle anchors that Claude Code's native skill auto-invocation uses to route plain-English requests to the right command.
 
 Examples of utterances that route reliably:
 
@@ -350,7 +351,7 @@ The unit's status will be `failed` with `failure.diagnostic` populated. The plug
 
 ### Migrated pages look wrong / use generic styling instead of the legacy design
 
-The migration agent has explicit instructions (as of v0.3.1) to detect the legacy custom design system, preserve class-name conventions, and translate visual intent faithfully — see `agents/unit-migrator.md` §3 step 7b. If your unit still came out with generic styling:
+The migration agent has explicit instructions (as of v0.3.1) to detect the legacy custom design system, preserve class-name conventions, and translate visual intent faithfully — see `agents/unit-migrator.md` Part B step 7b. If your unit still came out with generic styling:
 
 1. Make sure `migration.md §3` "Legacy design system / custom CSS" is filled in with the class-name prefix(es) and stylesheet locations. The agent treats this as authoritative; heuristics are the fallback.
 2. Confirm the agent had access to the legacy stylesheets — they should be in the same directory as the source files, or referenced via `<link>` / `@import`. The agent reads sibling `*.css`/`*.scss`/`*.less` automatically.

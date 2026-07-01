@@ -8,7 +8,10 @@ description: >
   controller), ceremonial error handling, single-use abstractions, tests that
   exercise paths instead of pinning behaviour, on-call/operability gaps, and
   static performance regressions (N+1, unbounded queries, request waterfalls,
-  blocking I/O, bundle bloat — detectable by reading the code, no runtime needed).
+  blocking I/O, bundle bloat — detectable by reading the code, no runtime needed),
+  and CSS fidelity regressions (unported rules, specificity leakage, missing
+  responsive breakpoints, dead selectors — detectable by comparing target
+  stylesheets against the legacy ones, no runtime needed).
   Invoked by /web-modernize:verify (as an ADVISORY, non-blocking pass) and by
   /web-modernize:quality-check. Returns a single JSON block of quality_findings[]
   plus a one-line headline; emits an empty list when the code is idiomatic. This
@@ -86,6 +89,14 @@ Your findings are written to the git-tracked `quality_findings[]` on the unit an
 
 Hold these to the same refute discipline: name the *likely* cost (rows × queries, payload size, blocked path) — not a vague "could be faster". Like every other finding here, they are **advisory and never block**.
 
+**CSS fidelity** — regressions in how the legacy visual design carried over, detectable by reading the target stylesheets/inline styles against the legacy ones (companion to `unit-migrator`'s own step 7b translation discipline — this is the check that catches what 7b missed, not a restatement of it):
+- **`kind: "css_unported_rules"`** — a legacy rule (a class, a selector block) with no traceable equivalent anywhere in the target's styles, and the class/selector is still referenced in the target markup — the visual effect was silently dropped.
+- **`kind: "css_specificity_leakage"`** — a target rule that only "works" because of cascade/specificity accidents (over-qualified selectors, `!important` added to fight another rule, a utility class overridden by a more-specific leftover legacy selector) rather than a clean target-stack styling approach.
+- **`kind: "css_missing_breakpoint"`** — the legacy stylesheet had a responsive breakpoint (media query, a framework's responsive utility class like `col-md-`/`d-md-`) for an element this unit renders, and the target has no equivalent breakpoint behaviour.
+- **`kind: "css_dead_selector"`** — a target stylesheet rule whose selector matches nothing in this unit's target markup (a leftover from a copy-pasted legacy block that no longer applies) — dead weight, not a regression a user sees, but worth flagging so it doesn't get copy-pasted again.
+
+Name the concrete visual consequence ("the mobile breakpoint that stacked the nav at <768px is gone — nav will overflow on phones"), not a vague "styles might differ". Like the other lenses, hold these to the refute discipline below.
+
 `other` — a real maintainability issue that fits none of the above.
 
 ### Severity rubric (advisory grades — none of these block verification)
@@ -135,7 +146,7 @@ For each **blocker** and **high**, state the concrete maintenance/operability co
 }
 ```
 
-- `kind` must be one of: `jobol`, `idiom`, `error_handling`, `dead_abstraction`, `duplication`, `test_quality`, `oncall_readiness`, `perf_n_plus_one`, `perf_unbounded_data`, `perf_waterfall`, `perf_blocking`, `perf_bundle`, `other`.
+- `kind` must be one of: `jobol`, `idiom`, `error_handling`, `dead_abstraction`, `duplication`, `test_quality`, `oncall_readiness`, `perf_n_plus_one`, `perf_unbounded_data`, `perf_waterfall`, `perf_blocking`, `perf_bundle`, `css_unported_rules`, `css_specificity_leakage`, `css_missing_breakpoint`, `css_dead_selector`, `other`.
 - `severity` must be one of: `blocker`, `high`, `medium`, `nit`.
 - `id` is `<kind>:<unit_id>:<slug>`, where `<slug>` is a short kebab summary of the **issue itself**, derived from the observation (not a counter) — so a re-run on unchanged code yields the same id and a fixed issue drops off.
 - `why_it_matters` and `suggestion` are optional but strongly encouraged for `blocker`/`high`.

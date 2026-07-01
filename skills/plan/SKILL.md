@@ -150,6 +150,31 @@ Heuristics for `effort`:
 
 In `unit_ids` ordering, place these foundation units **first** (`__auth__`, then the others) ahead of all feature units. Feature units still get `depends_on: ["__auth__"]` (Step 2); the **other concerns are soft** (phase-1 ordering only, no per-unit dependency) to avoid bloating every unit's `depends_on` — a team wanting a hard gate adds the dep by hand.
 
+#### Step 2c — Size shared stylesheets as a unit (CSS audit)
+
+If `analysis.json.styling.shared_stylesheets[]` is non-empty, surface it to the developer and offer to size it as an explicit unit — the same "establish once, others depend on it" shape as the foundation concerns above, reusing the existing `kind: "shared"` mechanism (the same one Step 6b backfills into) rather than inventing a new kind or phase gate:
+
+```
+Detected <N> shared stylesheet(s) (e.g. <path>, <path>) totaling ~<styling.rule_count_estimate> rules
+(<styling.frameworks joined, or "no framework detected">). Size this as an explicit unit so it's visible
+in the plan and migrated once, rather than discovered piecemeal mid-migration?  (yes/no, default yes)
+```
+
+On yes, seed one synthetic candidate unit:
+```json
+{
+  "id": "__shared-styles__", "kind": "shared",
+  "source_paths": [<styling.shared_stylesheets[].path>], "target_paths": [],
+  "depends_on": [], "phase": 1,
+  "effort": "<S if rule_count_estimate < 200, M if < 800, L otherwise>",
+  "status": "pending", "history": [], "in_flight": null,
+  "notes_path": ".claude/modernize/notes/__shared-styles__.md",
+  "retry_count": 0, "last_retry_prompt": null, "rollback_info": null
+}
+```
+
+Place it in `unit_ids` alongside the other phase-1 synthetic units (after the foundation concerns, before feature units). Per-page CSS porting is unaffected by this — it stays inside each feature unit's own migration (`unit-migrator` §7b/§B1 step 7b); this only pulls the *cross-cutting* stylesheet work out of "discovered reactively via `extracted_shared` mid-migration" into "sized upfront." On a re-plan, this unit flows through the same Step 3–6 merge as any other unit, so progress is preserved. Skip this step entirely (no unit seeded) if `styling.shared_stylesheets[]` is empty or absent, or if the developer answers no.
+
 #### Step 3 — Discover existing per-unit files
 
 List every file matching `.claude/modernize/units/*.json` (excluding `.gitkeep`). Read each into memory. This is the set of `existing_units` keyed by `unit.id` (which must match the file's basename).
