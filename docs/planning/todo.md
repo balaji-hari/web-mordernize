@@ -1,12 +1,12 @@
 # web-modernize — Backlog (open gaps & future designs)
 
-> **This file replaces** the old `docs/todo.md` plus the four separate
-> `docs/planning/future-*.md` docs (additional-agents, code-modernization-borrowings,
+> **This file replaces** the old `docs/todo.md` plus four separate
+> `docs/planning/future-*.md` docs (additional-agents, a numbered feature backlog,
 > data-layer-migration, subagent-unit-migrator). They were two layers of the same backlog —
 > a short tracker that pointed at standalone design docs — and the two layers had already
-> drifted out of sync once (`future-code-modernization-borrowings.md` still listed three
-> items as open after they'd shipped in v0.13.0). Merging removes that failure mode
-> structurally: there's only one place left to update.
+> drifted out of sync once (one of those docs still listed three items as open after they'd
+> shipped in v0.13.0). Merging removes that failure mode structurally: there's only one
+> place left to update.
 >
 > Shipped-feature *narrative* (what changed, why, version numbers) lives in `CHANGELOG.md` —
 > this file does not restate it beyond a one-line pointer per item, to avoid the same kind

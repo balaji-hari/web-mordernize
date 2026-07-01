@@ -257,7 +257,7 @@ Render the unit dependency structure as a Mermaid graph for `plan.md` (the human
 1. **One node per unit** (id = unit id) plus an `Auth[__auth__]` node. Sanitize ids for Mermaid — replace any character outside `[A-Za-z0-9_]` with `_`, and keep the original as a bracket label if it changed.
 2. **One edge per dependency**: `dep --> unit` for every entry in the unit's `depends_on` (including `__auth__`).
 3. **Group by phase** with `subgraph "Phase <n>"` blocks; use `graph LR` so it reads left-to-right by phase.
-4. **Size cap.** If the plan has **more than 40 units**, do NOT emit the node-level graph (Mermaid becomes an unreadable hairball — the same reason `code-modernization` ships an interactive viewer). Instead collapse to **one node per phase** with edges between consecutive phases, and add a line to the success banner: `Dependency graph collapsed to phase-level (<N> units > 40).` Never silently truncate.
+4. **Size cap.** If the plan has **more than 40 units**, do NOT emit the node-level graph (Mermaid becomes an unreadable hairball at that scale). Instead collapse to **one node per phase** with edges between consecutive phases, and add a line to the success banner: `Dependency graph collapsed to phase-level (<N> units > 40).` Never silently truncate.
 
 Substitute a fenced ```mermaid block into `{{DEPENDENCY_GRAPH}}`. Example (small plan):
 
