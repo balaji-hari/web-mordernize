@@ -2,6 +2,14 @@
 
 All notable changes to the `web-modernize` plugin are documented here. Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.17.1] - 2026-07-09
+
+### Fixed
+- **VB.NET source files silently dropped from unit scope** — `frameworks/aspnet-webforms.md` and `frameworks/aspnet-mvc.md` (plus `aspnet-core-mvc.md`) named only C# extensions (`*.aspx.cs`, `Controllers/*.cs`, `*.csproj`) in their Detection/Entry-point-heuristic prose. `legacy-analyzer` still confidently detected the framework for a VB.NET repo (the other strong signals — `*.aspx`, `Global.asax`, `Web.config` — are language-agnostic) but never matched the `.aspx.vb`/`Controllers/*.vb` code-behind/controller files into a unit's `files[]`, so the actual business logic was silently excluded from migration while the tool reported high confidence. Fixed with a **generic rule**, not a `.vb`-specific patch: `agents/legacy-analyzer.md` gains a new **Language-variant siblings** section instructing the agent to treat any single source-extension named in a framework file's Detection/Entry-point prose as illustrative, not exhaustive, and to resolve detection/entry-point-file-inclusion against whichever sibling-language extension (e.g. .NET C#/VB.NET, JVM Java/Kotlin/Groovy/Scala) is actually present — this rule takes precedence over literal single-extension wording anywhere in `frameworks/*.md`, present or future. The three `.NET` framework files gained light cross-reference wording (no rewrite) plus a `*.vbproj` addition to the build-manifest lookup list.
+
+### Version note
+Prompt/doc-only correction to `agents/legacy-analyzer.md` and three `frameworks/*.md` files — no schema, skill, or agent-behavior-shape change. `schema_version` stays `3`.
+
 ## [0.17.0] - 2026-07-01
 
 Four items from `docs/planning/todo.md`'s Tier 1/2 backlog: converts `unit-migrator` into a real subagent (fixing the context-accumulation cost of migrating many units inline), adds an opt-in parallel batch migrator built on that conversion, adds upfront CSS sizing + regression detection (the "CSS audit"), and parallelizes `/verify` across units and reviewer dimensions via the Workflow tool. All schema changes are additive (`schema_version` stays `3`).

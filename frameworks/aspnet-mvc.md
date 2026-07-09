@@ -8,9 +8,9 @@ role: source
 
 Strong signals:
 
-- `Controllers/*.cs` directory present alongside `Views/**/*.cshtml`
+- `Controllers/*.cs` directory present alongside `Views/**/*.cshtml` (or a sibling .NET source-language extension — see `legacy-analyzer.md`'s Language-variant siblings rule; views may be `.vbhtml` instead of `.cshtml`)
 - `App_Start/RouteConfig.cs` present
-- `*.csproj` referencing `System.Web.Mvc`
+- `*.csproj` referencing `System.Web.Mvc` (or `*.vbproj`)
 
 Weak signals:
 
@@ -19,7 +19,7 @@ Weak signals:
 
 ## Entry-point heuristic
 
-Every controller class is one entry point. Unit `id` = controller class name (e.g., `OrderController`); `kind = "controller"`. Include the controller `.cs` file and every view under `Views/<ControllerName>/`.
+Every controller class is one entry point. Unit `id` = controller class name (e.g., `OrderController`); `kind = "controller"`. Include the controller source file (`.cs` or a sibling .NET source-language extension, per the Language-variant siblings rule) and every view under `Views/<ControllerName>/`.
 
 Importance: controllers registered in `RouteConfig.cs` first, then controllers referenced from navigation/master pages, then largest by LOC.
 

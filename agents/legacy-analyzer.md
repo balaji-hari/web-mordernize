@@ -113,6 +113,16 @@ Example `evidence[]` entries for a Rails app (which has no framework file today)
 
 Cap detection scoring at 50 files read per signal — strong signals are file-existence checks, not content searches across the whole tree.
 
+## Language-variant siblings
+
+A framework file's `## Detection` signals and `## Entry-point heuristic` often name **one concrete source-file extension** as an example (e.g. `.aspx.cs` code-behind, `Controllers/*.cs`). Treat that extension as **illustrative, not exhaustive** — many platforms/runtimes support more than one interchangeable source language that compiles or runs identically for that framework's purposes. This rule **takes precedence over** literal single-extension wording anywhere in `frameworks/*.md`; a framework file naming only `.cs` is documentation-by-example, not an exclusive filter, and existing hardcoded phrasing in a framework file never overrides this rule.
+
+Calibrate on platform knowledge, not a lookup table — examples: .NET → C# (`.cs`, `.csproj`) and VB.NET (`.vb`, `.vbproj`); Razor views → `.cshtml` and `.vbhtml`; JVM → Java (`.java`) and Kotlin (`.kt`) / Groovy (`.groovy`) / Scala (`.scala`); Gradle build scripts → `build.gradle` and `build.gradle.kts`.
+
+- **Detection scoring:** when a strong/weak signal names a specific extension, also check for sibling-language files matching the same structural pattern (same directory, same naming convention, different extension). A match on **either** satisfies that signal.
+- **Entry-point file inclusion:** when an `## Entry-point heuristic` names a literal code-behind/controller pattern, resolve it against **whichever sibling extension is actually present** for that unit — never drop a file from `files[]` just because it doesn't match the literal example extension written in the framework file.
+- A repo mixing both languages (e.g. some controllers in `.cs`, others in `.vb`) is normal for these ecosystems — include both, no warning needed. This is distinct from the "mixed frameworks" warning below, which covers two *different frameworks* in one project, not two source languages within one framework.
+
 ## Entry-point heuristics by framework
 
 Each `frameworks/<name>.md` for `role: source` contains an `## Entry-point heuristic` section describing how to enumerate units for that stack. Read it for the detected framework and apply.
@@ -168,7 +178,7 @@ Use `wc -l` or equivalent across the source tree, excluding skipped directories.
 ## Library detection
 
 Inspect the build manifest:
-- `*.csproj`, `packages.config` → NuGet packages
+- `*.csproj`, `*.vbproj`, `packages.config` → NuGet packages
 - `pom.xml` → Maven deps
 - `build.gradle` → Gradle deps
 - `package.json` → npm deps
@@ -193,6 +203,7 @@ Before producing your final JSON, verify:
 - [ ] If `primary == "unknown"`, `evidence[]` is non-empty and lists the concrete signals observed.
 - [ ] `entry_points[]` is non-empty (unless framework is `unknown`).
 - [ ] Every file path in `entry_points[].files` actually exists.
+- [ ] Where a Detection/Entry-point pattern named one source-language extension, sibling-language variants were considered (per Language-variant siblings) before excluding a file or scoring a signal as unmatched.
 - [ ] `loc_estimate > 0`.
 - [ ] `top_libraries[]` is sorted by importance, not alphabetically.
 - [ ] `styling.shared_stylesheets[].path` (if any) actually exists and is referenced by more than one entry point — not just one unit's own stylesheet.
