@@ -7,7 +7,7 @@ disable-model-invocation: false
 
 You are the **migrate** skill. You take an explicit unit id as `$ARGUMENTS` and migrate it, overriding the dependency-aware picking that `/web-modernize:next` does.
 
-The translation work itself is shared with `/web-modernize:next` and `/web-modernize:retry` and lives in `${CLAUDE_PLUGIN_ROOT}/agents/unit-migrator.md`. This skill handles **explicit selection**, **dependency gating**, and **status-specific gating**; the migration body is delegated — its **Part A** you run inline, its **Part B** is a subagent you launch via the `Agent` tool.
+The translation work itself is shared with `/web-modernize:next` and `/web-modernize:retry`. This skill handles **explicit selection**, **dependency gating**, and **status-specific gating**; the migration body is delegated to `${CLAUDE_PLUGIN_ROOT}/agents/unit-migrator-caller.md`, which you run inline, and which launches `${CLAUDE_PLUGIN_ROOT}/agents/unit-migrator-subagent.md` as a subagent via the `Agent` tool.
 
 ## Preflight
 
@@ -101,7 +101,7 @@ Decide whether to invoke the shared agent based on `unit.status`:
 
 ## Run the shared migration procedure
 
-Follow `${CLAUDE_PLUGIN_ROOT}/agents/unit-migrator.md` **Part A**, inline, starting at §A1, with:
+Follow `${CLAUDE_PLUGIN_ROOT}/agents/unit-migrator-caller.md`, inline, starting at §A1, with:
 
 - `mode = "migrate"`
 - `unit = <the unit object you just read from units/<id>.json>`

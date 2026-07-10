@@ -5,7 +5,7 @@ disable-model-invocation: false
 
 # `/web-modernize:next-batch [--n=K]`
 
-You are the **next-batch** skill. You migrate up to `K` independent pending units **in parallel**, instead of one at a time like `/web-modernize:next`. Same translation work, same shared procedure (`${CLAUDE_PLUGIN_ROOT}/agents/unit-migrator.md`) — this skill only adds batch selection and fan-out.
+You are the **next-batch** skill. You migrate up to `K` independent pending units **in parallel**, instead of one at a time like `/web-modernize:next`. Same translation work, same shared procedure (`${CLAUDE_PLUGIN_ROOT}/agents/unit-migrator-caller.md` + `${CLAUDE_PLUGIN_ROOT}/agents/unit-migrator-subagent.md`) — this skill only adds batch selection and fan-out.
 
 **This command always skips the per-unit plan-approval gate**, regardless of `state.review_mode`. Reviewing K plans from K parallel agents at once isn't a workable human-in-the-loop UX, so every unit in a batch runs `unit-migrator` Part B in `call_mode: "full"` directly — design and execute in one pass, no pause. State this to the user **before** running, every time:
 
@@ -37,7 +37,7 @@ If the batch has **fewer than `K`** units (not enough independent candidates), p
 
 ## Acquire every selected unit — sequentially, before any subagent launches
 
-For **each** unit in the batch, in order, run `agents/unit-migrator.md` Part A §A1 (collision handling — should be a no-op for a freshly-selected `pending` unit, but run it anyway in case another developer raced you) and §A2 (acquisition: write `status: "in_progress"` + `in_flight`), and §A4 (resolve any unresolved `state.open_decisions[]` affecting this unit, asking the user inline if needed). Do this **sequentially across units**, not in parallel — these are cheap, no-subagent steps, and sequencing them keeps `state.json` writes (the one-time `foundation_done → in_progress` flip, any `open_decisions` resolution) conflict-free. If a unit fails its collision check (e.g. another developer just claimed it), drop it from the batch and continue with the rest.
+For **each** unit in the batch, in order, run `agents/unit-migrator-caller.md` §A1 (collision handling — should be a no-op for a freshly-selected `pending` unit, but run it anyway in case another developer raced you) and §A2 (acquisition: write `status: "in_progress"` + `in_flight`), and §A4 (resolve any unresolved `state.open_decisions[]` affecting this unit, asking the user inline if needed). Do this **sequentially across units**, not in parallel — these are cheap, no-subagent steps, and sequencing them keeps `state.json` writes (the one-time `foundation_done → in_progress` flip, any `open_decisions` resolution) conflict-free. If a unit fails its collision check (e.g. another developer just claimed it), drop it from the batch and continue with the rest.
 
 If acquisition drops every unit from the batch, report that and stop.
 
@@ -55,7 +55,7 @@ This skill's invocation authorizes the Workflow tool. If available, invoke `${CL
 }
 ```
 
-It fans out one `unit-migrator` (`call_mode: "full"`) subagent **per unit, in parallel**, each writing only its own target/test/E2E files and `notes/<unit.id>.md`, returning the `call_mode: "full"` result shape (§B8 of `agents/unit-migrator.md`) — never touching `units/<id>.json`. Tell the user the batch size before launching. Surface its `log()` lines.
+It fans out one `unit-migrator` (`call_mode: "full"`) subagent **per unit, in parallel**, each writing only its own target/test/E2E files and `notes/<unit.id>.md`, returning the `call_mode: "full"` result shape (§B8 of `agents/unit-migrator-subagent.md`) — never touching `units/<id>.json`. Tell the user the batch size before launching. Surface its `log()` lines.
 
 ### Method B — sequential fallback
 
@@ -63,7 +63,7 @@ If the Workflow tool is unavailable, loop over the acquired units one at a time,
 
 ## Finalize every unit
 
-For each `(unit, result)` pair returned, apply `agents/unit-migrator.md` Part A §A7's logic exactly as `/next` does: on `final_status: "migrated"`, write `status`, `target_paths`, `in_flight: null`, `smoke`, `tests`, `e2e`/`routes`/`extracted_shared` (omit absent ones), append history; on `final_status: "failed"`, write `status: "failed"`, `in_flight: null`, `failure`, append history. Do this for **all** units in the batch even if some failed — one unit's failure doesn't block writing the others' results.
+For each `(unit, result)` pair returned, apply `agents/unit-migrator-caller.md` §A7's logic exactly as `/next` does: on `final_status: "migrated"`, write `status`, `target_paths`, `in_flight: null`, `smoke`, `tests`, `e2e`/`routes`/`extracted_shared` (omit absent ones), append history; on `final_status: "failed"`, write `status: "failed"`, `in_flight: null`, `failure`, append history. Do this for **all** units in the batch even if some failed — one unit's failure doesn't block writing the others' results.
 
 ## Closing message
 

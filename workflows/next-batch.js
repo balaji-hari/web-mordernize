@@ -3,7 +3,7 @@ export const meta = {
   description:
     'Migrates K independent, already-acquired units in parallel: one unit-migrator (call_mode "full") subagent per unit. Returns per-unit results for the calling skill to merge into each units/<id>.json.',
   whenToUse:
-    'Invoked by /web-modernize:next-batch (Method A) when the Workflow tool is available. The calling skill has already run agents/unit-migrator.md Part A §A1/§A2 (collision + acquisition) for every selected unit, SEQUENTIALLY, before calling this workflow — so every unit arrives here already status:"in_progress" with no overlapping state.json writes left to race. This workflow always uses call_mode "full" (no plan gate — parallel human approval of K plans does not compose); the skill states that up front. Concern agents write their own target/test/E2E files directly; they never touch units/<id>.json — the skill writes every unit's final record from the results returned here.',
+    'Invoked by /web-modernize:next-batch (Method A) when the Workflow tool is available. The calling skill has already run agents/unit-migrator-caller.md §A1/§A2 (collision + acquisition) for every selected unit, SEQUENTIALLY, before calling this workflow — so every unit arrives here already status:"in_progress" with no overlapping state.json writes left to race. This workflow always uses call_mode "full" (no plan gate — parallel human approval of K plans does not compose); the skill states that up front. Concern agents write their own target/test/E2E files directly; they never touch units/<id>.json — the skill writes every unit's final record from the results returned here.',
   phases: [{ title: 'Migrate', detail: 'fan out one unit-migrator (full mode) per selected unit' }],
 }
 
@@ -61,7 +61,7 @@ const results = await parallel(
 unit object: ${JSON.stringify(unit)}
 mode: "${item.mode || 'next'}"
 force_deps: ${item.force_deps ? 'true' : 'false'}${retryBlock}${decisionsBlock}
-Follow agents/unit-migrator.md Part B in full. Return the call_mode:"full" result shape from §B8 as your final message.
+Follow agents/unit-migrator-subagent.md in full. Return the call_mode:"full" result shape from §B8 as your final message.
 ${DISCIPLINE}`,
       { agentType: 'unit-migrator', label: `migrate:${unit.id}`, phase: 'Migrate', schema: RESULT_SCHEMA },
     )

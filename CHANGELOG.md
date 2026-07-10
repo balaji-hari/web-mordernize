@@ -2,6 +2,24 @@
 
 All notable changes to the `web-modernize` plugin are documented here. Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.17.3] - 2026-07-10
+
+### Changed
+
+- **Token-efficiency refactor across agents/skills — no behavior change.** Verified an external audit's token-bloat claims against the repo before acting (roughly half held up; the rest were overstated line counts or claimed duplication/gaps that didn't exist) and fixed only the confirmed items:
+  - **`agents/unit-migrator.md` (577 lines, both caller and subagent audiences loaded together) splits into `agents/unit-migrator-caller.md`** (the caller-run procedure, read inline by `/next`/`/migrate`/`/retry`) **and `agents/unit-migrator-subagent.md`** (the registered `unit-migrator` subagent body, `name`/`model` frontmatter unchanged) — a caller now loads only the caller half, and the subagent half loads only when actually launched.
+  - **New `agents/agent-rules.md`** holds the untrusted-input + secret-masking rules previously copy-pasted across `legacy-analyzer.md`, `unit-migrator` (§B0), `parity-reviewer.md`, `migration-critic.md`, and `cross-cutting-migrator.md`; all five now reference it in one line instead of restating it.
+  - **New `skills/_shared/plugin-version-check.md`** holds the plugin-version-skew check block that was byte-identical in `skills/plan/SKILL.md` and `skills/verify/SKILL.md`; both now reference it.
+  - **`skills/scaffold/SKILL.md` no longer contradicts its own stated rule.** It declared that dev port / Node minimum / per-stack scaffold recipes belong in `frameworks/<name>.md` and then duplicated ~85 lines of per-stack test-harness recipes plus a hardcoded dev-port table anyway — both are now read dynamically from each chosen stack's framework file (confirmed every relevant framework file already carries the equivalent `## Test framework` / `## Dev server` sections).
+  - **`unit-migrator-subagent.md`'s config-carryover text (step 7b) and CSS path list (B1 step 1)** now reference the matching `agents/permanent-gotchas.md` entries instead of restating them, matching the reference idiom step 2b already used.
+  - **Verbose self-check checklists** in `legacy-analyzer.md`, `parity-reviewer.md`, and `migration-critic.md` collapse the credential/instruction-shaped-text/JSON-only bullets into one line each, referencing `agent-rules.md` — every check that wasn't a pure restatement stays as its own bullet.
+  - **`legacy-analyzer.md`'s framework-detection loop gains a confidence-threshold early exit** (≥0.85 with a corroborating signal, and no competing framework ≥0.5) instead of always reading all ~30 `frameworks/*.md` files' Detection sections.
+  - Every reference to the old `agents/unit-migrator.md` path (in `CLAUDE.md`, `README.md`, `skills/next|migrate|retry|next-batch/SKILL.md`, `workflows/next-batch.js`, `skills/plan|verify/SKILL.md`) was updated to the correct new filename; a pre-existing stale `§3.5` plan-gate reference in `CLAUDE.md` (superseded by `§A3`/`§A6` in the v0.17.0 subagent conversion) was fixed while touching that paragraph.
+
+### Version note
+
+Every change is a structural/prose dedup or an early-exit optimization — no schema field, skill/command rename, or observable agent-output-shape change. `schema_version` stays `3`.
+
 ## [0.17.2] - 2026-07-10
 
 ### Fixed

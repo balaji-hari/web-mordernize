@@ -9,7 +9,7 @@
       "name": "web-modernize",
       "source": "./",
       "description": "Guides teams through migrating legacy web applications to modern stacks. Provides /web-modernize:analyze (exhaustive entry-point discovery, incl. background/non-UI jobs and CSS/styling detection), plan (dependency graph + review-mode default), scaffold (legacy-asset copy + toolchain preflight), next/migrate/retry (UI/API/background units, opt-out per-unit plan-approval gate), next-batch (parallel migration of independent units), foundation (always-on design gate), verify (behavioural-parity + security gate, now Workflow-parallelized across units and reviewer dimensions), parity-check, quality-check (advisory idiomatic-code + CSS-fidelity review), rollback, retry, sync, report, status (staleness checks), and other slash commands. Per-unit state file split for multi-developer concurrency.",
-      "version": "0.17.2"
+      "version": "0.17.3"
     }
   ]
 }

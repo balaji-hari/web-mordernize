@@ -351,7 +351,7 @@ The unit's status will be `failed` with `failure.diagnostic` populated. The plug
 
 ### Migrated pages look wrong / use generic styling instead of the legacy design
 
-The migration agent has explicit instructions (as of v0.3.1) to detect the legacy custom design system, preserve class-name conventions, and translate visual intent faithfully — see `agents/unit-migrator.md` Part B step 7b. If your unit still came out with generic styling:
+The migration agent has explicit instructions (as of v0.3.1) to detect the legacy custom design system, preserve class-name conventions, and translate visual intent faithfully — see `agents/unit-migrator-subagent.md` step 7b. If your unit still came out with generic styling:
 
 1. Make sure `migration.md §3` "Legacy design system / custom CSS" is filled in with the class-name prefix(es) and stylesheet locations. The agent treats this as authoritative; heuristics are the fallback.
 2. Confirm the agent had access to the legacy stylesheets — they should be in the same directory as the source files, or referenced via `<link>` / `@import`. The agent reads sibling `*.css`/`*.scss`/`*.less` automatically.

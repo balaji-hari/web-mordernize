@@ -161,80 +161,9 @@ Only run if `state.target_stack.db != "unchanged"`. Otherwise mark skipped.
 
 ### Test harness
 
-Run this sub-step **after** the framework CLI / API skeleton creation, **before** the smoke-build gate. Pick the recipe based on `state.testing.ui_framework` (for the UI subsystem) and `state.testing.api_framework` (for the API subsystem). Recipes per runner:
+Run this sub-step **after** the framework CLI / API skeleton creation, **before** the smoke-build gate. Pick the recipe based on `state.testing.ui_framework` (for the UI subsystem) and `state.testing.api_framework` (for the API subsystem).
 
-#### `vitest` (UI: Vite-based React/Vue/Svelte, SvelteKit)
-
-1. `npm i -D vitest @vitest/coverage-v8 jsdom @testing-library/<framework-bindings> @testing-library/jest-dom` (substitute `react` / `vue` / `svelte` for `<framework-bindings>`; for SvelteKit also add `@sveltejs/vite-plugin-svelte` if not already present).
-2. Write `vitest.config.ts` at the scaffold root with `test.environment = "jsdom"`, `test.globals = true`, `test.coverage = { provider: "v8", reporter: ["text", "json", "html"], include: ["src/**"] }`. Merge with existing Vite config via `mergeConfig` if `vite.config.ts` exists.
-3. Test files are colocated (`*.test.ts`/`*.test.tsx`). Write one sample at `src/App.test.tsx` (or `.spec.ts` for SvelteKit) that renders the placeholder `App` and asserts visible text.
-4. Add `package.json` scripts: `"test": "vitest run"`, `"test:coverage": "vitest run --coverage"`.
-
-#### `jest` (UI: Next.js; API: NestJS)
-
-1. For Next.js: `npm i -D jest jest-environment-jsdom @types/jest ts-jest @testing-library/react @testing-library/jest-dom`. For NestJS: `nest new` already added jest; verify `package.json` has the `jest` block.
-2. Write `jest.config.js` at the scaffold root (or merge with the existing one for Nest). For Next.js include `testEnvironment: "jsdom"`, `transform` with `ts-jest`, and `collectCoverageFrom: ["src/**/*.{ts,tsx}"]`.
-3. Tests live in `__tests__/` or as colocated `*.spec.ts`/`*.test.ts`. Write one sample (`__tests__/app.spec.ts` for Nest, `__tests__/page.test.tsx` for Next) that imports the root and asserts a basic invariant.
-4. Add scripts: `"test": "jest --ci --runInBand"`, `"test:coverage": "jest --ci --coverage"`.
-
-#### `karma-jasmine` (UI: Angular)
-
-1. Verify that `karma.conf.js` and `tsconfig.spec.json` exist (older Angular versions had `ng new` generate them automatically). If `karma.conf.js` is missing (Angular 18+ in some configurations no longer generates it), install Karma manually: `npm i -D karma karma-jasmine karma-chrome-launcher karma-coverage jasmine-core @types/jasmine`, then run `npx karma init karma.conf.js` (accept defaults) or write a minimal `karma.conf.js`. Karma itself is on Angular's long deprecation runway — for greenfield Angular migrations the team should consider `other: web-test-runner` or `other: vitest` in §12 instead.
-2. Add `coverageReporter` to `karma.conf.js`:
-   ```js
-   coverageReporter: { dir: require('path').join(__dirname, './coverage/'), reporters: [{ type: 'html' }, { type: 'text-summary' }, { type: 'json-summary' }] }
-   ```
-   Add `karma-coverage` to `plugins` if not present.
-3. Leave the CLI-generated `src/app/app.component.spec.ts` in place as the sample.
-4. Add scripts: `"test": "ng test --watch=false --browsers=ChromeHeadless"`, `"test:coverage": "ng test --watch=false --code-coverage --browsers=ChromeHeadless"`. Tell the user that headless Chrome must be installed on the CI runner.
-
-#### `pytest` (API: FastAPI)
-
-The pyproject from `templates/permanent-gotchas/fastapi/pyproject.toml` already declares pytest/httpx in `[project.optional-dependencies].dev`, `[tool.pytest.ini_options]`, and `[tool.coverage.run]`. Re-run `pip install -e ".[dev]"` so the dev deps land in the venv. Then write:
-
-- `apps/api-new/tests/__init__.py` (empty)
-- `apps/api-new/tests/conftest.py` — exports a `client` fixture wrapping the FastAPI app in `httpx.AsyncClient` (or the sync `TestClient`) bound to the in-process ASGI transport.
-- `apps/api-new/tests/test_health.py` — single test that calls `client.get("/health")` and asserts `200` + `{"status": "UP"}`.
-
-#### `xunit` (API: .NET minimal API)
-
-**Run all commands from the repo root** (not from `apps/`). Substitute the real project name (the directory under `apps/`) for `<project>` below — e.g., `api-new`:
-
-1. `dotnet new xunit -o tests/<project>.Tests` (default to xUnit v2 + `coverlet.collector` / VSTest unless the team has explicitly opted into xUnit v3 / Microsoft Testing Platform).
-2. `dotnet add tests/<project>.Tests reference apps/<project>/<project>.csproj`
-3. In the test project: `dotnet add tests/<project>.Tests package coverlet.collector` and `dotnet add tests/<project>.Tests package Microsoft.AspNetCore.Mvc.Testing`.
-4. Make `Program.cs` discoverable for `WebApplicationFactory<Program>` by adding `public partial class Program { }` at the bottom of `apps/<project>/Program.cs`. (This is also done in the API scaffold step — if both ran, leave the single line in place.)
-5. Create a solution file so `dotnet build` / `dotnet test` at repo root work without args:
-   ```
-   dotnet new sln -n <project>
-   dotnet sln add apps/<project>/<project>.csproj tests/<project>.Tests/<project>.Tests.csproj
-   ```
-6. Write `tests/<project>.Tests/HealthTests.cs` using `WebApplicationFactory<Program>` to assert `GET /health` returns 200.
-7. Document `dotnet test --collect:"XPlat Code Coverage"` as the coverage command (or add a Makefile target).
-
-#### `nunit` / `mstest` (API: .NET minimal API alternates)
-
-Same as `xunit` but `dotnet new nunit` or `dotnet new mstest`. The `WebApplicationFactory<Program>` pattern is identical; only the attribute syntax differs (`[Test]` for NUnit, `[TestMethod]` for MSTest).
-
-#### `junit5` (API: Spring Boot)
-
-1. `start.spring.io` output already includes `spring-boot-starter-test` which brings JUnit 5. Verify.
-2. Add the latest JaCoCo Maven plugin to `pom.xml`. Resolve the current version from Maven Central (`org.jacoco:jacoco-maven-plugin`) at scaffold time — do not hardcode a version, since JaCoCo gates on the bytecode version of analyzed classes and stale pins silently break coverage on newer JDKs. Shape:
-   ```xml
-   <plugin>
-     <groupId>org.jacoco</groupId>
-     <artifactId>jacoco-maven-plugin</artifactId>
-     <version><!-- latest from Maven Central --></version>
-     <executions>
-       <execution><goals><goal>prepare-agent</goal></goals></execution>
-       <execution><id>report</id><phase>test</phase><goals><goal>report</goal></goals></execution>
-     </executions>
-   </plugin>
-   ```
-   (Or the Gradle equivalent: `id 'jacoco'` + `jacocoTestReport` task.)
-3. Write `src/test/java/<base-package>/HealthControllerTests.java` using **`@SpringBootTest` + `@AutoConfigureMockMvc` + `MockMvc`** to assert `GET /health` returns 200. `MockMvc` is the right default for Spring Boot 3's MVC (Tomcat) stack — `mockMvc.perform(get("/health")).andExpect(status().isOk())` works with only `spring-boot-starter-test` on the classpath.
-
-   Only use `WebTestClient` if the target is WebFlux (reactive) — it requires adding `spring-boot-starter-webflux` as a test dependency, which pulls in a reactive stack the MVC default doesn't need.
+For a stack with a `frameworks/<name>.md` file, read its `## Test framework` section and execute exactly what it describes — install command(s), config file, sample test, and the `package.json`/build-file scripts to add. **Do not duplicate the recipe here** — the framework file is the source of truth, same as the Scaffold and Dev server sections.
 
 #### `manual` / `other: <name>`
 
@@ -497,22 +426,9 @@ Suggested commit:
 
 For a **full scaffold**, print the summary block **and** the run-the-stack instructions so the team can immediately verify the scaffold works end-to-end. The closing message must include an **install/activate step before the dev command** for every terminal — the smoke-build gate already installed once during scaffolding, but a fresh terminal session (especially for Python with a venv) won't have the tools on PATH otherwise, and a teammate who just `git pull`-ed the scaffolded skeleton hasn't installed at all yet. Never print a dev command without the install/activate line directly above it.
 
-Substitute per-stack commands from these tables based on `state.target_stack.ui` / `state.target_stack.api`. The **Install / activate** column is what to print on the line directly before the dev command.
+For each chosen stack (`state.target_stack.ui` / `state.target_stack.api`), read its `frameworks/<name>.md` `## Dev server` table for the install/activate command, dev command, URL, and health check to print — **do not hardcode them here**, the framework file is the source of truth (same rule as the Scaffold and Test framework sections above). The **Install / activate** column is what to print on the line directly before the dev command.
 
-| UI stack | Install / activate | Dev command | URL |
-|---|---|---|---|
-| `react-vite-ts`, `vue3-vite`, `svelte-kit` | `npm install` | `npm run dev` | http://localhost:5173 |
-| `next-app-router` | `npm install` | `npm run dev` | http://localhost:3000 |
-| `angular` | `npm install` | `npm start` | http://localhost:4200 |
-
-| API stack | Install / activate | Dev command | URL | Health check |
-|---|---|---|---|---|
-| `fastapi` | `python -m venv .venv && source .venv/bin/activate` *(Windows PowerShell: `.venv\Scripts\Activate.ps1`; bash-on-Windows / Git Bash: `source .venv/Scripts/activate`)*, then `pip install -e ".[dev]"` | `fastapi dev app/main.py` *(or `uvicorn app.main:app --reload`)* | http://localhost:8000 | `curl http://localhost:8000/health` |
-| `spring-boot-3` | `./mvnw -q -DskipTests package` *(Windows: `mvnw.cmd -q -DskipTests package`)* | `./mvnw spring-boot:run` *(Windows: `mvnw.cmd spring-boot:run`)* | http://localhost:8080 | `curl http://localhost:8080/health` |
-| `dotnet-minimal-api` | `dotnet restore` | `dotnet run` | http://localhost:5000 *(or as printed in `launchSettings.json`)* | `curl http://localhost:5000/health` |
-| `nestjs` | `npm install` | `npm run start:dev` | http://localhost:3001 | `curl http://localhost:3001/health` |
-
-If `state.target_stack.api` is `none` or `reuse-existing`, omit the API rows. If `ui` is `custom`, fall back to a generic "install your UI dependencies, then start the dev server" line.
+If `state.target_stack.api` is `none` or `reuse-existing`, omit the API rows. If a chosen target has no `frameworks/<name>.md` (unknown target), fall back to a generic "install your dependencies, then start the dev server" line using whatever the Unknown-target follow-up recorded.
 
 Closing message — note the explicit "Install dependencies" line **above** every "Start" line. Always `cd` into the subsystem path first; install and dev commands both run from there:
 

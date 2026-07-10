@@ -9,18 +9,7 @@ You are the **verify** skill. Your job is to prove (or disprove) that a migrated
 
 ## Plugin-version skew check
 
-Read `state.json.plugin_version` (treat absent/null as "old/unknown"). Read the running plugin's version from `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json`. Parse both as `MAJOR.MINOR.PATCH`. If `state.plugin_version`'s major **or** minor differs from the running version (patch differences are fine), print **before** anything else and **continue** (warn, do not refuse):
-
-```
-⚠ Plugin version skew detected.
-   State written by: <state.plugin_version or "unknown">
-   Running version:  <running.version>
-   Teammates on different plugin versions writing to the same state can
-   produce shape mismatches. Recommended: have everyone run
-   /plugin uninstall web-modernize && /plugin install web-modernize, then continue.
-```
-
-Refusing would block the team until the slowest updater catches up — that's a worse failure mode than a warned-but-continued run. On successful exit (right before the "✓ done" message), set `state.plugin_version = "<running version>"` so the warning self-resolves after one synchronized run.
+Read `${CLAUDE_PLUGIN_ROOT}/skills/_shared/plugin-version-check.md` and perform the check it describes before proceeding.
 
 ## Preflight
 
@@ -154,7 +143,7 @@ Common post-check: a full `npm run build` to catch cross-unit type errors that p
 
 In addition to whatever the team configured in `verify.config.json`, automatically run an aggregate coverage check at `run_when: "before_complete"` if `state.testing.target_pct` is set and at least one unit has a `tests.coverage` block.
 
-1. Pick the runner-wide coverage command from `state.testing` (mirror the per-unit commands in `agents/unit-migrator.md` Part B step 7c, but without `target_paths` scoping — measure the whole project):
+1. Pick the runner-wide coverage command from `state.testing` (mirror the per-unit commands in `agents/unit-migrator-subagent.md` step 7c, but without `target_paths` scoping — measure the whole project):
 
    | Runner | Project-wide coverage command (working dir = scaffold path) |
    |---|---|

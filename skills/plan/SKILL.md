@@ -9,18 +9,7 @@ You are the **plan** skill. Your job is to convert the team's intent (in `migrat
 
 ## Plugin-version skew check
 
-Read `state.json.plugin_version` (treat absent/null as "old/unknown"). Read the running plugin's version from `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json`. Parse both as `MAJOR.MINOR.PATCH`. If `state.plugin_version`'s major **or** minor differs from the running version (patch differences are fine), print **before** anything else and **continue** (warn, do not refuse):
-
-```
-⚠ Plugin version skew detected.
-   State written by: <state.plugin_version or "unknown">
-   Running version:  <running.version>
-   Teammates on different plugin versions writing to the same state can
-   produce shape mismatches. Recommended: have everyone run
-   /plugin uninstall web-modernize && /plugin install web-modernize, then continue.
-```
-
-Refusing would block the team until the slowest updater catches up — that's a worse failure mode than a warned-but-continued run. On successful exit (right before the "✓ done" message), set `state.plugin_version = "<running version>"` so the warning self-resolves after one synchronized run.
+Read `${CLAUDE_PLUGIN_ROOT}/skills/_shared/plugin-version-check.md` and perform the check it describes before proceeding.
 
 ## Preflight — validate migration.md
 
@@ -224,7 +213,7 @@ WARNING: unit `<unit.id>` depended on `<missing_id>` which no longer exists in t
 
 #### Step 6b — Backfill emergent shared units
 
-The `unit-migrator` records reusable code it extracted mid-migration in each unit's `extracted_shared[]` (see `agents/unit-migrator.md`). Promote those into real `kind: "shared"` units so they're visible, verifiable, and reusable instead of silently duplicated.
+The `unit-migrator` records reusable code it extracted mid-migration in each unit's `extracted_shared[]` (see `agents/unit-migrator-subagent.md`). Promote those into real `kind: "shared"` units so they're visible, verifiable, and reusable instead of silently duplicated.
 
 1. Scan every per-unit file's `extracted_shared[]`. Build a flat list of `{ id, path, purpose, extracted_by: <that unit's id> }`.
 2. **Dedup**: collapse entries with the same `id` or the same `path`. If two or more *different* units recorded the same `id`/`path` independently, keep one and add a warning (possible duplicate implementations to reconcile by hand):
