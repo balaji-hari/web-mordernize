@@ -14,7 +14,7 @@ Strong signals:
 
 Weak signals:
 
-- `[HttpGet]`, `[HttpPost]`, `[Route]` attributes on controller actions
+- `[HttpGet]`, `[HttpPost]`, `[Route]` attributes on controller actions (or VB.NET's `<HttpGet()>`, `<HttpPost()>`, `<Route()>` equivalents)
 - `Views/Shared/_Layout.cshtml` master view
 
 ## Entry-point heuristic

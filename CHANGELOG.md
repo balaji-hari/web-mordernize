@@ -2,6 +2,14 @@
 
 All notable changes to the `web-modernize` plugin are documented here. Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.17.2] - 2026-07-10
+
+### Fixed
+- **Remaining VB.NET weak-signal / test-discovery gaps** — follow-up to 0.17.1's Language-variant siblings rule, closing three loose ends where a file already used a VB.NET-aware convention elsewhere but missed it in one specific line: `frameworks/aspnet-mvc.md`'s `[HttpGet]`/`[HttpPost]`/`[Route]` weak signal named only C#'s bracket-attribute syntax (now also names VB.NET's `<HttpGet()>`/`<HttpPost()>`/`<Route()>` form); `frameworks/aspnet-core-mvc.md`'s Razor weak signal named only `*.cshtml` (now also `*.vbhtml`); `agents/unit-migrator.md` §7c Step 1's legacy-test grep instruction named only C#'s `using` (now also VB.NET's `Imports`). All three are non-blocking weak-signal/precision refinements, not detection or migration fixes (the underlying Language-variant siblings rule already covered the strong signals and entry-point file inclusion). `frameworks/aspnet-webforms.md` needed no change — its weak signals are markup/directory-based, not C#-syntax-based.
+
+### Version note
+Prompt/doc-only precision fixes to two `frameworks/*.md` files and `agents/unit-migrator.md` — no schema, skill, or agent-behavior-shape change. `schema_version` stays `3`.
+
 ## [0.17.1] - 2026-07-09
 
 ### Fixed

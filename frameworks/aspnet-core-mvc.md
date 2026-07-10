@@ -14,7 +14,7 @@ Strong signals:
 
 Weak signals:
 
-- Razor `*.cshtml` pages under `Pages/` or `Views/`
+- Razor `*.cshtml` (or `*.vbhtml`) pages under `Pages/` or `Views/`
 - `appsettings.json` + `appsettings.Development.json`
 
 ## Entry-point heuristic
