@@ -331,7 +331,7 @@ The `testing` block is the single source of truth for which runner `/scaffold` i
 
 **`status` rule** — preserve forward progress on re-runs:
 - If the current `state.status` is `analyzed`: set to `planned`.
-- If the current `state.status` is `planned`, `scaffolded`, `foundation_done` (or legacy `auth_done`), `in_progress`, or `complete`: leave as-is. A re-plan never rewinds the workflow.
+- If the current `state.status` is `planned`, `scaffolded`, `foundation_done`, `in_progress`, or `complete`: leave as-is. A re-plan never rewinds the workflow.
 
 **`scaffold` rule** — only initialize if currently `null`:
 - If `state.scaffold` is `null` (first plan run): seed `{ ui: {status: "pending"}, api: {status: "pending|skipped"}, db: {status: "pending|skipped"} }`.

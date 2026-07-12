@@ -41,8 +41,11 @@ high-value and still Tier 3 if nobody's designed it yet):
 | 3 | [Runtime performance (Tier-2)](#runtime-performance-tier-2) | Verification depth | ? | dynamic tier (shipped) |
 | 4 | [Dependency-preflight agent](#dependency-preflight-agent) | Control & safety | S | retry-pattern evidence |
 | 4 | [Visual regression (Phase C)](#visual-regression-phase-c) | Verification depth | ? | — |
+| 4 | [Business-rule mining as a first-class pre-translation artifact](#business-rule-mining-as-a-first-class-pre-translation-artifact) | Verification depth | unscoped | — |
 
 *(`unit-migrator` subagent conversion, `/next-batch`, and CSS audit shipped in v0.17.0 — moved to "Shipped" below.)*
+
+*(See `docs/planning/command-consolidation-proposal.md` for the command-surface consolidation analysis (C-2).)*
 
 ---
 
@@ -235,6 +238,14 @@ Pixel/visual diffing between legacy and migrated UI. Explicitly deferred — the
 baseline-heavy tier — behind both the CSS audit and the dynamic testing tier (API replay +
 Playwright E2E), both now shipped. No active blocker beyond "build the cheaper tiers first and
 see how much they already catch."
+
+### Business-rule mining as a first-class pre-translation artifact
+**Category:** Verification depth · **Status:** BLOCKED · **Effort:** unscoped
+
+Business-rule mining as a first-class pre-translation artifact — promote the Given/When/Then
+behaviour contract from a migration side-effect to a mined, reviewed artifact consumed as a gate
+(deferred; adjacent to the data-layer work above, but distinct — no design doc yet beyond this
+description).
 
 ---
 

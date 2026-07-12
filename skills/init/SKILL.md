@@ -20,10 +20,10 @@ Before writing anything, do all of the following:
 
    If **any** exist, do NOT touch them. Tell the user what already exists and ask if they want to (a) keep going and only create what is missing, or (b) cancel. Do not proceed until they confirm.
 
-4. **Schema-version check.** If `.claude/modernize/state.json` exists, read its `schema_version`. If it is anything other than `3`, refuse and print:
+4. **Schema-version check.** If `.claude/modernize/state.json` exists, read its `schema_version`. If it is anything other than `4`, refuse and print:
 
    ```
-   ✗ state.json has schema_version: <N>, but this plugin version expects 3.
+   ✗ state.json has schema_version: <N>, but this plugin version expects 4.
 
    The web-modernize plugin does not ship schema-migration scripts. To proceed:
 
@@ -52,7 +52,7 @@ Write a minimal valid state.json. Use the current ISO-8601 UTC timestamp for `cr
 
 ```json
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "plugin_version": "<RUNNING_PLUGIN_VERSION>",
   "repo": {
     "remote": "<GIT_REMOTE_OR_EMPTY>",
@@ -103,7 +103,7 @@ The `SECRETS.local.md` lines keep raw credentials the agents discover in legacy 
 Print this exact summary to the user, substituting actual file paths:
 
 ```
-✓ web-modernize initialized (schema v3)
+✓ web-modernize initialized (schema v4)
 
 Created:
   - migration.md                          ← target choices filled via /analyze interview
@@ -125,11 +125,11 @@ Next steps:
 
 - Working directory not a git repo → instruct user to `git init`, then re-run.
 - `migration.md` already exists → ask before touching.
-- `state.json` exists with `schema_version != 3` → refuse with the message above; do not migrate.
+- `state.json` exists with `schema_version != 4` → refuse with the message above; do not migrate.
 - Cannot write to `.claude/modernize/` (permissions) → report exact error.
 - Skill must be **idempotent** if re-run after partial creation: detect what already exists and only create what is missing.
 
 ## State transition
 
-- Pre: any (typically nothing, but tolerates re-runs against a v3 state).
+- Pre: any (typically nothing, but tolerates re-runs against a v4 state).
 - Post: `state.json.status = "initialized"` (only if state.json was newly created; do not modify an existing state.json's status).

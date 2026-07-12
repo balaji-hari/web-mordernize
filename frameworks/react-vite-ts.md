@@ -1,6 +1,6 @@
 ---
 name: react-vite-ts
-display_name: React 18 + Vite + TypeScript
+display_name: React + Vite + TypeScript
 role: target-ui
 ---
 
@@ -10,7 +10,7 @@ role: target-ui
 npm create vite@latest apps/web-new -- --template react-ts && cd apps/web-new && npm install
 ```
 
-Node ≥ **22** required (Vite 7 dropped Node 18 and 20). Preflight the version before running the scaffolder.
+Preflight the Node version before scaffolding: resolve Vite's current required Node floor (its docs/release notes) and verify local Node meets it — recent Vite majors have dropped older Node LTS lines.
 
 After scaffold, replace `apps/web-new/src/App.tsx` with a placeholder reading `Legacy app migration in progress — managed by web-modernize plugin`.
 
@@ -34,6 +34,14 @@ The migrator imports `API_URL` when porting fetch calls.
 
 Test smoke: `npm run test -- --run`.
 
+## Verify commands
+
+| Check | Command |
+|---|---|
+| lint | `npm --prefix ${ui_root} run lint` |
+| typecheck | `npm --prefix ${ui_root} run typecheck` |
+| test | `npm --prefix ${ui_root} test -- --run ${target_path}` |
+
 ## Dynamic tests
 
 Read by `/web-modernize:scaffold` (when `migration.md §12` "Dynamic testing" is `yes`) and run by `/web-modernize:verify --dynamic` (advisory, never blocks).
@@ -53,7 +61,7 @@ Read by `/web-modernize:scaffold` (when `migration.md §12` "Dynamic testing" is
 
 Read by `/web-modernize:integrate` to assemble the composed app from migrated units.
 
-- **Central router:** `apps/web-new/src/router.tsx` — a React Router v6 `createBrowserRouter([...])` (or `<Routes>`) reconciled from each migrated UI unit's `routes[]`. Mount it inside the root layout the first unit established (`src/App.tsx` / see `notes/__layout__.md`), not a fresh tree.
+- **Central router:** `apps/web-new/src/router.tsx` — a React Router `createBrowserRouter([...])` (or `<Routes>`) reconciled from each migrated UI unit's `routes[]`. Mount it inside the root layout the first unit established (`src/App.tsx` / see `notes/__layout__.md`), not a fresh tree.
 - **Nav:** `apps/web-new/src/components/Nav.tsx` — built from the UI routes that carry a `label`, rendered in the layout. Preserve the legacy menu order/grouping recorded in `notes/__layout__.md`.
 - **Strangler proxy (only when `strategy: strangler-fig`):** dev — add a `server.proxy` map in `vite.config.ts` routing not-yet-migrated path prefixes to the legacy origin; prod — emit an nginx (or equivalent) reverse-proxy config mapping **migrated** route prefixes → the new app and **everything else → legacy**. `/integrate` refreshes both as more units migrate.
 

@@ -95,7 +95,8 @@ const ENTRY_SCHEMA = {
         required: ['id', 'kind', 'files'],
         properties: {
           id: { type: 'string', description: 'stable identifier' },
-          kind: { type: 'string', enum: ['page', 'controller', 'component', 'module', 'service', 'endpoint'] },
+          kind: { type: 'string', enum: ['page', 'controller', 'component', 'module', 'service', 'endpoint', 'background'] },
+          trigger: { type: 'string', enum: ['scheduled', 'queue', 'hub', 'batch', 'startup'], description: 'Only for kind==background' },
           files: { type: 'array', items: { type: 'string' } },
         },
       },
@@ -117,6 +118,7 @@ phase('Discover')
 const seen = new Map() // dedup key -> entry point (first sighting wins)
 const discoverWarnings = []
 const dedupKey = e => String(e && e.id ? e.id : '').trim().toLowerCase()
+const filesKey = files => JSON.stringify((Array.isArray(files) ? files : []).map(String).sort())
 
 let dryRounds = 0
 let round = 0
@@ -140,7 +142,8 @@ while (dryRounds < 2 && round < maxRounds) {
     thunks.push(() =>
       agent(
         `Enumerate entry points (pages / controllers / components / services / endpoints / modules) in the legacy app under ${sourceDir}. ${sliceHint}
-Use the detected stack's entry-point heuristic. Each entry point needs a stable id, a kind, and the file(s) that define it. Be exhaustive within your region — routing tables, nav/menu/master pages, and large files first.${alreadyBlock}
+Use the detected stack's entry-point heuristic. Each entry point needs a stable id, a kind, and the file(s) that define it. Be exhaustive within your region — routing tables, nav/menu/master pages, and large files first.
+Also run your background/non-UI discovery pass over this same region — code that runs without an HTTP request: scheduled jobs (BackgroundService/IHostedService, Hangfire, Quartz, @Scheduled, cron), queue/message consumers (RabbitMQ, Kafka, Azure Service Bus, JMS), realtime hubs (SignalR, raw WebSocket, socket.io), batch/file processors (FileSystemWatcher, ETL, bulk import/export), and startup daemons (Program.Main, seed/migration runners). Emit these with kind background and the fitting trigger (scheduled/queue/hub/batch/startup) — they are exempt from any importance ranking; never drop one in favor of a request-shaped entry.${alreadyBlock}
 ${UNTRUSTED}`,
         { agentType: 'legacy-analyzer', label: `discover:r${round}:w${k + 1}`, phase: 'Discover', schema: ENTRY_SCHEMA },
       ),
@@ -153,9 +156,15 @@ ${UNTRUSTED}`,
     for (const w of r.warnings || []) discoverWarnings.push(w)
     for (const e of r.entry_points || []) {
       const key = dedupKey(e)
-      if (key && !seen.has(key)) {
+      if (!key) continue
+      const prior = seen.get(key)
+      if (!prior) {
         seen.set(key, e)
         fresh += 1
+      } else if (filesKey(prior.files) !== filesKey(e.files)) {
+        discoverWarnings.push(
+          `Duplicate entry id "${e.id}" reported with different files — kept first sighting's files [${(prior.files || []).join(', ')}], dropped [${(e.files || []).join(', ')}].`,
+        )
       }
     }
   }

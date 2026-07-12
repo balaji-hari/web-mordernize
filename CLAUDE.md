@@ -147,6 +147,12 @@ Standard sections (use all that apply for the role):
 - `## Auth notes` — API targets. Per-stack password-hashing library + load-bearing rules (e.g., FastAPI's bcrypt 72-byte truncation, NestJS's `bcrypt` vs `bcryptjs`). `skills/foundation/SKILL.md` (and `agents/cross-cutting-migrator.md`) read this; cross-cutting auth rules stay in `agents/permanent-gotchas.md`.
 - `## Dev server` — port + install/activate + dev command + URL + health-check command. Used by the scaffold's "After writing" closing message.
 - `## Recommendation context` — optional. Source stacks this is a natural target for; consumed by `templates/migration-interview.json`'s `recommend_by_source` lookups via the interview skill.
+- `## Verify commands` — API + UI targets. Per-stack lint/typecheck/test commands; read by `/scaffold` to populate `verify.config.json`.
+- `## Data migration` — API targets. Apply/Status commands for the ORM/migration harness; read by `/foundation`.
+- `## Dynamic tests` — target-ui. Playwright/replay setup; read by `/scaffold`, run by `/verify --dynamic`.
+- `## Integration` — target-ui. Central router / nav / (strangler) proxy recipe; read by `/integrate`.
+- `## Entry-point heuristic` — source files only. How to enumerate entry points for this stack.
+- `## Recommended target` — source files only. Natural target stack(s) for this source.
 
 When a user picks a target framework the plugin has no file for, the unknown-tech path takes over: `/scaffold` runs a 3-question follow-up (scaffold command / test framework / verify commands) and persists answers to `verify.config.json`. `/foundation` defers to `permanent-gotchas` + OWASP. `/analyze` accepts a free-text source value and sets `state.source_stack.user_provided = true`.
 

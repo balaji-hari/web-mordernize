@@ -11,7 +11,7 @@ npm create hono@latest apps/api-new -- --template nodejs --pm npm --install
 cd apps/api-new
 ```
 
-Node ≥ **20** required. The `npm create hono@latest` CLI prompts for a runtime template — pick `nodejs` (or `bun`, `deno`, `cloudflare-workers`, `vercel`, `aws-lambda`, etc. based on deployment target).
+Preflight the Node version before scaffolding: resolve the scaffolder's current required Node floor (its docs/release notes) and verify local Node meets it — recent tool majors drop older Node LTS lines. The `npm create hono@latest` CLI prompts for a runtime template — pick `nodejs` (or `bun`, `deno`, `cloudflare-workers`, `vercel`, `aws-lambda`, etc. based on deployment target).
 
 Then edit `apps/api-new/src/index.ts` to add CORS + `/health`:
 ```ts

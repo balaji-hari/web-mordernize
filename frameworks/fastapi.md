@@ -1,6 +1,6 @@
 ---
 name: fastapi
-display_name: FastAPI (Python 3.12+)
+display_name: FastAPI
 role: target-api
 ---
 

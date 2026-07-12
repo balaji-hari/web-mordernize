@@ -18,6 +18,8 @@ curl -G https://start.spring.io/starter.tgz \
   | tar -xzf - -C apps/api-new
 ```
 
+Confirm the current Spring Boot release's supported Java baseline before scaffolding (check start.spring.io's own version picker or its docs) rather than assuming `javaVersion=21` is still current — substitute whatever that baseline is into the flag above.
+
 Use `starter.tgz` (Windows boxes don't need unzip). Then under `src/main/java/<packageDir>/` write:
 
 - A `HealthController` with `@RestController` + `@GetMapping("/health")` returning `Map.of("status", "UP")`. Actuator's `/actuator/health` does **not** match the smoke gate's `/health` — `agents/permanent-gotchas.md` explains why.

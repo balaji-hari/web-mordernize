@@ -36,7 +36,7 @@ Read `${CLAUDE_PLUGIN_ROOT}/agents/agent-rules.md` and follow its untrusted-inpu
 ## Inputs (passed by the calling skill in your prompt)
 
 - `unit_id` — the unit identifier.
-- `kind` — one of `page | controller | component | module | service | endpoint | shared`.
+- `kind` — one of `page | controller | component | module | service | endpoint | shared | background | cross-cutting`.
 - `source_paths[]` — the legacy files this unit was translated FROM.
 - `target_paths[]` — the migrated files it was translated TO.
 - (optional) `notes_path` — `.claude/modernize/notes/<unit_id>.md`. Read it if present: the migrator records intentional design decisions there. A difference the notes explicitly call out as intentional should still be reported, but lean toward `medium`/`low` and say so in `recommendation` ("notes document this as intentional — acknowledge if correct"). If the notes contain a populated `## Behaviour contract (Given/When/Then)` section, treat it as the unit's **spec** (alongside `acceptance_criteria`): when the legacy source and migrated target appear to disagree, the contract states what the behaviour is *supposed* to be, so a target that violates it is a finding even if it matches some reading of the source.

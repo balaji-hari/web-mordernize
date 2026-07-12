@@ -10,7 +10,7 @@ role: target-ui
 npx create-next-app@latest apps/web-new --typescript --tailwind --eslint --app --no-src-dir
 ```
 
-Node ≥ **20.10** required. Adjust the `--tailwind` / `--eslint` flags per `migration.md §3` styling choices.
+Preflight the Node version before scaffolding: resolve Next.js's current required Node floor (its docs/release notes) and verify local Node meets it — recent tool majors drop older Node LTS lines. Adjust the `--tailwind` / `--eslint` flags per `migration.md §3` styling choices.
 
 ### Wire to API
 
@@ -29,6 +29,14 @@ The `NEXT_PUBLIC_` prefix is required for client-component fetches; the non-publ
 `jest` (default for Next.js). Install: `npm i -D jest jest-environment-jsdom @types/jest ts-jest @testing-library/react @testing-library/jest-dom`. Write `jest.config.js` with `testEnvironment: "jsdom"`, `transform` via `ts-jest`, `collectCoverageFrom: ["src/**/*.{ts,tsx}"]`. Tests in `__tests__/` or colocated. Scripts: `"test": "jest --ci --runInBand"`, `"test:coverage": "jest --ci --coverage"`.
 
 Test smoke: `npm test -- --ci --runInBand`.
+
+## Verify commands
+
+| Check | Command |
+|---|---|
+| lint | `npm --prefix ${ui_root} run lint` (wires to `next lint` — scaffolded by the `--eslint` flag) |
+| typecheck | `npm --prefix ${ui_root} run typecheck` (not scaffolded by default — add `"typecheck": "tsc --noEmit"` to `package.json`) |
+| test | `npm --prefix ${ui_root} test -- --ci --runInBand ${target_path}` |
 
 ## Dev server
 

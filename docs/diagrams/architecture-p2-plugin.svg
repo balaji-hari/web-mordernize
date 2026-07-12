@@ -12,15 +12,15 @@
 <text x="800" y="28" text-anchor="middle" dominant-baseline="middle"
       fill="white" font-size="24" font-weight="700" letter-spacing="0.5">web-modernize — Plugin Components</text>
 <text x="800" y="55" text-anchor="middle" dominant-baseline="middle"
-      fill="#bfdbfe" font-size="13">Page 2 of 3: Skills · Agents · Framework Files · Templates · Hooks  ·  v0.16.0</text>
+      fill="#bfdbfe" font-size="13">Page 2 of 3: Skills · Agents · Framework Files · Templates · Hooks  ·  v0.18.0</text>
 
 <!-- ================================================================
-     SKILLS SECTION  y=72..592  (17 commands, 6 rows)
+     SKILLS SECTION  y=72..592  (19 commands, 6 rows)
      ================================================================ -->
 <rect x="0" y="72" width="1600" height="520" fill="#eff6ff"/>
 <rect x="0" y="72" width="1600" height="32" fill="#1d4ed8"/>
 <text x="800" y="88" text-anchor="middle" dominant-baseline="middle"
-      fill="white" font-size="14" font-weight="700">Skills — 18 Slash Commands  (each is a SKILL.md loaded into Claude's context)</text>
+      fill="white" font-size="14" font-weight="700">Skills — 19 Slash Commands  (each is a SKILL.md loaded into Claude's context)</text>
 
 <!-- Skills grid: 3 cols, 6 rows  ·  Col x: 12(w=500), 556(w=500), 1100(w=500)  ·  rows y: 112,184,256,328,400,472  box h=64 -->
 <!-- Solid blue-family shades by category: #1e3a8a=Initial · #1d4ed8=Core Migration · #2563eb=Verification · #1e40af=Recovery -->
@@ -141,12 +141,12 @@
 </text>
 
 <!-- ================================================================
-     AGENTS SECTION  y=600..730  (6 agents)
+     AGENTS SECTION  y=600..730  (5 agents)
      ================================================================ -->
 <rect x="0" y="600" width="1600" height="148" fill="#fff1f2"/>
 <rect x="0" y="600" width="1600" height="32" fill="#c2410c"/>
 <text x="800" y="616" text-anchor="middle" dominant-baseline="middle"
-      fill="white" font-size="14" font-weight="700">Agents  (reusable procedures — 6 total)</text>
+      fill="white" font-size="14" font-weight="700">Agents  (reusable procedures — 5 total)</text>
 
 <!-- 6 agent boxes side by side  y=640, h=100  ·  x: 12,276,540,804,1068,1332  w=252  centers: 138,402,666,930,1194,1458 -->
 <rect x="12"   y="640" width="252" height="100" rx="5" fill="#c2410c"/>
@@ -242,7 +242,7 @@
 <text x="501" y="961" text-anchor="middle" dominant-baseline="middle" fill="#c7d2fe" font-size="8.5">/analyze interview Q&amp;A catalog</text>
 
 <rect x="604" y="930" width="181" height="44" rx="4" fill="#5b21b6"/>
-<text x="694" y="946" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="10" font-weight="600">workflows/*.js  (2)</text>
+<text x="694" y="946" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="10" font-weight="600">workflows/*.js  (4)</text>
 <text x="694" y="961" text-anchor="middle" dominant-baseline="middle" fill="#c7d2fe" font-size="8.5">analyze-discovery · foundation-establish</text>
 
 <rect x="805" y="898" width="795" height="84" fill="#f0fdfa"/>

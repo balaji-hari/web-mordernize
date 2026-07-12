@@ -1,6 +1,6 @@
 ---
 name: dotnet-minimal-api
-display_name: .NET Minimal API (.NET 8+)
+display_name: .NET Minimal API
 role: target-api
 ---
 
@@ -10,7 +10,7 @@ role: target-api
 dotnet new webapi -o apps/api-new
 ```
 
-Minimal API has been the default since .NET 8; `--use-minimal-apis` was removed in .NET 9. Resolve current CLI flags from `dotnet new webapi --help` if unsure; do not assume any pre-.NET-8 flags survive.
+Minimal API has been the project template default for a while now; older `--use-minimal-apis`-style flags from the pre-default era have since been removed. Resolve current CLI flags from `dotnet new webapi --help` if unsure; do not assume an older SDK's flags survive on a newer one.
 
 Then edit `apps/api-new/Program.cs` to add:
 

@@ -2,6 +2,38 @@
 
 All notable changes to the `web-modernize` plugin are documented here. Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.18.0] - 2026-07-12
+
+Review-driven correctness, consistency, and framework-file hygiene pass. Every finding from an independent senior review was re-validated against the codebase before acting — several were confirmed, four were found overstated and scoped down accordingly (the version-pin "strip everything" claim, the "target-ui must have Auth notes" claim, a phantom `## Background jobs` section, and a wrong "both agents opt out of model-invocation" premise). Two findings (`T-2` double source-read, `F-9` CHANGELOG split) were validated but deliberately deferred.
+
+### Added
+- **Background / non-UI discovery parity in the parallel analyzer (`workflows/analyze-discovery.js`).** Method A's `ENTRY_SCHEMA` gains `kind: "background"` plus an optional `trigger` (`scheduled|queue|hub|batch|startup`), and its discovery prompt now runs a background/non-UI pass mirroring `legacy-analyzer`'s signal table. Closes a regression where schedulers/queues/hubs/batch/startup units were silently undiscoverable whenever the Workflow tool was available — only the single-pass Method B fallback found them (divergent behaviour by environment). (Review F-1.)
+- **`## Integration` section on the 5 target-ui framework files that lacked it** (`astro`, `nuxt`, `remix`, `svelte-kit`, `vue3-vite`) — stack-idiomatic central-router / nav / (strangler) proxy recipes read by `/integrate`, bringing all 8 target-ui files to parity. (Review §3.3.)
+- **`## Verify commands` section on all 8 target-ui framework files**, and `/scaffold` now populates `verify.config.json`'s `ui` block from it (same graceful-degrade rule as the `api` block) — a non-standard UI toolchain no longer silently inherits generic npm defaults. (Review F-5.)
+- **`scripts/lint-frameworks.mjs`** — a dependency-free required-sections lint per framework role (source / target-ui / target-api); passes green across all 31 framework files. (Review C-3.)
+- **`hooks/guard-legacy.mjs`** — a fail-open `PreToolUse` guard that refuses `Write`/`Edit`/`NotebookEdit` to legacy source (any subdirectory outside the new-app zones, depth-0 repo-root config, `.github/`, `.claude/`, and the scaffold-recorded UI/API roots), enforcing the "never edit legacy" invariant that was previously prompt-only. It is a backstop, not a gate: any error, missing/unparseable state, or non-migration repo fails open (allows). **Caveat:** the `PreToolUse` deny mechanism should be confirmed against a live Claude Code session — if the runtime doesn't honour the deny payload the guard is simply inert, never harmful. (Review C-5.)
+- **`docs/planning/command-consolidation-proposal.md`** — analysis-only proposal on the command surface (recommends 19 → ~17 via two high-confidence merges, defends the rest). Planning artifact only; no command changes made. (Review C-2.)
+
+### Changed
+- **Plugin-version-skew check unified** across `next`, `parity-check`, `quality-check`, `next-batch`, and `integrate` onto the single-line `skills/_shared/plugin-version-check.md` reference already used by `plan`/`verify` — was three divergent styles (full inline banner / paraphrase / reference), which would have drifted from the source of truth. (Review F-3.)
+- **Framework files de-versioned.** Removed cosmetic `display_name` version tags (FastAPI, React, .NET Minimal API, Remix, SvelteKit) and reworded functional Node/Java toolchain floors to resolve-at-scaffold-time preflight instructions instead of hard-pinned numbers — matching `permanent-gotchas.md`'s version-agnostic philosophy while keeping the preflight step and command shapes. `/scaffold`'s Toolchain-preflight prose updated to match (it now *follows* each framework file's version-agnostic preflight instruction rather than quoting a fixed floor). Load-bearing durable rules (e.g. FastAPI's bcrypt constraint) kept verbatim; `Vue 3` / `Spring Boot 3` kept as product-name disambiguators, not staleness-prone pins. (Review §3.2.)
+- **Trimmed the bloated frontmatter descriptions** of `agents/unit-migrator-caller.md` (~26 → 3 lines) and `agents/unit-migrator-subagent.md` (~18 → 4 lines) — both agents are launched explicitly, so the long restated descriptions were pure per-run token overhead; the bodies remain the single source of truth. (Review T-1.)
+- **Docs counts/versions refreshed** (text only — `.pptx` decks intentionally **not** regenerated): 19 skills · 5 agents · 4 workflows · 31 framework files · v0.18.0 across the diagrams, deck/one-pager scripts, and handbook. (Review F-8.)
+- **`CLAUDE.md` "Standard sections" list** now includes the 6 framework sections actually in use (`Verify commands`, `Data migration`, `Dynamic tests`, `Integration`, `Entry-point heuristic`, `Recommended target`); the `kind`-enum docs in `parity-reviewer`/`migration-critic` now include `background` + `cross-cutting`. (Review F-7, F-6.)
+
+### Fixed
+- **Silent entry-point loss on id collision (`analyze-discovery.js`).** Two discovered entry points that share a stable `id` but have different `files[]` now emit a warning instead of the second being silently dropped. (Review F-2.)
+
+### Removed
+- **Dead `auth_done` status enum value** (`templates/state.schema.json`) and its legacy tolerance in `/plan`. `/init`'s schema-version guard (which had `3` hard-coded in six places) updated accordingly. (Review F-4.)
+
+### Schema
+- **`schema_version` 3 → 4** (breaking — the `auth_done` removal). Per the versioning policy a breaking schema change is a major bump; **1.0.0 is deliberately deferred** because the plugin has no production users. Any pre-existing `.claude/modernize/` state must be deleted and re-initialized via `/web-modernize:init` — no migration code is shipped, by design.
+
+### Deferred (validated, not actioned)
+- **T-2** — the double source-read on the default (plan-first) gated path is a deliberate quality trade-off (each subagent call starts with fresh context); left as-is pending large-estate optimization.
+- **F-9** — CHANGELOG split into terse-log + `docs/release-notes/` deferred.
+
 ## [0.17.4] - 2026-07-12
 
 Seven prompt/doc-only fixes distilled from a dry-run follow-up (`learning-todo.md`), all landing as a single patch — same class as 0.17.1-0.17.3.

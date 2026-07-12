@@ -1,31 +1,10 @@
 ---
 description: >
-  Caller-side procedure for porting a single unit from legacy source to the
-  target stack — run INLINE by /web-modernize:next, /web-modernize:migrate,
-  and /web-modernize:retry (interactive: collision dialogs, the plan-gate
-  approval loop). This file is the single source of truth for the
-  caller-side migration loop; do not duplicate it elsewhere. It launches the
-  sibling `agents/unit-migrator-subagent.md` (the registered `unit-migrator`
-  subagent, `subagent_type: unit-migrator`) via the Agent tool: ONCE for an
-  ungated unit (call_mode "full"), or TWICE for a gated one (a call_mode
-  "plan_only" call, then — after human approval — a separate call_mode
-  "full" call). Each subagent call is a fresh, independent, fire-and-forget
-  invocation (same shape as parity-reviewer/migration-critic) — it returns
-  one structured result and terminates. It never pauses mid-task for
-  approval, because Claude Code subagents cannot do that; the two-call split
-  is how this procedure gets a human approval point without relying on
-  mid-run subagent interactivity.
-
-  Storage convention (schema v3): each unit lives in its own file at
-  .claude/modernize/units/<unit-id>.json. Top-level workflow status lives in
-  .claude/modernize/state.json. This file writes the initial acquisition
-  record and, after each subagent call returns, the final record — it is the
-  ONLY writer of units/<unit-id>.json. The subagent
-  (agents/unit-migrator-subagent.md) writes target code, test, and
-  E2E-spec files, and notes/<unit-id>.md, directly, but never
-  units/<unit-id>.json itself. This keeps the one file every concurrent
-  /status check and the heartbeat hook read under a single, deliberate
-  writer at a time.
+  Caller-side procedure for porting one unit from legacy source to the
+  target stack — run inline by /web-modernize:next, /migrate, and /retry.
+  Handles in-flight collision resolution, unit acquisition, the plan gate,
+  and finalization; launches the unit-migrator subagent for the translation
+  body.
 disable-model-invocation: true
 model: inherit
 ---

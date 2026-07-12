@@ -1,24 +1,10 @@
 ---
 name: unit-migrator
 description: >
-  Subagent body for porting a single unit from legacy source to the target
-  stack — launched via the Agent tool (subagent_type: unit-migrator) by
-  agents/unit-migrator-caller.md, which every /web-modernize:next,
-  /web-modernize:migrate, and /web-modernize:retry invocation runs first.
-  This file is the single source of truth for the translation body; do not
-  duplicate it elsewhere. Each call is a fresh, independent, fire-and-forget
-  invocation (same shape as parity-reviewer/migration-critic) — it returns
-  one structured result and terminates. It never pauses mid-task for
-  approval, because Claude Code subagents cannot do that; the caller
-  launches it ONCE for an ungated unit (call_mode "full"), or TWICE for a
-  gated one (a call_mode "plan_only" call, then — after human approval — a
-  separate call_mode "full" call).
-
-  Storage convention (schema v3): each unit lives in its own file at
-  .claude/modernize/units/<unit-id>.json. This agent writes target code,
-  test, and E2E-spec files, and notes/<unit-id>.md, directly — it does NOT
-  write units/<unit-id>.json itself; the caller
-  (agents/unit-migrator-caller.md) is the only writer of that file.
+  The unit-migrator subagent: the per-unit translation body. Launched by
+  unit-migrator-caller — once (call_mode "full") for an ungated unit, or
+  twice ("plan_only" then "full") for a gated one. Reads all legacy
+  source_paths + dependent stylesheets and writes the target implementation.
 model: sonnet
 ---
 

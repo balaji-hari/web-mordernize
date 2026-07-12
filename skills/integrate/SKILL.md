@@ -9,7 +9,7 @@ You are the **integrate** skill. You assemble the units migrated *so far* into a
 
 ## Plugin-version skew check
 
-Same as other skills: read `state.json.plugin_version`, compare MAJOR.MINOR against `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json`; warn-and-continue on mismatch.
+Read `${CLAUDE_PLUGIN_ROOT}/skills/_shared/plugin-version-check.md` and perform the check it describes before proceeding.
 
 ## Preflight
 

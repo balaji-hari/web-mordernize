@@ -35,7 +35,7 @@ FONT_MONO        = "Consolas"
 FONT_HEADER      = "Segoe UI Semibold"   # slide titles, section banners, table headers
 FONT_HEADER_LIGHT = "Segoe UI Light"     # hero wordmarks on title/closing slides
 
-FOOTER_TEXT = "web-modernize v0.16.0   ·   Balaji Harikrishnan   ·   Cognizant   ·   July 2026"
+FOOTER_TEXT = "web-modernize v0.18.0   ·   Balaji Harikrishnan   ·   Cognizant   ·   July 2026"
 
 
 # ── Low-level helpers ───────────────────────────────────────────────────────
@@ -245,7 +245,7 @@ def slide_01_title(prs):
              size=15, italic=True, color=TEAL, align=PP_ALIGN.CENTER)
 
     add_text(slide, 0.5, 6.55, 12.333, 0.35,
-             "Balaji Harikrishnan   ·   Cognizant   ·   July 2026   ·   v0.16.0",
+             "Balaji Harikrishnan   ·   Cognizant   ·   July 2026   ·   v0.18.0",
              size=12, color=SLATE, font=FONT_HEADER, align=PP_ALIGN.CENTER)
 
 
@@ -317,9 +317,9 @@ def slide_02_intro(prs):
          "Installs via the standard  /plugin install  command  —  no "
          "separate infrastructure, no servers."),
         ("What It Adds",
-         "18 skills exposed as slash commands  ·  6 AI agents (analyzer, "
-         "migrator, cross-cutting-migrator, parity-reviewer, migration-critic, "
-         "gotchas catalog)  ·  2 automation hooks  ·  two workflows/ "
+         "19 skills exposed as slash commands  ·  5 AI agents (analyzer, "
+         "migrator, cross-cutting-migrator, parity-reviewer, migration-critic)  ·  "
+         "2 automation hooks  ·  four workflows/ "
          "orchestration scripts  ·  9 schema-validated templates copied into the team's repo."),
         ("State and Concurrency",
          "All migration state lives in git as JSON. Per-unit file split "
@@ -749,7 +749,7 @@ def slide_09_extensibility(prs):
              "Every skill's description now packs intent phrases + a "
              "lifecycle anchor. Claude's native skill matcher routes "
              "plain-English requests to the right command — developers "
-             "stop memorising 18 slash commands.",
+             "stop memorising 19 slash commands.",
              size=11, color=INK, anchor=MSO_ANCHOR.MIDDLE)
 
     # Examples table — "you type → skill fires"
@@ -1178,14 +1178,14 @@ def slide_07_advantages(prs):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Slide 11 — The 18 Skills (Slash Commands)
+# Slide 11 — The 19 Skills (Slash Commands)
 # ══════════════════════════════════════════════════════════════════════════════
 
 def slide_11_commands(prs):
     slide = blank_slide(prs)
     page_chrome(
         slide,
-        "The 18 Skills  (Slash Commands)",
+        "The 19 Skills  (Slash Commands)",
         "Each skill is exposed as a slash command — or auto-fires from plain English (see slide 3)",
         page_num=11,
     )
@@ -1236,7 +1236,7 @@ def slide_12_inventory(prs):
     )
 
     add_text(slide, 0.40, 1.20, 12.5, 0.30,
-             "6 AI Agents   (specialised AIs that read your code, translate it, verify behaviour, quality & performance, and steer around known pitfalls)",
+             "5 AI Agents   (specialised AIs that read your code, translate it, verify behaviour, quality & performance, and steer around known pitfalls)",
              size=14, color=COBALT, font=FONT_HEADER)
     add_table(
         slide, 0.40, 1.50, 12.533, 1.60,
@@ -1252,8 +1252,6 @@ def slide_12_inventory(prs):
              "Read-only AI that compares migrated vs legacy for behavioural AND security differences tests can't catch."),
             ("migration-critic",
              "Read-only, advisory AI reviewing the migrated code's idiomaticity AND static performance — flags legacy patterns and N+1/bundle/blocking regressions."),
-            ("permanent-gotchas",
-             "Curated read-only catalog of bugs the AI cannot reliably discover on its own — first-run crashes and silent failures."),
         ],
         col_ratios=[0.22, 0.78],
         header_size=12, body_size=10,
@@ -1280,7 +1278,7 @@ def slide_12_inventory(prs):
     )
 
     add_text(slide, 0.40, 4.50, 12.5, 0.30,
-             "9 Templates  ·  31 Framework Files  ·  2 Workflow Scripts",
+             "9 Templates  ·  31 Framework Files  ·  4 Workflow Scripts",
              size=14, color=COBALT, font=FONT_HEADER)
     add_table(
         slide, 0.40, 4.82, 12.533, 2.45,
@@ -1351,7 +1349,7 @@ def slide_13_closing(prs):
              "Balaji Harikrishnan   ·   balaji.harikrishnan@cognizant.com",
              size=13, color=WHITE, align=PP_ALIGN.CENTER)
     add_text(slide, 0.5, 6.70, 12.333, 0.32,
-             "web-modernize v0.16.0   ·   github.com/balaji-hari/web-mordernize",
+             "web-modernize v0.18.0   ·   github.com/balaji-hari/web-mordernize",
              size=11, italic=True, color=SLATE, align=PP_ALIGN.CENTER)
 
 
@@ -1362,7 +1360,7 @@ def slide_13_closing(prs):
 def build():
     prs = new_prs()
 
-    print("Building 13-slide leadership deck (v0.16.0)...")
+    print("Building 13-slide leadership deck (v0.18.0)...")
     slide_01_title(prs);                    print("  [1/13]  Title")
     slide_02_intro(prs);                    print("  [2/13]  What is web-modernize")
     slide_09_extensibility(prs);            print("  [3/13]  Natural language + pluggable framework library")
@@ -1373,7 +1371,7 @@ def build():
     slide_04_analyze(prs);                  print("  [8/13]  From legacy codebase to migration backlog")
     slide_05_execution(prs);                print("  [9/13]  From backlog to migrated units")
     slide_06_verification_tiers(prs);       print("  [10/13] Three verification tiers")
-    slide_11_commands(prs);                 print("  [11/13] 18 skills (slash commands)")
+    slide_11_commands(prs);                 print("  [11/13] 19 skills (slash commands)")
     slide_12_inventory(prs);                print("  [12/13] Agents, hooks, templates, framework library")
     slide_13_closing(prs);                  print("  [13/13] Closing / next step")
 

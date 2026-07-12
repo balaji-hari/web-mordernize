@@ -10,7 +10,7 @@ role: target-ui
 npx @angular/cli@latest new apps/web-new --routing --style=scss --strict --skip-git
 ```
 
-Node ≥ **20.11** required. Adjust `--style=` per `migration.md §3` styling choices (`css` / `scss` / `sass` / `less`).
+Preflight the Node version before scaffolding: resolve the Angular CLI's current required Node floor (its docs/release notes) and verify local Node meets it — recent tool majors drop older Node LTS lines. Adjust `--style=` per `migration.md §3` styling choices (`css` / `scss` / `sass` / `less`).
 
 ### Wire to API
 
@@ -22,7 +22,7 @@ And a sibling `environment.production.ts` with `production: true` plus a placeho
 
 ## Test framework
 
-`karma-jasmine` (Angular default). If `karma.conf.js` is missing from the CLI output (Angular 18+ no longer generates it in some configurations), install Karma manually:
+`karma-jasmine` (Angular default). If `karma.conf.js` is missing from the CLI output (recent Angular versions no longer generate it in some configurations), install Karma manually:
 
 ```sh
 npm i -D karma karma-jasmine karma-chrome-launcher karma-coverage jasmine-core @types/jasmine
@@ -42,6 +42,14 @@ Scripts: `"test": "ng test --watch=false --browsers=ChromeHeadless"`, `"test:cov
 Karma is on Angular's long deprecation runway — for greenfield Angular migrations consider `other: web-test-runner` or `other: vitest` in `migration.md §12` instead.
 
 Test smoke: `npm run test -- --watch=false --browsers=ChromeHeadless`.
+
+## Verify commands
+
+| Check | Command |
+|---|---|
+| lint | `npm --prefix ${ui_root} run lint` (wires to `ng lint` — requires `@angular-eslint/schematics`; Angular dropped its built-in TSLint without a default replacement, so add it via `ng add @angular-eslint/schematics` if missing) |
+| typecheck | `npx tsc --noEmit -p ${ui_root}/tsconfig.app.json` (`ng build` also type-checks as part of compiling — this runs the check standalone) |
+| test | `npm --prefix ${ui_root} run test -- --watch=false --browsers=ChromeHeadless --include=${target_path}` |
 
 ## Dev server
 

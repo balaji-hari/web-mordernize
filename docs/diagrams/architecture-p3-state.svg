@@ -32,7 +32,7 @@
 <text x="800" y="28" text-anchor="middle" dominant-baseline="middle"
       fill="white" font-size="24" font-weight="700" letter-spacing="0.5">web-modernize — State Machine &amp; Data Flow</text>
 <text x="800" y="55" text-anchor="middle" dominant-baseline="middle"
-      fill="#9fc8fa" font-size="13">Page 3 of 3: Per-Unit States · State File Schema · Multi-Developer Model · Data Flow  ·  v0.16.0</text>
+      fill="#9fc8fa" font-size="13">Page 3 of 3: Per-Unit States · State File Schema · Multi-Developer Model · Data Flow  ·  v0.18.0</text>
 
 <!-- ================================================================
      PER-UNIT STATE MACHINE  y=72..310
@@ -299,7 +299,7 @@
 <text x="1343" y="833" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="11" font-weight="700">◀  PAGE 3 of 3: State &amp; Data Flow  (you are here)</text>
 
 <text x="800" y="860" text-anchor="middle" dominant-baseline="middle" fill="#9e9e9e" font-size="9.5">
-  github.com/balaji-hari/web-mordernize  ·  Plugin namespace: web-modernize  ·  State schema v3  ·  18 skills  ·  6 agents  ·  31 framework files  ·  2 workflows
+  github.com/balaji-hari/web-mordernize  ·  Plugin namespace: web-modernize  ·  State schema v3  ·  19 skills  ·  5 agents  ·  31 framework files  ·  4 workflows
 </text>
 
 </svg>

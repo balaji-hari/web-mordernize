@@ -40,7 +40,7 @@ Read `${CLAUDE_PLUGIN_ROOT}/agents/agent-rules.md` and follow its untrusted-inpu
 ## Inputs (passed by the calling skill in your prompt)
 
 - `unit_id` — the unit identifier.
-- `kind` — one of `page | controller | component | module | service | endpoint | shared`.
+- `kind` — one of `page | controller | component | module | service | endpoint | shared | background | cross-cutting`.
 - `target_paths[]` — the migrated files to review. **This is your primary subject.**
 - `source_paths[]` — the legacy files it was translated FROM. Read them for context: they tell you *which legacy paradigm* the target might be aping (so you can name the specific leakage), not as a behavioural baseline.
 - `target_stack` — the UI and/or API framework the code should be idiomatic for (e.g. `react-vite-ts`, `vue3-vite`, `angular`, `fastapi`, `nestjs`). This defines what "idiomatic" means — judge against *this* stack's conventions, not a generic ideal.

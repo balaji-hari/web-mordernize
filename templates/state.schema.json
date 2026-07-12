@@ -9,7 +9,7 @@
   "properties": {
     "schema_version": {
       "description": "Increment when the top-level state shape changes. The plugin does not migrate forward — a schema_version mismatch requires deleting .claude/modernize/ and running /web-modernize:init.",
-      "const": 3
+      "const": 4
     },
     "plugin_version": {
       "description": "Version of the web-modernize plugin that last wrote this file.",
@@ -31,7 +31,6 @@
         "analyzed",
         "planned",
         "scaffolded",
-        "auth_done",
         "foundation_done",
         "in_progress",
         "complete"

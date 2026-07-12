@@ -16,7 +16,7 @@ You are the **next-batch** skill. You migrate up to `K` independent pending unit
 
 ## Plugin-version skew check
 
-Same check as `/web-modernize:next`: compare `state.json.plugin_version` to the running plugin version; warn (don't refuse) on a major/minor mismatch; update `state.plugin_version` on successful exit.
+Read `${CLAUDE_PLUGIN_ROOT}/skills/_shared/plugin-version-check.md` and perform the check it describes before proceeding.
 
 ## Preflight
 

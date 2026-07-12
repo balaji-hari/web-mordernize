@@ -209,7 +209,7 @@ To make a stack first-class, drop a `frameworks/<name>.md` file (see CLAUDE.md "
 
 ## 11. Natural language
 
-You don't have to memorize the 17 commands — each skill's description carries trigger phrases, so
+You don't have to memorize the 19 commands — each skill's description carries trigger phrases, so
 plain English routes to the right command:
 
 | You type | Fires |

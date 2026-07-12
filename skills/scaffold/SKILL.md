@@ -40,27 +40,27 @@ Before scaffolding anything, verify the runtimes the chosen target stacks need a
 
 1. **Resolve the chosen targets.** Read `state.target_stack.ui` and `state.target_stack.api` (fall back to `migration.md §3`/`§4` if state hasn't recorded them yet). Skip the API row if it's `none` / `reuse-existing`.
 
-2. **Read each target's runtime floor from its framework file.** For each chosen target with a `frameworks/<name>.md`, read its `## Scaffold` note, `## Dev server` row, and `display_name` for the required runtime + minimum version — e.g. `react-vite-ts` states "Node ≥ 22", `fastapi`'s display_name is "FastAPI (Python 3.12+)". **Do not hardcode floors in this skill** — the framework file is the source of truth (a one-file drop-in must carry its own floor).
+2. **Follow each target's preflight instruction from its framework file.** For each chosen target with a `frameworks/<name>.md`, read its `## Scaffold` note (and `## Dev server` row) for which runtime it needs. The framework files state a **version-agnostic** preflight instruction — e.g. "resolve the scaffolder's current required Node floor (its docs/release notes) and verify local Node meets it" — rather than a hardcoded minimum. **Follow that instruction**: resolve the current floor at scaffold time from the tool's own docs / release notes (or, where the scaffold ships a manifest that pins it — e.g. FastAPI's `pyproject.toml` `requires-python` — from that), then compare it against the probed local runtime. **Do not hardcode floors in this skill, and don't expect the framework file to state a fixed number** — it carries the preflight instruction; the current floor is resolved live (a one-file drop-in owns its own preflight note, not a stale version pin).
    - If a chosen target has **no** `frameworks/<name>.md` (unknown target), you cannot know its toolchain — **skip the probe for it** and let the Unknown-target follow-up (run later, per subsystem) collect what's needed. Note it in the table as `unknown — recipe supplied at scaffold time`.
 
 3. **Probe the binaries** the resolved stacks actually need (only those — don't probe Python if there's no FastAPI target):
 
-   | Runtime | Needed by | Probe | Floor source |
+   | Runtime | Needed by | Probe | Floor (resolve at scaffold time — see step 2) |
    |---|---|---|---|
-   | Node + npm | Vite / Next / Angular / SvelteKit / Nuxt / Remix / Astro UIs, NestJS / Express / Hono APIs | `node -v`, `npm -v` | per UI framework file (Vite stacks: 22) |
-   | Python | `fastapi` | `python3 --version` (or `python --version`) | 3.12 |
-   | .NET SDK | `dotnet-minimal-api` | `dotnet --version` | per framework file |
-   | Java + Maven | `spring-boot-3` | `java -version`, `./mvnw -v` (or `mvn -v`) | per framework file |
+   | Node + npm | Vite / Next / Angular / SvelteKit / Nuxt / Remix / Astro UIs, NestJS / Express / Hono APIs | `node -v`, `npm -v` | the scaffolder's current required Node floor (its docs / release notes) — recent tool majors drop older Node LTS lines |
+   | Python | `fastapi` | `python3 --version` (or `python --version`) | FastAPI's current supported Python; the shipped `pyproject.toml` `requires-python` is the pinned source |
+   | .NET SDK | `dotnet-minimal-api` | `dotnet --version` | the .NET SDK the current `dotnet new webapi` template targets (its docs) |
+   | Java + Maven | `spring-boot-3` | `java -version`, `./mvnw -v` (or `mvn -v`) | the current Spring Boot release's supported Java baseline (start.spring.io / its docs) |
 
-   Parse the version from each probe and compare to the floor.
+   Parse the version from each probe and compare to the resolved floor.
 
 4. **Print a readiness table and decide:**
 
    ```
    Toolchain preflight (targets: <ui> + <api>)
-     Runtime   Required   Found      Status
-     Node      ≥ 22       v22.3.0    ✅
-     Python    ≥ 3.12     3.11.4     ⚠ below floor
+     Runtime   Required            Found      Status
+     Node      ≥ (resolved floor)  v22.3.0    ✅
+     Python    ≥ (resolved floor)  3.11.4     ⚠ below floor
      ...
    ```
 
@@ -402,6 +402,7 @@ and continue. This is normal for some legacy stacks (e.g., a pure API).
 Now that target paths exist, update `.claude/modernize/verify.config.json`:
 - Replace `${ui_root}` defaults with the actual UI path (e.g., `apps/web-new`).
 - Replace `${api_root}` with actual API path or `null` if skipped.
+- Populate the `ui` block's `lint`/`typecheck`/`tests` commands from `${CLAUDE_PLUGIN_ROOT}/frameworks/<state.target_stack.ui>.md`'s `## Verify commands` section (substituting `${ui_root}`/`${target_path}` the same way as above) — **do not hardcode per-stack commands here**, the framework file is the source of truth, same rule as Scaffold/Test framework/Dev server. If the chosen UI target has no `frameworks/<name>.md` (unknown target) or its file has no `## Verify commands` section, leave the template's Node defaults in place — they degrade gracefully but may need hand-correction for a non-Node stack.
 - Populate the `api` block's `lint`/`typecheck`/`tests` commands from `${CLAUDE_PLUGIN_ROOT}/frameworks/<state.target_stack.api>.md`'s `## Verify commands` section (substituting `${api_root}`/`${target_path}` the same way as above) — **do not hardcode per-stack commands here**, the framework file is the source of truth, same rule as Scaffold/Test framework/Dev server. If the chosen API target has no `frameworks/<name>.md` (unknown target) or its file has no `## Verify commands` section, leave the template's Node defaults in place — they degrade gracefully but may need hand-correction for a non-Node stack.
 - Keep the user's manual edits if they edited the file already — diff and ask.
 
