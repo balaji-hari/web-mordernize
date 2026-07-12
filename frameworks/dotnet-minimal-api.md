@@ -27,13 +27,26 @@ dotnet new xunit -o tests/<project>.Tests
 dotnet add tests/<project>.Tests reference apps/<project>/<project>.csproj
 dotnet add tests/<project>.Tests package coverlet.collector
 dotnet add tests/<project>.Tests package Microsoft.AspNetCore.Mvc.Testing
-dotnet new sln -n <project>
+```
+
+Reuse an existing solution file if one already exists anywhere in the repo (`dotnet new webapi` does **not** create one as a side effect — check first, e.g. `find . -maxdepth 3 \( -name "*.sln" -o -name "*.slnx" \)` or platform-equivalent). This is the common case when migrating an existing .NET solution in place — a fresh `dotnet new sln` there collides with the repo's real solution file. Only create a new one if genuinely none exists:
+
+```sh
+dotnet new sln -n <project>   # only if no .sln/.slnx was found anywhere in the repo
 dotnet sln add apps/<project>/<project>.csproj tests/<project>.Tests/<project>.Tests.csproj
 ```
 
 Write `tests/<project>.Tests/HealthTests.cs` using `WebApplicationFactory<Program>` to assert `GET /health` returns 200. Coverage command: `dotnet test --collect:"XPlat Code Coverage"`.
 
 Test smoke: `dotnet test --no-build`.
+
+## Verify commands
+
+| Check | Command |
+|---|---|
+| lint | `dotnet format --verify-no-changes` |
+| typecheck | `dotnet build` (the C# compiler is the type checker — there's no separate typecheck step) |
+| test | `dotnet test --filter ${target_path}` (or `dotnet test` for the whole suite) |
 
 ## Auth notes
 
@@ -42,6 +55,11 @@ Use **`Microsoft.AspNetCore.Identity.PasswordHasher<TUser>`** (the framework def
 Seed dev users via a `--seed` CLI flag wired into `Program.cs`, gated on `ASPNETCORE_ENVIRONMENT != "production"`. Run with `dotnet run -- --seed`.
 
 Refer to `agents/permanent-gotchas.md` for cross-cutting auth rules (bcrypt 72-byte truncation, CSRF defaults, etc.).
+
+## Data migration
+
+Apply: `dotnet ef database update`
+Status (read-only reachability probe): `dotnet ef migrations list` (connects to the configured database by default, which is what makes it useful as a reachability probe — not just a local metadata read)
 
 ## Dev server
 

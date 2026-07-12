@@ -26,6 +26,14 @@ Create `apps/api-new/` and:
 
 Test smoke: `pytest -q tests/test_health.py`.
 
+## Verify commands
+
+| Check | Command |
+|---|---|
+| lint | `ruff check ${api_root}` |
+| typecheck | `mypy ${api_root}` |
+| test | `pytest -q ${target_path}` (run from `${api_root}`) |
+
 ## Auth notes
 
 Use **`bcrypt>=4.0`** directly with explicit 72-byte truncation. **DO NOT use `passlib[bcrypt]`** — it crashes on first hash call under bcrypt ≥ 4.x because passlib's `detect_wrap_bug` routine tests with a 73-byte secret, which bcrypt 4 raises on instead of silently truncating. This rule survives a `security.py` rewrite and lives in `agents/permanent-gotchas.md`.
@@ -48,6 +56,11 @@ If the team wants arbitrary-length passwords (no 72-byte truncation), use SHA-25
 Seed dev users via `apps/api-new/scripts/seed_dev_users.py`. Run with `python scripts/seed_dev_users.py`. Gate on `os.environ.get("APP_ENV") != "production"` (or equivalent env var).
 
 Refer to `agents/permanent-gotchas.md` for cross-cutting auth rules.
+
+## Data migration
+
+Apply: `alembic upgrade head`
+Status (read-only reachability probe): `alembic current`
 
 ## Dev server
 

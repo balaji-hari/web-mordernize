@@ -228,7 +228,7 @@ To add a framework (e.g., `phoenix-elixir` as a target API):
    role: target-api  # or target-ui, or source
    ---
    ```
-2. Fill in the standard sections: `## Scaffold` (shell command), `## Test framework`, `## Auth notes`, `## Dev server` (table with port + dev command + URL + health check), `## Recommendation context` (optional, for the interview's source-stack-aware recommendations).
+2. Fill in the standard sections: `## Scaffold` (shell command), `## Test framework`, `## Verify commands` (target-api only — lint/typecheck/test commands `/scaffold` populates `verify.config.json`'s `api` block from), `## Auth notes`, `## Data migration` (target-api only — `Apply:`/`Status:` commands `/foundation`'s datastore-reachability preflight and DB-migration step read), `## Dev server` (table with port + dev command + URL + health check), `## Recommendation context` (optional, for the interview's source-stack-aware recommendations).
 3. Reinstall the plugin and the new framework is immediately available — `/scaffold` reads the file when a user picks `phoenix-elixir` as their target API, `legacy-analyzer` reads it for source detection if `role: source`.
 
 For source frameworks, also include a `## Detection` section listing strong and weak signals (file paths, library references, build files) the `legacy-analyzer` agent looks for.

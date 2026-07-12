@@ -154,6 +154,25 @@ Standard dev allow-list: `http://localhost:5173` (Vite), `http://localhost:3000`
 
 ---
 
+## Sandbox / environment
+
+### `npm install` fails with `EALLOWSCRIPTS` inside the Claude Code sandbox
+
+**Symptom:** IF `npm install` (or `npm ci`) fails with an `EALLOWSCRIPTS` error — even for a project that never enabled `ignore-scripts` or referenced `allow-scripts` itself — THEN unset `npm_config_allow_scripts` and `NPM_CONFIG_ALLOW_SCRIPTS` for that command and retry.
+
+**Root cause:** where the Claude Code sandbox's global `.npmrc` sets `allow-scripts=@anthropic-ai/claude-code` (so Claude Code's own installer can run its lifecycle scripts), npm's `resolve-allow-scripts.js` treats the `npm_config_allow_scripts` / `NPM_CONFIG_ALLOW_SCRIPTS` env var as a CLI-level policy and rejects it outright for any project-scoped install — regardless of what the project itself declares. This applies to **any** Node-based scaffold run inside such a sandbox (NestJS, Express, Hono, or a Vite/Next/Angular UI — not specific to one framework or source stack), and it only applies where the environment actually sets that `.npmrc` line; an environment without it won't hit this.
+
+**Fix:**
+
+```sh
+unset npm_config_allow_scripts NPM_CONFIG_ALLOW_SCRIPTS
+npm install
+```
+
+(PowerShell: `Remove-Item Env:npm_config_allow_scripts, Env:NPM_CONFIG_ALLOW_SCRIPTS -ErrorAction SilentlyContinue`.) Re-run whichever `npm install`/`npm ci` step failed once the vars are cleared.
+
+---
+
 ## Adding a new entry
 
 Before adding: ask whether a smart agent could reach this fix in ~30 seconds with one WebSearch. If yes, the entry doesn't belong here — leave it for the scaffold-time agent to discover. If the bug crashes before a search would naturally happen, or the symptom is silent (no error to search for), it belongs here.

@@ -33,6 +33,14 @@ Sample test at `__tests__/app.spec.ts` asserting `/health` returns 200.
 
 Test smoke: `npm test -- --ci --runInBand`.
 
+## Verify commands
+
+| Check | Command |
+|---|---|
+| lint | `npm --prefix ${api_root} run lint` |
+| typecheck | `npm --prefix ${api_root} run typecheck` |
+| test | `npm --prefix ${api_root} test -- ${target_path}` |
+
 ## Auth notes
 
 Use **`bcrypt`** (npm) — well-maintained, native binding. Acceptable alternate: **`argon2`** for teams that prefer Argon2id over bcrypt.
@@ -42,6 +50,11 @@ Use **`bcrypt`** (npm) — well-maintained, native binding. Acceptable alternate
 Seed dev users via `apps/api-new/scripts/seed-dev-users.ts`, run with `npx ts-node scripts/seed-dev-users.ts`. Gate on `NODE_ENV !== 'production'`.
 
 Refer to `agents/permanent-gotchas.md` for cross-cutting auth rules (bcrypt 72-byte truncation).
+
+## Data migration
+
+Apply: `npx typeorm migration:run` (TypeORM) or `npx prisma migrate deploy` (Prisma) — whichever ORM the `data` foundation concern established.
+Status (read-only reachability probe): `npx prisma migrate status` (Prisma) or `npx typeorm migration:show` (TypeORM).
 
 ## Dev server
 

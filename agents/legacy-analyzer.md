@@ -185,6 +185,7 @@ Always include if applicable:
 - "Source has no tests — verification will be limited."
 - "Large amount of generated code (>30% of LOC) — flag to user; should not be migrated as feature units."
 - "Authentication appears to mix two providers (e.g., Forms auth + Windows auth) — `/foundation` skill (auth concern) will need careful handling."
+- "String-concatenated / dynamically-built SQL detected (e.g. VB.NET/C# string concatenation into a query, PHP string interpolation into SQL, Java `Statement` instead of `PreparedStatement`) — surface as an open decision at plan time. This is earlier visibility, not a claim that the risk is otherwise unhandled: `parity-reviewer` already checks for injection as a `security_*` finding and blocks `/verify` on unacknowledged highs regardless of whether this warning fires — flagging it here just lets the team see and decide before code is written, instead of discovering it after a unit migrates."
 
 ## Self-check before returning
 

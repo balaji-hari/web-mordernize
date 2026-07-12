@@ -402,6 +402,7 @@ and continue. This is normal for some legacy stacks (e.g., a pure API).
 Now that target paths exist, update `.claude/modernize/verify.config.json`:
 - Replace `${ui_root}` defaults with the actual UI path (e.g., `apps/web-new`).
 - Replace `${api_root}` with actual API path or `null` if skipped.
+- Populate the `api` block's `lint`/`typecheck`/`tests` commands from `${CLAUDE_PLUGIN_ROOT}/frameworks/<state.target_stack.api>.md`'s `## Verify commands` section (substituting `${api_root}`/`${target_path}` the same way as above) — **do not hardcode per-stack commands here**, the framework file is the source of truth, same rule as Scaffold/Test framework/Dev server. If the chosen API target has no `frameworks/<name>.md` (unknown target) or its file has no `## Verify commands` section, leave the template's Node defaults in place — they degrade gracefully but may need hand-correction for a non-Node stack.
 - Keep the user's manual edits if they edited the file already — diff and ask.
 
 ## Commit suggestion

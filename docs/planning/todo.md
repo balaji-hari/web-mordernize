@@ -32,6 +32,7 @@ high-value and still Tier 3 if nobody's designed it yet):
 
 | Tier | Item | Category | Effort | Depends on |
 |---|---|---|---|---|
+| 1 | [Docs sync — version + counts to current release](#docs-sync--version--counts-to-current-release) | Docs / release hygiene | M | — |
 | 1 | [Configuration migration](#configuration-migration) | Coverage | M | — |
 | 1 | [Global / shared client state](#global--shared-client-state) | Composition | M | — |
 | 2 | [Data-layer bulk migration](#data-layer-bulk-migration) | Coverage | L | — |
@@ -46,6 +47,46 @@ high-value and still Tier 3 if nobody's designed it yet):
 ---
 
 ## Tier 1 — Ready now
+
+### Docs sync — version + counts to current release
+**Category:** Docs / release hygiene · **Status:** DESIGNED · **Effort:** M
+
+`docs/` is hand-maintained (not generated from plugin source) and has drifted a full minor +
+several patches behind. Surfaced during the v0.17.4 doc-cleanup pass; deliberately **not** fixed
+under a patch's cover because it predates v0.17.4 and needs its own verified deck regeneration.
+
+**Version lag (all still at v0.16.0):** `docs/DEVELOPER-HANDBOOK.md` §13 header ("What's new
+(v0.12.0 – v0.16.0)" + its narrative), all three `docs/diagrams/architecture-p{1,2,3}-*.svg`
+footers, and both `docs/scripts/build_presentation.py` + `docs/scripts/build_onepager_v2.py`
+version strings. The handbook's "What's new" narrative is missing everything from v0.17.0 on:
+`unit-migrator` subagent conversion, `/next-batch`, CSS audit, the v0.17.1–v0.17.3 prompt fixes,
+and v0.17.4 (datastore-reachability preflight, `## Verify commands` / `## Data migration`
+framework sections, `/status` foundation rollup, string-built-SQL warning, i18n multi-locale
+guard, guarded EALLOWSCRIPTS gotcha).
+
+**Count drift:** `architecture-p3-state.svg` footer + `build_presentation.py` read "18 skills ·
+6 agents"; actual is **19 skills** (20 dirs under `skills/` minus non-command `_shared`) and
+**31 framework files** (correct/unchanged). **Decision on record:** count as **5 agents** — the
+actual subagents — and treat `agents/agent-rules.md` + `agents/permanent-gotchas.md` as shared
+reference docs, not agents. (Confirm the count freshly at execution time; skill/agent/framework
+totals can move between now and then.)
+
+**How to execute (per CLAUDE.md "Presentation & diagram assets"):** never hand-edit the binary
+`.pptx` — edit the strings/counts in the two `docs/scripts/build_*.py` scripts and the three
+SVGs directly, then re-run `python docs/scripts/build_presentation.py` and (with `docs/scripts/`
+importable) `build_onepager_v2.py` to regenerate the decks; confirm `python-pptx` (1.0.2) imports
+before editing and report if the regenerate step fails rather than leaving half-updated binaries.
+Grep `docs/` for the old version string **and** the old counts and update every hit together
+(they're hardcoded in many places — footers, title/closing slides, the "The N Skills" slide
+title, inventory tables). **Recommended model: Sonnet 5 / high** — mostly mechanical + one prose
+sub-task (extend the handbook "What's new" from `CHANGELOG.md`), where the real risk is catching
+every hardcoded hit, not reasoning difficulty.
+
+**Files:** `docs/DEVELOPER-HANDBOOK.md` · `docs/diagrams/architecture-p{1,2,3}-*.svg` ·
+`docs/scripts/build_presentation.py` · `docs/scripts/build_onepager_v2.py` · regenerated
+`docs/decks/*.pptx` (build artifacts, via the scripts — never by hand).
+
+---
 
 ### Configuration migration
 **Category:** Coverage · **Status:** OPEN · **Effort:** M

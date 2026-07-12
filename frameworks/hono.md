@@ -47,11 +47,26 @@ test('GET /health', async () => {
 
 Test smoke: `npm run test -- --run`.
 
+## Verify commands
+
+| Check | Command |
+|---|---|
+| lint | `npm --prefix ${api_root} run lint` |
+| typecheck | `npm --prefix ${api_root} run typecheck` |
+| test | `npm --prefix ${api_root} test -- ${target_path}` |
+
 ## Auth notes
 
 Hono provides built-in middleware for `bearerAuth`, `basicAuth`, and `jwt` (via `hono/jwt`). For password hashing use **`bcrypt`** (npm). For more elaborate auth flows, consider `@hono/auth-js` (Lucia / Auth.js integration).
 
 Refer to `agents/permanent-gotchas.md` for cross-cutting auth rules (bcrypt 72-byte truncation, JWT pitfalls).
+
+## Data migration
+
+Hono is ORM-agnostic — this framework file doesn't prescribe one; the real choice is made by the `data` foundation concern (see `agents/cross-cutting-migrator.md`). The commands below assume the common default, **Prisma**, as a starting point, not a mandate:
+
+Apply: `npx prisma migrate deploy`
+Status (read-only reachability probe): `npx prisma migrate status`
 
 ## Dev server
 

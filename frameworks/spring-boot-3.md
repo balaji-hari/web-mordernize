@@ -49,6 +49,14 @@ Use `WebTestClient` only if the target is WebFlux (reactive) — it requires add
 
 Test smoke: `./mvnw -q test` (fall back to `mvn -q test`).
 
+## Verify commands
+
+| Check | Command |
+|---|---|
+| lint | `./mvnw checkstyle:check` (or `./mvnw spotless:check` if Spotless is configured instead) |
+| typecheck | `./mvnw compile` (the Java compiler is the type checker — there's no separate typecheck step) |
+| test | `./mvnw test` (scope to one class with `-Dtest=${target_path}` when verifying a single unit) |
+
 ## Auth notes
 
 Use **`BCryptPasswordEncoder`** from `spring-security-crypto`. Standard pattern — register as a `@Bean`, inject into the auth service, use `encode(...)` / `matches(...)`.
@@ -56,6 +64,11 @@ Use **`BCryptPasswordEncoder`** from `spring-security-crypto`. Standard pattern 
 Seed dev users via a `@Profile("dev")` + `CommandLineRunner` at `src/main/java/<base-package>/devseed/DevUserSeeder.java`. Auto-runs on `./mvnw spring-boot:run -Dspring-boot.run.profiles=dev`.
 
 Refer to `agents/permanent-gotchas.md` for cross-cutting auth rules.
+
+## Data migration
+
+Apply: `./mvnw flyway:migrate`
+Status (read-only reachability probe): `./mvnw flyway:info`
 
 ## Dev server
 

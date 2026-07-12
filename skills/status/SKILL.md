@@ -46,7 +46,22 @@ scaffold:  ui=<ui.status> @ <ui.path>     api=<api.status> @ <api.path>     db=<
 
 If `scaffold` is null, print `scaffold: not run yet — run /web-modernize:scaffold`.
 
-### 4. Unit counts
+### 4. Foundation
+
+Fires only when `state.foundation.concerns` is set **and** `state.status == "scaffolded"` — foundation was confirmed at `/plan` but hasn't fully finished, the "half-done, blocked on infra" case a resumed session can't otherwise distinguish from "foundation never started" without opening every `units/__*__.json` by hand. Skip this section entirely otherwise (once `state.status` reaches `foundation_done`, every concern already finished, so there is nothing left to roll up here).
+
+For each concern in `state.foundation.concerns[]`, read `.claude/modernize/units/__<concern>__.json` and print:
+
+```
+foundation: <N> concern(s) confirmed at /plan — status: scaffolded (not yet foundation_done)
+  <concern>: <status>
+    <if blocked or failed:> diagnostic: <failure.diagnostic, or tests.seed_blocked_reason / tests.seed_failed_reason for __auth__, or "no diagnostic recorded">
+  ...
+```
+
+If a concern's per-unit file doesn't exist yet, print `<concern>: not started`. Read-only — do not create or modify any file.
+
+### 5. Unit counts
 
 Aggregate across every `units/*.json` you read. Count by status:
 
@@ -54,7 +69,7 @@ Aggregate across every `units/*.json` you read. Count by status:
 units:  <total> total   <pending> pending   <in_progress> in-flight   <migrated> migrated   <verified> verified   <blocked> blocked   <skipped> skipped   <failed> failed
 ```
 
-### 5. In flight
+### 6. In flight
 
 For every unit with `status: "in_progress"`, print a block:
 
@@ -69,7 +84,7 @@ For every unit with `status: "in_progress"`, print a block:
 
 **Stale detection**: if `last_heartbeat` is more than 15 minutes ago, append on a new line `    WARNING: POSSIBLY STALLED — heartbeat is <N> min old. /web-modernize:next will offer to take over.`
 
-### 6. Next up
+### 7. Next up
 
 If `state.status` is `foundation_done` or `in_progress` and there are pending units, determine the next unit `/web-modernize:next` would pick by iterating `state.unit_ids` in order and reading each `units/<id>.json`:
 
@@ -107,7 +122,7 @@ next up: not in migration phase yet. Run /web-modernize:<next-skill-in-flow>.
 - `foundation_done` → `next`
 - `complete` → (print "Migration complete — nothing to do.")
 
-### 7. Blockers
+### 8. Blockers
 
 For every unit with `status: "blocked"` or `status: "failed"`, print:
 
@@ -117,7 +132,7 @@ For every unit with `status: "blocked"` or `status: "failed"`, print:
 
 If none, print `blockers: none.`
 
-### 8. Lock
+### 9. Lock
 
 If `state.lock` is non-null, print one of:
 
@@ -143,7 +158,7 @@ advisory lock held by <lock.holder> until <lock.expires_at> (<minutes> min remai
 
 If `state.lock` is null, omit this section.
 
-### 9. Recent activity (last 5)
+### 10. Recent activity (last 5)
 
 Across every per-unit file you read, gather all `history[]` entries (carry the unit id alongside each entry) and print the 5 most recent by timestamp:
 
@@ -155,7 +170,7 @@ recent activity:
 
 If no history, print `recent activity: (none)`.
 
-### 10. Staleness
+### 11. Staleness
 
 Discovery can move without the downstream plan being regenerated. Detect this with **git commit times** — *not* file mtimes, because git does not preserve mtimes across clone/pull, so mtimes are unreliable for teammates. The last commit time for a path is `git log -1 --format=%ct -- <path>` (epoch seconds; empty output means the path is untracked or has no commits). This is read-only.
 

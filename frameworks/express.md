@@ -66,6 +66,14 @@ test('GET /health', async () => {
 
 Test smoke: `npm run test -- --run`.
 
+## Verify commands
+
+| Check | Command |
+|---|---|
+| lint | `npm --prefix ${api_root} run lint` |
+| typecheck | `npm --prefix ${api_root} run typecheck` |
+| test | `npm --prefix ${api_root} test -- ${target_path}` |
+
 ## Auth notes
 
 Use **`bcrypt`** (npm, native binding) for password hashing. Auth middleware patterns: `jsonwebtoken` for JWT, `express-session` for cookie sessions, `passport` only if integrating with a third-party IdP (otherwise it's overkill).
@@ -73,6 +81,13 @@ Use **`bcrypt`** (npm, native binding) for password hashing. Auth middleware pat
 Avoid `bcryptjs` (pure-JS, much slower than native `bcrypt`).
 
 Refer to `agents/permanent-gotchas.md` for cross-cutting auth rules (bcrypt 72-byte truncation, CSRF, etc.).
+
+## Data migration
+
+Express is ORM-agnostic — this framework file doesn't prescribe one; the real choice is made by the `data` foundation concern (see `agents/cross-cutting-migrator.md`). The commands below assume the common default, **Prisma**, as a starting point, not a mandate:
+
+Apply: `npx prisma migrate deploy`
+Status (read-only reachability probe): `npx prisma migrate status`
 
 ## Dev server
 

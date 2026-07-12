@@ -137,6 +137,8 @@ The `legacy-analyzer`, `unit-migrator-subagent`, `parity-reviewer`, `migration-c
 
 `frameworks/<name>.md` is the canonical per-framework recipe location. One markdown file per supported source or target stack, with frontmatter declaring `name`, `display_name`, and `role: source | target-ui | target-api`. Loaded on demand by the consuming skill/agent — adding a new framework is a one-file drop-in, no skill edits required.
 
+**Principle:** environment/toolchain assumptions that only fail at the last mile (an unreachable datastore discovered mid-migration, an `npm install` that only breaks inside this sandbox, verify commands that silently assume Node) should be checked up front — a readiness/reachability preflight, not a late-stage crash — and the stack-specific readiness recipe belongs in the framework file, not hardcoded in the skill.
+
 Standard sections (use all that apply for the role):
 
 - `## Detection` — source files only. Strong + weak signals (file paths, library references, build files, language constructs) the `legacy-analyzer` agent scores against the source tree.

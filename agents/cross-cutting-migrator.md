@@ -50,6 +50,8 @@ Per-concern recipe (target-idiomatic; examples, not mandates):
 
 For `auth` specifically: honour the load-bearing gotchas (bcrypt 72-byte truncation, `passlib[bcrypt]` ban on Python, CSRF defaults) from `agents/permanent-gotchas.md` — they override framework docs. (The **dev-user seeding** is the calling skill's job, not yours — you only write the auth code.)
 
+For `i18n` specifically: before building a full catalog/provider, confirm the legacy source actually defines **more than one** locale/culture (the same guard `/foundation`'s Discovery step applies) — a resource file, properties bundle, or `$translate`/`<fmt:message>` catalog with only one locale is a labeling convention, not real localization. If only one locale exists, say so in `notes/__i18n__.md` and note in your returned `notes` that the concern may be lighter than a full provider warrants — still return `status: "ok"`; this is a design observation, not a blocker.
+
 ## 3. Notes
 
 Record design decisions (library, location, why), the legacy→target source map, and any gotchas in the concern's `notes/__<concern>__.md`. Mask secrets per §0. If the concern encodes real rules (e.g. authorization role mapping, flag-evaluation logic), capture them as a Given/When/Then behaviour contract.
