@@ -1198,6 +1198,7 @@ def slide_11_commands(prs):
         ("/scaffold",  "Creates the blank modern application skeleton and copies legacy images, fonts, and assets."),
         ("/foundation","Establishes the foundational slice first — login/auth plus opted-in cross-cutting concerns (i18n, feature flags, error handling, telemetry, logging, data-access wiring) — via one consolidated design-approval gate, implemented in parallel."),
         ("/next",      "Picks the next available unit from the backlog and migrates it — presenting a plan for approval first (opt-out)."),
+        ("/next-batch","Migrates several independent units in parallel in one pass — faster throughput than /next, but always skips the per-unit plan gate."),
         ("/migrate",   "Migrates a specific unit by name — used when standup assigns work."),
         ("/verify",    "Runs lint, type-check, tests, a behavioural-parity + security gate, and advisory code-quality + static-performance review; an opt-in dynamic tier (API replay + Playwright E2E) adds runtime checks."),
         ("/parity-check", "Compares a migrated unit's behaviour against the legacy original — validation, output shape, errors, UI states, security — and lets the team acknowledge intentional differences."),
@@ -1218,7 +1219,7 @@ def slide_11_commands(prs):
         col_ratios=[0.18, 0.82],
         header_size=13, body_size=10,
         mono_col0=True,
-        row_height=0.305,
+        row_height=0.29,
     )
 
 
@@ -1281,7 +1282,7 @@ def slide_12_inventory(prs):
              "9 Templates  ·  31 Framework Files  ·  4 Workflow Scripts",
              size=14, color=COBALT, font=FONT_HEADER)
     add_table(
-        slide, 0.40, 4.82, 12.533, 2.45,
+        slide, 0.40, 4.82, 12.533, 2.34,
         ["Artifact", "What It Does"],
         [
             ("migration.md",                          "The team-editable configuration: target stack, strategy, auth, cross-cutting concerns, acceptance criteria."),
@@ -1289,6 +1290,8 @@ def slide_12_inventory(prs):
             ("frameworks/<name>.md  ×31",             "One file per supported framework — detection signals, scaffold/integration recipes, test framework, auth notes."),
             ("workflows/analyze-discovery.js",        "Workflow-tool script — exhaustive loop-until-dry entry-point discovery driving /analyze."),
             ("workflows/foundation-establish.js",     "Workflow-tool script — fans out cross-cutting-migrator per concern, in parallel, for /foundation."),
+            ("workflows/next-batch.js",                "Workflow-tool script — fans out unit-migrator (full mode, no plan gate) across a batch of independent units in parallel, for /next-batch."),
+            ("workflows/verify-run.js",                "Workflow-tool script — pipelines per-unit lint/type-check/tests, then fans out parity-reviewer + migration-critic + the dynamic tier, for /verify."),
             ("state.schema.json  +  unit.schema.json", "Schemas for the workflow ledger and per-unit state — one JSON file per unit, conflict-free in git."),
             ("plan.md  +  report.md  +  notes-template.md", "Templates for the auto-generated plan, stakeholder reports, and per-unit design notes."),
             ("verify.config.json",                    "Per-stack lint, type-check, test, and dynamic (E2E + API-replay) commands used by /verify."),
@@ -1297,7 +1300,7 @@ def slide_12_inventory(prs):
         col_ratios=[0.34, 0.66],
         header_size=12, body_size=9,
         mono_col0=True,
-        row_height=0.235,
+        row_height=0.195,
     )
 
 

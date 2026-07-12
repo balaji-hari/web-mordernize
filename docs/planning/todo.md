@@ -32,16 +32,21 @@ high-value and still Tier 3 if nobody's designed it yet):
 
 | Tier | Item | Category | Effort | Depends on |
 |---|---|---|---|---|
-| 1 | [Docs sync — version + counts to current release](#docs-sync--version--counts-to-current-release) | Docs / release hygiene | M | — |
+| 1 | [Doc gap — DEVELOPER-HANDBOOK.md agents table](#doc-gap--developer-handbookmd-agents-table) | Docs / release hygiene | S | — |
+| 1 | [Dry-run follow-ups](#dry-run-follow-ups) | DX / robustness | M | — |
+| 1 | [C-5 follow-up — verify the legacy-guard hook live](#c-5-follow-up--verify-the-legacy-guard-hook-live) | Control & safety | S | — |
 | 1 | [Configuration migration](#configuration-migration) | Coverage | M | — |
 | 1 | [Global / shared client state](#global--shared-client-state) | Composition | M | — |
 | 2 | [Data-layer bulk migration](#data-layer-bulk-migration) | Coverage | L | — |
 | 2 | [`/verify` referee panel](#verify-referee-panel) | Verification depth | L | — |
 | 3 | [Accessibility (a11y) check](#accessibility-a11y-check) | Verification depth | M | — |
 | 3 | [Runtime performance (Tier-2)](#runtime-performance-tier-2) | Verification depth | ? | dynamic tier (shipped) |
+| 3 | [T-2 — double source-read on the gated path](#t-2--double-source-read-on-the-gated-path) | Token efficiency | M | spike (see below) |
 | 4 | [Dependency-preflight agent](#dependency-preflight-agent) | Control & safety | S | retry-pattern evidence |
 | 4 | [Visual regression (Phase C)](#visual-regression-phase-c) | Verification depth | ? | — |
 | 4 | [Business-rule mining as a first-class pre-translation artifact](#business-rule-mining-as-a-first-class-pre-translation-artifact) | Verification depth | unscoped | — |
+| 4 | [F-9 — split the CHANGELOG](#f-9--split-the-changelog) | Docs / release hygiene | M | — |
+| 4 | [C-2 — command surface consolidation](#c-2--command-surface-consolidation) | Composition | L | future 1.0.0 bump |
 
 *(`unit-migrator` subagent conversion, `/next-batch`, and CSS audit shipped in v0.17.0 — moved to "Shipped" below.)*
 
@@ -51,43 +56,43 @@ high-value and still Tier 3 if nobody's designed it yet):
 
 ## Tier 1 — Ready now
 
-### Docs sync — version + counts to current release
-**Category:** Docs / release hygiene · **Status:** DESIGNED · **Effort:** M
+### Doc gap — DEVELOPER-HANDBOOK.md agents table
+**Category:** Docs / release hygiene · **Status:** DESIGNED · **Effort:** S
 
-`docs/` is hand-maintained (not generated from plugin source) and has drifted a full minor +
-several patches behind. Surfaced during the v0.17.4 doc-cleanup pass; deliberately **not** fixed
-under a patch's cover because it predates v0.17.4 and needs its own verified deck regeneration.
+`docs/DEVELOPER-HANDBOOK.md` §6 "The agents" table lists the wrong five: it includes
+`permanent-gotchas` (a curated reference doc, not an agent) and omits `cross-cutting-migrator`.
+Fix the table to the real five agents (`legacy-analyzer`, `unit-migrator`, `parity-reviewer`,
+`migration-critic`, `cross-cutting-migrator`).
 
-**Version lag (all still at v0.16.0):** `docs/DEVELOPER-HANDBOOK.md` §13 header ("What's new
-(v0.12.0 – v0.16.0)" + its narrative), all three `docs/diagrams/architecture-p{1,2,3}-*.svg`
-footers, and both `docs/scripts/build_presentation.py` + `docs/scripts/build_onepager_v2.py`
-version strings. The handbook's "What's new" narrative is missing everything from v0.17.0 on:
-`unit-migrator` subagent conversion, `/next-batch`, CSS audit, the v0.17.1–v0.17.3 prompt fixes,
-and v0.17.4 (datastore-reachability preflight, `## Verify commands` / `## Data migration`
-framework sections, `/status` foundation rollup, string-built-SQL warning, i18n multi-locale
-guard, guarded EALLOWSCRIPTS gotcha).
+**Files:** `docs/DEVELOPER-HANDBOOK.md` §6.
 
-**Count drift:** `architecture-p3-state.svg` footer + `build_presentation.py` read "18 skills ·
-6 agents"; actual is **19 skills** (20 dirs under `skills/` minus non-command `_shared`) and
-**31 framework files** (correct/unchanged). **Decision on record:** count as **5 agents** — the
-actual subagents — and treat `agents/agent-rules.md` + `agents/permanent-gotchas.md` as shared
-reference docs, not agents. (Confirm the count freshly at execution time; skill/agent/framework
-totals can move between now and then.)
+---
 
-**How to execute (per CLAUDE.md "Presentation & diagram assets"):** never hand-edit the binary
-`.pptx` — edit the strings/counts in the two `docs/scripts/build_*.py` scripts and the three
-SVGs directly, then re-run `python docs/scripts/build_presentation.py` and (with `docs/scripts/`
-importable) `build_onepager_v2.py` to regenerate the decks; confirm `python-pptx` (1.0.2) imports
-before editing and report if the regenerate step fails rather than leaving half-updated binaries.
-Grep `docs/` for the old version string **and** the old counts and update every hit together
-(they're hardcoded in many places — footers, title/closing slides, the "The N Skills" slide
-title, inventory tables). **Recommended model: Sonnet 5 / high** — mostly mechanical + one prose
-sub-task (extend the handbook "What's new" from `CHANGELOG.md`), where the real risk is catching
-every hardcoded hit, not reasoning difficulty.
+### Dry-run follow-ups
+**Category:** DX / robustness · **Status:** DESIGNED · **Effort:** M
 
-**Files:** `docs/DEVELOPER-HANDBOOK.md` · `docs/diagrams/architecture-p{1,2,3}-*.svg` ·
-`docs/scripts/build_presentation.py` · `docs/scripts/build_onepager_v2.py` · regenerated
-`docs/decks/*.pptx` (build artifacts, via the scripts — never by hand).
+From a 2026-07-12 end-to-end dry-run against a VB.NET WebForms app under a Haiku-class model
+(see `dry-run-12-jul.md`, kept in the repo root as the findings report):
+
+| Priority | Item | File(s) |
+|---|---|---|
+| P0 | Add a `--sample`/`--shallow` mode to `/analyze` — skip the exhaustive whole-tree sweep (early-exit at first high-confidence match, ~10-20 entry points by importance, skip the styling sweep if no CSS is detected) for dry-runs and large codebases | `skills/analyze/SKILL.md` |
+| P0 | Document the VB.NET language-variant rule explicitly — a worked example showing `.aspx.vb` as the sibling of `.aspx`/`.aspx.cs` | `agents/legacy-analyzer.md` |
+| P1 | Make `/scaffold` degrade gracefully when sandbox npm hits `EALLOWSCRIPTS`, instead of just failing — validate `package.json` presence/syntax as a fallback (the gotcha itself is already documented per v0.17.4; this extends it to an actual graceful degrade) | `skills/scaffold/SKILL.md` |
+| P1 | Link `state.open_decisions[]` entries to the specific unit IDs they block, not just a global undifferentiated list | `templates/state.schema.json`, `skills/plan/SKILL.md` |
+
+---
+
+### C-5 follow-up — verify the legacy-guard hook live
+**Category:** Control & safety · **Status:** DESIGNED · **Effort:** S
+
+`hooks/guard-legacy.mjs` (created to close C-5, "no read-only guard on the legacy tree") denies
+edits to the legacy tree via a PreToolUse hook — but it currently **fails open**, and it's never
+been checked against a live Claude Code session. Unverified whether the runtime actually honors
+the hook's deny payload. Run it against a real session and confirm the deny fires before relying
+on it as a safety net.
+
+**Files:** `hooks/guard-legacy.mjs`.
 
 ---
 
@@ -211,6 +216,22 @@ already shipped in `migration-critic`. Actual runtime measurement (p99 latency, 
 was deliberately deferred to ride on the dynamic testing tier (API replay + Playwright, both now
 shipped) — but nobody has designed what a runtime-perf pass on top of that tier looks like yet.
 
+### T-2 — double source-read on the gated path
+**Category:** Token efficiency · **Status:** OPEN · **Effort:** M
+
+The default `review_mode` (`plan-first`) causes every gated unit to read all `source_paths` +
+dependent stylesheets **twice** — once in the subagent's `plan_only` call, again in `full` after
+approval (an accepted trade-off called out explicitly in `agents/unit-migrator-caller.md` /
+`agents/unit-migrator-subagent.md`). Since `plan-first` is the default, this is the common case,
+not the exception, and it's the dominant token cost at scale. Two candidate approaches, neither
+chosen yet:
+
+- **(a)** Native Plan Mode inline in the main loop — loses the subagent's context isolation.
+- **(b)** `SendMessage`-resume the `plan_only` subagent after approval instead of a second
+  fire-and-forget call — keeps isolation. **Spike this first.**
+
+No design doc beyond this description; needs the spike before either approach is committed.
+
 ---
 
 ## Tier 4 — Deliberately deferred
@@ -247,6 +268,31 @@ behaviour contract from a migration side-effect to a mined, reviewed artifact co
 (deferred; adjacent to the data-layer work above, but distinct — no design doc yet beyond this
 description).
 
+### F-9 — split the CHANGELOG
+**Category:** Docs / release hygiene · **Status:** DESIGNED · **Effort:** M
+
+`CHANGELOG.md` is ~107KB / 383 lines — each release entry is a mini design doc with a full
+"why this is a minor/patch" rationale. Split into a terse, user-facing changelog plus a
+`docs/release-notes/` directory carrying the deep per-release rationale. Deferred — no blocker
+beyond prioritization.
+
+### C-2 — command surface consolidation
+**Category:** Composition · **Status:** DESIGNED · **Effort:** L (breaking)
+**Depends on:** batching with a future breaking `1.0.0` release
+
+Fold `/web-modernize:retry` into `/web-modernize:migrate` and `/web-modernize:next-batch` into
+`/web-modernize:next --n=K`, per the full analysis in
+`docs/planning/command-consolidation-proposal.md`. The consolidation is itself a breaking rename
+of the command surface, so it's deliberately held until enough breaking changes accumulate to
+justify a `1.0.0` bump, rather than shipped as a disruptive standalone minor-version rename.
+
+### From review narrative, unprioritized (LOW-PRIORITY / strategic)
+*Captured from the v0.18.0 senior-review narrative but never promoted into its prioritized action list — kept here so they aren't lost.*
+
+- **Demote source-detection framework files to optional hints** — lean on the dynamic `unknown` + `evidence[]` detection path as the primary mechanism rather than growing the ~17 `role: source` signature files; also cuts the mixed-framework detection cost of reading ~30 `frameworks/*.md` `## Detection` sections. (Strategic.)
+- **Skill token-diet** — trim the largest verbose skills (`scaffold` / `plan` / `verify` / `rollback` / `sync` / `report`), ~15–25% reduction, by moving shared banner/prompt boilerplate into `skills/_shared/` snippets (the plugin-version-check extraction is the model). (Token hygiene.)
+- **Rename ambiguous framework-file pairs for clarity** — e.g. a `-legacy` suffix on source files so `java-spring-boot` vs `spring-boot-3` and `vue-2` vs `vue3-vite` aren't confusable. (Minor.)
+
 ---
 
 ## Anti-patterns already considered and rejected
@@ -279,4 +325,11 @@ plan-gate via independent fire-and-forget subagent calls, not resumption) · `/n
 migrator (`workflows/next-batch.js`, always-ungated) · CSS audit (styling detection in
 `legacy-analyzer` + shared-stylesheet sizing in `/plan` + `css_*` quality-finding kinds) ·
 `/verify` Workflow-tool parallelization (`workflows/verify-run.js` — pipeline across units,
-parallel reviewer fan-out per unit).
+parallel reviewer fan-out per unit) · **(v0.18.0)** background/non-UI discovery + collision-dedup
+fixes in `analyze-discovery.js` · finished the `_shared/plugin-version-check.md` extraction
+across all skills · removed the dead `auth_done` status (`schema_version` → 4) · de-versioned
+target framework files + backfilled missing `## Integration` sections · a framework-file
+required-sections lint · the read-only `hooks/guard-legacy.mjs` legacy-tree guard · trimmed
+`unit-migrator-*` frontmatter · docs version/count resync (19 skills · 5 agents · 31 framework
+files) · the v0.17.4 VB.NET dry-run follow-ups (datastore-reachability preflight, SQL-injection
+detection, i18n false-positive guard, partial-foundation status visibility, and others).
