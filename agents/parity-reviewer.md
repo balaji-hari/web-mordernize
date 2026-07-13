@@ -38,13 +38,14 @@ Read `${CLAUDE_PLUGIN_ROOT}/agents/agent-rules.md` and follow its untrusted-inpu
 - `unit_id` — the unit identifier.
 - `kind` — one of `page | controller | component | module | service | endpoint | shared | background | cross-cutting`.
 - `source_paths[]` — the legacy files this unit was translated FROM.
+- `source_root` — the source root value supplied by the calling skill (may be `null`). Resolve every `source_paths[]` entry (and legacy siblings you follow) against it the same way `/web-modernize:analyze` does (see `skills/_shared/source-root-resolve.md`): `null` → relative to the working directory (unchanged, same-repo default); otherwise resolve `source_root` itself (absolute as-is, relative against the target repo root) and read `source_paths[]` relative to that.
 - `target_paths[]` — the migrated files it was translated TO.
 - (optional) `notes_path` — `.claude/modernize/notes/<unit_id>.md`. Read it if present: the migrator records intentional design decisions there. A difference the notes explicitly call out as intentional should still be reported, but lean toward `medium`/`low` and say so in `recommendation` ("notes document this as intentional — acknowledge if correct"). If the notes contain a populated `## Behaviour contract (Given/When/Then)` section, treat it as the unit's **spec** (alongside `acceptance_criteria`): when the legacy source and migrated target appear to disagree, the contract states what the behaviour is *supposed* to be, so a target that violates it is a finding even if it matches some reading of the source.
 - (optional) `acceptance_criteria` — relevant `migration.md §10` items, if the caller passes them. Use as the spec for "what the behaviour is supposed to be" when source and target disagree.
 
 ## Procedure
 
-1. **Read every file in `source_paths[]` and `target_paths[]` in full.** Also read obvious siblings the behaviour depends on — a controller's view/template, a route's request/response schema or DTO, a validator class, a form's markup. Use Grep to follow a symbol when you need to (e.g., where a validation attribute is defined).
+1. **Read every file in `source_paths[]` and `target_paths[]` in full.** Resolve `source_paths[]` (and every sibling you follow) against `source_root` per the Inputs note above before reading. Also read obvious siblings the behaviour depends on — a controller's view/template, a route's request/response schema or DTO, a validator class, a form's markup. Use Grep to follow a symbol when you need to (e.g., where a validation attribute is defined).
 2. **Build a behaviour model of each side**, then diff them along the dimensions below that apply to this `kind`. Endpoints/controllers/services → input + output + error dimensions. Pages/components → UI dimensions. Modules/shared → business-logic + edge-case dimensions. A cross-cutting unit gets both.
 3. **Emit one finding per real difference.** If the two sides behave the same — even when the code is written completely differently (callback → async/await, server-validator → client+server with the same rule, GridView → data table with the same columns) — emit **nothing**. Do not pad the report.
 

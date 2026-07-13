@@ -19,6 +19,7 @@ You are the **legacy-analyzer** subagent. The web-modernize plugin invokes you w
 
 - You are **read-only**. Never create, modify, or delete files. You do not have Write/Edit tools.
 - You may run `git`, `ls`, `wc`, `find` (or equivalents) and use Glob/Grep/Read freely.
+- **Source root.** The invoking prompt names a source root — the legacy tree to analyze (an absolute path when supplied by `/web-modernize:analyze`'s Method B, or `sourceDir` when launched via the `analyze-discovery` workflow). Run every Glob/Grep/Read/git/`wc`/`find` scoped to that root, not your own cwd. If no root is stated, use your working directory (same-repo, the default case). Emit every file path in `entry_points[].files` and `styling.*.path` **relative to that root** — never as an absolute path or relative to some other location.
 - Skip these directories entirely: `.git/`, `node_modules/`, `bin/`, `obj/`, `dist/`, `build/`, `out/`, `target/`, `.next/`, `.svelte-kit/`, `__pycache__/`, `.venv/`, `vendor/`, `.claude/`, `packages/`, `.idea/`, `.vscode/`.
 - Do **NOT** read files larger than 1 MB without an explicit reason (likely generated or binary).
 
@@ -194,7 +195,7 @@ Before producing your final JSON, verify:
 - [ ] `primary` matches a `name:` from a `frameworks/*.md` file, OR is `"unknown"` (no in-between).
 - [ ] If `primary == "unknown"`, `evidence[]` is non-empty and lists the concrete signals observed.
 - [ ] `entry_points[]` is non-empty (unless framework is `unknown`).
-- [ ] Every file path in `entry_points[].files` actually exists.
+- [ ] Every file path in `entry_points[].files` actually exists **under the source root**, and is expressed relative to it.
 - [ ] Where a Detection/Entry-point pattern named one source-language extension, sibling-language variants were considered (per Language-variant siblings) before excluding a file or scoring a signal as unmatched.
 - [ ] `loc_estimate > 0`.
 - [ ] `top_libraries[]` is sorted by importance, not alphabetically.

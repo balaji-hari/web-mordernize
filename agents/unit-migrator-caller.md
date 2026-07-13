@@ -18,6 +18,7 @@ The calling skill has already done these things before reaching this section:
 - **Picked a unit** to migrate (referred to below as `unit`), read from `.claude/modernize/units/<unit.id>.json`.
 - **Read** `state.json`, `migration.md`, `.claude/modernize/plan.md`.
 - **Verified** the top-level workflow status is one of `foundation_done` / `in_progress`.
+- **Resolved `SOURCE_ROOT`** per `${CLAUDE_PLUGIN_ROOT}/skills/_shared/source-root-resolve.md` — this is what A6 passes to the subagent as `source_root`.
 
 It also has a **mode** and optional inputs, exactly as before:
 
@@ -139,7 +140,9 @@ A `call_mode: "plan_only"` call makes **zero** `Write`/`Edit` calls (it is read-
 
 ## A6. Launch the subagent
 
-**If not gated:** launch `agents/unit-migrator-subagent.md` once via the `Agent` tool (`subagent_type: unit-migrator`). Prompt states `call_mode: "full"`, plus `unit`, `mode`, `force_deps`, `retry_prompt`, and any open-decisions resolution from A4. Go to A7 when it returns.
+Every launch below (gated or not) includes `source_root` — the value resolved by this skill per `skills/_shared/source-root-resolve.md` (may be `null`) — alongside `unit`/`mode`/etc., so the subagent knows where to resolve `source_paths[]` against; see the subagent's §B1 step 1.
+
+**If not gated:** launch `agents/unit-migrator-subagent.md` once via the `Agent` tool (`subagent_type: unit-migrator`). Prompt states `call_mode: "full"`, plus `unit`, `mode`, `force_deps`, `retry_prompt`, `source_root`, and any open-decisions resolution from A4. Go to A7 when it returns.
 
 **If gated:**
 

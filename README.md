@@ -143,6 +143,23 @@ your-repo/
 
 Commit the `.claude/modernize/` directory. That's how Alice on Monday and Bob on Wednesday see the same progress. The per-unit split under `units/` is what makes concurrent work conflict-free — Alice editing `units/LoginPage.json` and Bob editing `units/PaymentProcessor.json` touch completely separate files; git has nothing to merge.
 
+**Legacy code in a different folder/repo?** The layout above assumes source and target share one repo — the common case. If your legacy app lives elsewhere (a separate clone, a different git remote), mark `migration.md §1`'s "Legacy source in a separate repo/folder?" toggle `yes`, then copy `.claude/modernize/source_root.local.json.example` (created by `/init`) to `.claude/modernize/source_root.local.json` and set your own path there. That file is **gitignored** — it's a per-developer, machine-specific fact, not a team decision, so it never gets committed; only the yes/no toggle is shared. The layout then looks like:
+
+```
+some-parent-dir/
+├── legacy-app/                          ← the legacy repo, cloned as a sibling, untouched
+└── your-repo/                           ← the target repo (where you ran /init)
+    ├── migration.md                     ← §1 toggle: yes
+    ├── .claude/modernize/
+    │   ├── source_root.local.json.example  ← tracked template
+    │   ├── source_root.local.json           ← gitignored; { "source_root": "../legacy-app" }
+    │   └── state.json                       ← uses_external_source: true (no path)
+    ├── apps/web-new/
+    └── apps/api-new/
+```
+
+Prefer a **relative** source root (`../legacy-app`) over an absolute path in your local file — it stays valid as long as you clone both repos as siblings; an absolute path only works on your own machine (which is fine, since the file is never shared anyway).
+
 ---
 
 ## Slash command reference
@@ -412,6 +429,9 @@ A: Yes for the plugin itself — git host doesn't matter. The marketplace instal
 
 **Q: Can I run multiple migrations in the same repo?**
 A: Not concurrently — `.claude/modernize/` is a single workspace. If you need to migrate two distinct legacy apps living in the same repo, treat each as a separate working directory (different `migration.md`, different `.claude/modernize/`).
+
+**Q: What if my legacy code is in a different repo/folder from where I want the new code?**
+A: Mark `migration.md §1`'s toggle `yes`, then copy `.claude/modernize/source_root.local.json.example` (created by `/init`) to `.claude/modernize/source_root.local.json` and set `source_root` to a path pointing at the legacy tree (already cloned locally — the plugin reads files directly, it doesn't fetch remotes). Prefer a path relative to your target repo (e.g. `../legacy-app`, a sibling clone). This local file is **gitignored** on purpose — the actual path is a per-machine fact, not something to commit; `/web-modernize:analyze` only records the team-wide `state.uses_external_source: true` flag (no path) plus `state.source_repo` (git provenance, safe to share). Every skill/agent that reads legacy code resolves against your local file from then on. The legacy tree stays strictly read-only — nothing is ever written there.
 
 **Q: How do I add a new framework to detection?**
 A: Drop a new `frameworks/<name>.md` file with `role: source` and a `## Detection` section listing strong/weak signals (file paths, library references, build files). See "Adding a new framework" above. PR welcome.

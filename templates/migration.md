@@ -21,6 +21,20 @@
 - **Tracking ticket / epic**: <!-- URL -->
 - **Target completion date**: <!-- YYYY-MM-DD -->
 
+### Source repository location — OPTIONAL
+
+By default the plugin assumes the legacy (source) code and the new (target) code
+live in the **same** repository — the one you ran `/web-modernize:init` in. If your
+legacy app lives in a **separate folder / repo** (cloned elsewhere, or a different
+git remote), say so here — the actual path is **not** set in this file (it's a
+per-machine fact, not a team decision) — see below.
+
+- **Legacy source in a separate repo/folder?**: <!-- yes | no (default) -->
+  <!-- If yes: copy .claude/modernize/source_root.local.json.example to
+  .claude/modernize/source_root.local.json (gitignored — never commit it) and set
+  your own path there. Each developer's copy can differ (e.g. wherever they cloned
+  the legacy repo), so it is deliberately not recorded in this shared file. -->
+
 ## 2. Source stack (AUTO — filled by `/web-modernize:analyze`)
 
 <!--

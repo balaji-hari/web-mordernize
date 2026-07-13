@@ -12,7 +12,15 @@ You are the **analyze** skill. Your job is to detect what the team is migrating 
 1. Read `.claude/modernize/state.json`. Required.
    - If `status != "initialized"` and `status != "analyzed"` (re-run), explain to the user that analyze runs after `/web-modernize:init` and stop.
 2. Read `migration.md`. Required.
-3. Confirm the source tree is non-empty (something other than just `.git/`, `.claude/`, `migration.md`).
+3. **Resolve the source root.** Read `${CLAUDE_PLUGIN_ROOT}/skills/_shared/source-root-resolve.md` and follow it to get `SOURCE_ROOT` (the resolved absolute path; `null`-equivalent means the working directory). Then, beyond that shared resolution, `/analyze` alone does the deeper validation and the team-fact bookkeeping:
+   - If `.claude/modernize/source_root.local.json` was absent (same-repo, the common case): leave `state.uses_external_source` as-is (default `false`); nothing further to do here.
+   - If present, validate the resolved path:
+     - Does not exist, or is not a directory → **STOP**: `✗ .claude/modernize/source_root.local.json's "source_root" ('<raw>') resolves to <abs>, which does not exist or is not a directory. Fix the path (or clone the legacy repo there) and re-run.` Do NOT silently fall back to scanning the working directory.
+     - Resolves to a path **inside** the target repo → **STOP**: `✗ source_root ('<raw>') points inside the target repo. That is the same-repo layout — delete source_root.local.json instead.` (If it resolves to exactly the target repo root, treat it as same-repo — harmless.)
+     - Otherwise, try `git -C <abs> rev-parse --show-toplevel` and `git -C <abs> rev-parse --short HEAD`. If it succeeds, record `state.source_repo = { remote: <git config --get remote.origin.url, or "">, root_commit: <short SHA> }` — this is safe to share via git (it's the same for every teammate), unlike the local path itself. If it fails (not a git repo), warn the user once (provenance only — this is not fatal) and proceed.
+     - Set `state.uses_external_source = true` (the team-wide fact — no path — mirrors `migration.md §1`'s toggle; set it regardless of whether the toggle was already marked `yes`, since the local file is the actual source of truth for behavior).
+   - If `migration.md §1`'s toggle says `yes` but no local file exists yet, warn once: `⚠ migration.md §1 says legacy source is external, but .claude/modernize/source_root.local.json doesn't exist yet. Copy source_root.local.json.example and set your path — until then, SOURCE_ROOT falls back to the working directory.` (Non-fatal — proceed with the working directory.)
+4. Confirm the source tree is non-empty: `SOURCE_ROOT` contains something other than just `.git/`, `.claude/`, `migration.md` (this check is only meaningful when `SOURCE_ROOT` == the working directory; an external `SOURCE_ROOT` is a legacy checkout and is expected to already be non-empty — just confirm it has files at all).
 
 ## Detection strategy
 
@@ -23,8 +31,10 @@ The output is the same `analysis.json` payload either way — pick the method by
 Running `/web-modernize:analyze` is your authorization to use the **Workflow tool**. When it's available, invoke the bundled discovery workflow — it fans out the `legacy-analyzer` agent **loop-until-dry** (rounds of parallel, scoped passes until two consecutive rounds find nothing new), so it enumerates entry points a single pass would truncate or sample-miss on a large estate (the analyzer caps at ~100 entry points per pass). Tell the user the rough agent count first (one detect pass + a few workers per round).
 
 ```
-Workflow({ scriptPath: "${CLAUDE_PLUGIN_ROOT}/workflows/analyze-discovery.js" })
+Workflow({ scriptPath: "${CLAUDE_PLUGIN_ROOT}/workflows/analyze-discovery.js", args: { sourceDir: "<SOURCE_ROOT>" } })
 ```
+
+`<SOURCE_ROOT>` is the resolved absolute path from the preflight above (the working directory in the common case). The workflow's `entry_points[].files` come back relative to it.
 
 It returns one object in the **same shape as `analysis.json`** (detect metadata + a merged, deduplicated `entry_points[]` + `warnings` + `rounds`). Surface the workflow's `log()` lines as they arrive. The workflow's agents are read-only — **you** write `analysis.json` from the returned object (Output 1 below), exactly as in Method B. If the Workflow tool is NOT available (older Claude Code build, headless run), fall through to Method B automatically.
 
@@ -32,7 +42,7 @@ It returns one object in the **same shape as `analysis.json`** (detect metadata 
 
 Delegate to the `legacy-analyzer` subagent (defined at `${CLAUDE_PLUGIN_ROOT}/agents/legacy-analyzer.md`). Invoke it with a prompt like:
 
-> Analyze the legacy web application in the current working directory. Report: primary framework + version + confidence; build tool / package manager; top 5 libraries; approximate LOC; entry points (pages/controllers/components); rough dependency graph (which files import which); and a styling-detection pass (CSS frameworks/preprocessors, stylesheet-vs-CSS-in-JS approach, rule-count estimate, shared stylesheets referenced by more than one entry point). Load detection rules from `${CLAUDE_PLUGIN_ROOT}/frameworks/*.md` files where `role: source`. If no rule matches, return `primary: "unknown"` with the `evidence[]` array populated. Format the report as JSON matching the schema in the agent's own preamble (including its `## Styling detection` section). Skip `.git/`, `node_modules/`, `bin/`, `obj/`, `dist/`, `build/`, `.claude/`.
+> Analyze the legacy web application rooted at `<SOURCE_ROOT>` (the resolved absolute path from the preflight above — the current working directory in the common case). Report: primary framework + version + confidence; build tool / package manager; top 5 libraries; approximate LOC; entry points (pages/controllers/components); rough dependency graph (which files import which); and a styling-detection pass (CSS frameworks/preprocessors, stylesheet-vs-CSS-in-JS approach, rule-count estimate, shared stylesheets referenced by more than one entry point). Emit every `entry_points[].files` and `styling.*.path` value **relative to that root**. Load detection rules from `${CLAUDE_PLUGIN_ROOT}/frameworks/*.md` files where `role: source`. If no rule matches, return `primary: "unknown"` with the `evidence[]` array populated. Format the report as JSON matching the schema in the agent's own preamble (including its `## Styling detection` section). Skip `.git/`, `node_modules/`, `bin/`, `obj/`, `dist/`, `build/`, `.claude/`.
 
 Run the subagent, then validate the JSON it returns. If invalid, fix obvious errors and ask the subagent to retry once.
 
@@ -89,7 +99,7 @@ If the user has manually edited §2 (lines outside the `<!-- AUTO -->` markers c
 
 ## Output 3: update `state.json`
 
-Update these fields:
+Update these fields (`uses_external_source`/`source_repo` were already written during the preflight's source-root resolution step, above — don't re-derive them here):
 
 ```json
 {

@@ -84,12 +84,16 @@ Order: `complete > in_progress > foundation_done > scaffolded > planned > analyz
 
 Take the **higher** of `local.status` and `remote.status`.
 
-### `repo`, `source_stack`, `target_stack`, `strategy`, `out_of_scope`
+### `repo`, `source_stack`, `target_stack`, `strategy`, `out_of_scope`, `source_repo`
 
 These are write-once fields set by `/init`, `/analyze`, `/plan`. If they differ:
 
 - If one side is `null` and the other is set: take the non-null side.
 - If both are set but differ: take the one with the more recent `updated_at`. As a fallback, take the one with more populated sub-fields. Print a warning if neither dominates clearly.
+
+### `uses_external_source`
+
+Boolean, set by `/analyze` from `migration.md §1`'s toggle — never carries a path (the actual local path lives only in each developer's gitignored `.claude/modernize/source_root.local.json`, which sync never touches). If the two sides differ, take `true` — it's the more informative value (someone has confirmed the team's legacy source is external), and a stale `false` costs nothing since the real per-machine path resolution doesn't depend on this flag anyway.
 
 ### `scaffold`
 

@@ -58,6 +58,7 @@ const results = await parallel(
         : ''
     return agent(
       `call_mode: "full". Migrate unit "${unit.id}" (kind: ${unit.kind}) from legacy source under ${sourceDir} to the target stack (ui: ${targetStack.ui || 'unknown'}, api: ${targetStack.api || 'none'}).
+source_root: ${JSON.stringify(sourceDir)}
 unit object: ${JSON.stringify(unit)}
 mode: "${item.mode || 'next'}"
 force_deps: ${item.force_deps ? 'true' : 'false'}${retryBlock}${decisionsBlock}

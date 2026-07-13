@@ -23,6 +23,8 @@ You are the **scaffold** skill. Your job is to bring up the modern project's ske
 
 4. Read `.claude/modernize/plan.md` (for context, not strictly required).
 
+4b. **Resolve `SOURCE_ROOT`** (needed by "Copy legacy assets" below): follow `${CLAUDE_PLUGIN_ROOT}/skills/_shared/source-root-resolve.md`. Do not re-validate here (`/analyze` already did); if it no longer exists, the "Copy legacy assets" step below degrades gracefully rather than blocking the whole scaffold.
+
 5. Decide target directories. Default convention (use unless §8 says otherwise):
    - UI: `apps/web-new/`
    - API: `apps/api-new/`
@@ -287,11 +289,13 @@ Migrated pages will reference images, fonts, and favicons from the legacy app. W
 
 This step also runs as the only action when `--assets-only` is passed.
 
+If `SOURCE_ROOT` (resolved in Preflight step 4b) does not exist on disk (external source repo not yet cloned, or moved), skip this entire step and print: `(legacy source root <abs> not found — skipping asset copy; re-run /web-modernize:scaffold --assets-only after cloning it)`. Asset copy is not load-bearing for the skeleton, so this is a graceful degrade, not a stop.
+
 ### 1. Determine the source list
 
-If `migration.md §3` contains a non-empty **"Asset directories"** field (one path per bullet), treat that list as authoritative — use exactly the declared paths and skip the heuristic scan below. Print a one-line note: `Using migration.md §3 asset declarations: <list>`.
+If `migration.md §3` contains a non-empty **"Asset directories"** field (one path per bullet), treat that list as authoritative — resolve each declared path against `SOURCE_ROOT` and skip the heuristic scan below. Print a one-line note: `Using migration.md §3 asset declarations (under <SOURCE_ROOT>): <list>`.
 
-Otherwise, scan the working directory for these patterns (case-insensitive). Match directories first, then top-level files:
+Otherwise, scan `SOURCE_ROOT` (the working directory in the common same-repo case) for these patterns (case-insensitive). Match directories first, then top-level files:
 
 - `Pics/`, `pics/`
 - `images/`, `Images/`, `img/`
@@ -334,7 +338,7 @@ If the total is ≤ 500 MB, skip the prompt and proceed.
 
 Use the target UI's `public/` directory (typically `<scaffold.ui.path>/public/` — Vite, Next.js, Astro, SvelteKit, etc.). For Angular, use `<scaffold.ui.path>/src/assets/` instead — Angular's static asset convention differs.
 
-Preserve sub-structure under the destination:
+Preserve sub-structure under the destination (`<legacy>` below is `SOURCE_ROOT` — the working directory in the common same-repo case, or the resolved external source root):
 
 - `<legacy>/Pics/` → `<scaffold.ui.path>/public/Pics/`
 - `<legacy>/wwwroot/images/` → `<scaffold.ui.path>/public/images/`

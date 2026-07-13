@@ -17,6 +17,8 @@ These concerns are high-stakes, high-latitude, one-time, and foundational, so th
    - If later (`foundation_done` / `in_progress`), tell the user the foundation has already been established and confirm before re-running.
 2. Determine the **concern set**: read `state.foundation.concerns[]` (seeded by `/plan`). If absent (plan predates this feature), default to `["auth"]` and read `migration.md §13` to offer adding more. `auth` is always included.
 3. Read `migration.md §7` (auth provider, identity store, session model, claims/roles), `§3` (target UI framework), `§4` (target API framework), and `§13` (concern declarations). Read `state.json.scaffold` for target paths.
+
+3b. **Resolve `SOURCE_ROOT`** (needed by "Discovery" below): follow `${CLAUDE_PLUGIN_ROOT}/skills/_shared/source-root-resolve.md`.
 4. **Read the design inputs now (read-only)** so the gate can present a complete design before any write: for auth, the target API's `## Auth notes` from `${CLAUDE_PLUGIN_ROOT}/frameworks/<state.target_stack.api>.md` (if it exists) **and** `${CLAUDE_PLUGIN_ROOT}/agents/permanent-gotchas.md` (load-bearing rules — bcrypt 72-byte truncation, `passlib[bcrypt]` ban, CSRF defaults — which override contrary framework docs). If a target framework file has a section relevant to another concern (e.g. logging/observability), read it too.
 5. **Datastore-reachability preflight (read-only).** Only run this when the concern set includes `data`, OR `auth` uses a **local** password store (per `migration.md §7`) — skip entirely for external-IdP auth with no local database. The point is catching an unreachable datastore *now*, in one cheap check, instead of after the whole auth/data layer is written.
    - Read the target API's `## Data migration` section from `${CLAUDE_PLUGIN_ROOT}/frameworks/<state.target_stack.api>.md` and run its `Status (read-only reachability probe):` command — the migration tool's own connect-and-read mode, not a hand-rolled per-engine probe. This is genuinely read-only; it never applies a migration.
@@ -31,7 +33,7 @@ These concerns are high-stakes, high-latitude, one-time, and foundational, so th
 
 ## Discovery (per concern, read-only)
 
-Find each concern's legacy implementation and record it in the concern's `notes/__<concern>__.md` under "Source code map":
+Find each concern's legacy implementation **under `SOURCE_ROOT`** (resolved in Preflight step 3b — the working directory in the common same-repo case) and record it in the concern's `notes/__<concern>__.md` under "Source code map":
 
 | Concern | What to look for |
 |---|---|
@@ -85,11 +87,11 @@ Each concern writes to **its own module files** (disjoint — no two concerns to
 
 ### Method A — parallel (preferred when the Workflow tool is available)
 
-The `/foundation` invocation authorizes the Workflow tool. If available, invoke `${CLAUDE_PLUGIN_ROOT}/workflows/foundation-establish.js` with the concern set + the design context. It fans out one `${CLAUDE_PLUGIN_ROOT}/agents/cross-cutting-migrator.md` agent **per concern** (in parallel), each of which discovers + translates its concern and writes only that concern's own files, returning `{ files_written, root_wiring, notes }`. Tell the user the rough agent count first. Surface its `log()` lines.
+The `/foundation` invocation authorizes the Workflow tool. If available, invoke `${CLAUDE_PLUGIN_ROOT}/workflows/foundation-establish.js` with the concern set + the design context, including `sourceDir: <SOURCE_ROOT resolved in Preflight step 3b>`. It fans out one `${CLAUDE_PLUGIN_ROOT}/agents/cross-cutting-migrator.md` agent **per concern** (in parallel), each of which discovers + translates its concern (from under that source root) and writes only that concern's own files, returning `{ files_written, root_wiring, notes }`. Tell the user the rough agent count first. Surface its `log()` lines.
 
 ### Method B — sequential fallback
 
-If the Workflow tool is unavailable, loop over the concerns and run the `cross-cutting-migrator` procedure inline for each, one at a time. Same per-concern result.
+If the Workflow tool is unavailable, loop over the concerns and run the `cross-cutting-migrator` procedure inline for each, one at a time, passing the same resolved `source_root` in each call's context. Same per-concern result.
 
 ### Always do, per concern (the cross-cutting-migrator handles this; summarized here)
 

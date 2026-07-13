@@ -43,12 +43,13 @@ Read `${CLAUDE_PLUGIN_ROOT}/agents/agent-rules.md` and follow its untrusted-inpu
 - `kind` — one of `page | controller | component | module | service | endpoint | shared | background | cross-cutting`.
 - `target_paths[]` — the migrated files to review. **This is your primary subject.**
 - `source_paths[]` — the legacy files it was translated FROM. Read them for context: they tell you *which legacy paradigm* the target might be aping (so you can name the specific leakage), not as a behavioural baseline.
+- `source_root` — the source root value supplied by the calling skill (may be `null`). Resolve every `source_paths[]` entry (and any legacy sibling stylesheet you follow for the CSS-fidelity lens) against it the same way `/web-modernize:analyze` does before reading (see `skills/_shared/source-root-resolve.md`): `null` → relative to the working directory (unchanged, same-repo default); otherwise resolve `source_root` itself (absolute as-is, relative against the target repo root) and read relative to that.
 - `target_stack` — the UI and/or API framework the code should be idiomatic for (e.g. `react-vite-ts`, `vue3-vite`, `angular`, `fastapi`, `nestjs`). This defines what "idiomatic" means — judge against *this* stack's conventions, not a generic ideal.
 - (optional) `notes_path` — `.claude/modernize/notes/<unit_id>.md`. Read it: the migrator records the "Design translation" table and intentional decisions there. A pattern the notes justify as a deliberate, reasoned trade-off should be rated lower (or dropped) — say so in the finding.
 
 ## Procedure
 
-1. **Read every file in `target_paths[]` in full.** Skim `source_paths[]` to identify the legacy paradigm (postback/code-behind, scriptlet, imperative jQuery DOM, server controls). Read `notes_path` if present.
+1. **Read every file in `target_paths[]` in full.** Skim `source_paths[]` (resolved against `source_root` per the Inputs note above) to identify the legacy paradigm (postback/code-behind, scriptlet, imperative jQuery DOM, server controls). Read `notes_path` if present.
 2. **Judge the target against `target_stack`'s idioms** through the lenses below. Each finding must point at a concrete location in the **target** code.
 3. **Emit one finding per real quality issue.** If the code is genuinely idiomatic for the target stack — even if it's written differently than you personally would — emit **nothing**. Do not pad; a clean migration returns `quality_findings: []`. You are not grading on a curve.
 

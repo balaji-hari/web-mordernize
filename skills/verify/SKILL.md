@@ -22,6 +22,7 @@ Read `${CLAUDE_PLUGIN_ROOT}/skills/_shared/plugin-version-check.md` and perform 
    - `--capture-baseline` (flag, mutually exclusive with normal verification) → run the **baseline-capture** mode instead of verifying: record the legacy app's responses into `verify.config.json.dynamic.baseline_dir` so Phase-A API replay has something to diff against. Requires the legacy app to be runnable; see "Capture baseline" below.
    - The remaining non-flag token, if any, is `<unit-id>` → read `.claude/modernize/units/<unit-id>.json`. If the file does not exist, list valid ids (`ls .claude/modernize/units/*.json`) and stop.
    - No `<unit-id>` → verify ALL units currently in status `migrated`. Iterate `state.unit_ids[]`, read each `units/<id>.json`, filter to `status == "migrated"`.
+4. **Resolve `SOURCE_ROOT`** (needed by the parity/quality reviewer dimensions below): follow `${CLAUDE_PLUGIN_ROOT}/skills/_shared/source-root-resolve.md`.
 
 ## Verification strategy
 
@@ -36,7 +37,8 @@ Workflow({ scriptPath: "${CLAUDE_PLUGIN_ROOT}/workflows/verify-run.js", args: {
   units: [<each unit object to verify>],
   verifyConfig: <verify.config.json>,
   flags: { noParity: <bool>, noQuality: <bool>, dynamic: <bool> },
-  targetStack: <state.target_stack>
+  targetStack: <state.target_stack>,
+  sourceRoot: <resolved SOURCE_ROOT from Preflight step 4 — null in the common same-repo case>
 } })
 ```
 
@@ -85,7 +87,7 @@ For each unit to verify, run steps 1 through 5c yourself, in order, exactly as b
 
    Parity proves what lint/typecheck/tests cannot: that the migrated unit *behaves like* the legacy one — same validation, same response shape/field names, same sort order, same error handling, same UI fields/states. **Tests passing ≠ behaviour preserved.**
 
-   a. **Launch the `parity-reviewer` subagent** (Agent tool, `subagent_type: parity-reviewer`). Pass a prompt containing the unit's `id`, `kind`, `source_paths[]`, `target_paths[]`, the `notes_path` (`.claude/modernize/notes/<unit-id>.md`), and the relevant `migration.md §10` acceptance-criteria lines. It is read-only and returns a single JSON block: `{ parity_findings[], summary, warnings }`.
+   a. **Launch the `parity-reviewer` subagent** (Agent tool, `subagent_type: parity-reviewer`). Pass a prompt containing the unit's `id`, `kind`, `source_paths[]`, `source_root` (the resolved `SOURCE_ROOT` from Preflight step 4 — `null` in the common same-repo case), `target_paths[]`, the `notes_path` (`.claude/modernize/notes/<unit-id>.md`), and the relevant `migration.md §10` acceptance-criteria lines. It is read-only and returns a single JSON block: `{ parity_findings[], summary, warnings }`.
 
    b. **Graceful degrade.** If the agent errors, times out, or returns malformed JSON, do NOT block — set `verification.parity = "review-unavailable"`, print a one-line warning, and proceed to step 6 as if there were no findings. An agent hiccup must never trap a working migration in `migrated`.
 
@@ -97,7 +99,7 @@ For each unit to verify, run steps 1 through 5c yourself, in order, exactly as b
 
    Orthogonal to parity: parity asks *did behaviour change?*; quality asks *is the migrated code idiomatic and maintainable, or is it the legacy paradigm in new clothes?* (WebForms-in-React, jQuery-in-a-reactive-framework, scriptlet-shaped controllers). The `migration-critic` also covers **static performance regressions** (N+1 queries, unbounded fetches, request waterfalls, blocking I/O, bundle bloat — `perf_*` finding kinds). It **never blocks** — it informs.
 
-   a. **Launch the `migration-critic` subagent** (Agent tool, `subagent_type: migration-critic`). Pass a prompt containing the unit's `id`, `kind`, `target_paths[]`, `source_paths[]`, the `notes_path` (`.claude/modernize/notes/<unit-id>.md`), and `state.target_stack` (so it judges against the right idiom). It is read-only and returns a single JSON block: `{ quality_findings[], headline, summary, warnings }`.
+   a. **Launch the `migration-critic` subagent** (Agent tool, `subagent_type: migration-critic`). Pass a prompt containing the unit's `id`, `kind`, `target_paths[]`, `source_paths[]`, `source_root` (the resolved `SOURCE_ROOT` from Preflight step 4 — `null` in the common same-repo case), the `notes_path` (`.claude/modernize/notes/<unit-id>.md`), and `state.target_stack` (so it judges against the right idiom). It is read-only and returns a single JSON block: `{ quality_findings[], headline, summary, warnings }`.
 
    b. **Graceful degrade.** If the agent errors, times out, or returns malformed JSON, do NOT block or fail — set `verification.quality = "review-unavailable"`, print a one-line warning, and continue. Quality is advisory; an agent hiccup is a non-event.
 

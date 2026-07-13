@@ -23,6 +23,7 @@ Read `${CLAUDE_PLUGIN_ROOT}/skills/_shared/plugin-version-check.md` and perform 
 0. Parse `$ARGUMENTS` for `--n=K` (default `3`). Clamp `K` to `[1, 8]` — 8 mirrors the per-round worker cap `workflows/analyze-discovery.js` already uses, as a sane ceiling on parallel token spend.
 1. Read `.claude/modernize/state.json`. Require `status` to be one of `foundation_done`, `in_progress`, or `complete` (same redirect/recap behaviour as `/next`).
 2. Read `migration.md` and `.claude/modernize/plan.md`.
+3. **Resolve `SOURCE_ROOT`**: follow `${CLAUDE_PLUGIN_ROOT}/skills/_shared/source-root-resolve.md`.
 
 ## Select up to K independent units
 
@@ -51,7 +52,7 @@ This skill's invocation authorizes the Workflow tool. If available, invoke `${CL
 {
   "units": [{ "unit": "<acquired unit object>", "mode": "next", "force_deps": false, "retry_prompt": null, "resolvedDecisions": { } }],
   "targetStack": "<state.target_stack>",
-  "sourceDir": "."
+  "sourceDir": "<resolved SOURCE_ROOT from Preflight step 3>"
 }
 ```
 

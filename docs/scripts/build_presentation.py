@@ -35,7 +35,7 @@ FONT_MONO        = "Consolas"
 FONT_HEADER      = "Segoe UI Semibold"   # slide titles, section banners, table headers
 FONT_HEADER_LIGHT = "Segoe UI Light"     # hero wordmarks on title/closing slides
 
-FOOTER_TEXT = "web-modernize v0.18.0   ·   Balaji Harikrishnan   ·   Cognizant   ·   July 2026"
+FOOTER_TEXT = "web-modernize v0.19.0   ·   Balaji Harikrishnan   ·   Cognizant   ·   July 2026"
 
 
 # ── Low-level helpers ───────────────────────────────────────────────────────
@@ -245,7 +245,7 @@ def slide_01_title(prs):
              size=15, italic=True, color=TEAL, align=PP_ALIGN.CENTER)
 
     add_text(slide, 0.5, 6.55, 12.333, 0.35,
-             "Balaji Harikrishnan   ·   Cognizant   ·   July 2026   ·   v0.18.0",
+             "Balaji Harikrishnan   ·   Cognizant   ·   July 2026   ·   v0.19.0",
              size=12, color=SLATE, font=FONT_HEADER, align=PP_ALIGN.CENTER)
 
 
@@ -1352,7 +1352,7 @@ def slide_13_closing(prs):
              "Balaji Harikrishnan   ·   balaji.harikrishnan@cognizant.com",
              size=13, color=WHITE, align=PP_ALIGN.CENTER)
     add_text(slide, 0.5, 6.70, 12.333, 0.32,
-             "web-modernize v0.18.0   ·   github.com/balaji-hari/web-mordernize",
+             "web-modernize v0.19.0   ·   github.com/balaji-hari/web-mordernize",
              size=11, italic=True, color=SLATE, align=PP_ALIGN.CENTER)
 
 
@@ -1363,7 +1363,7 @@ def slide_13_closing(prs):
 def build():
     prs = new_prs()
 
-    print("Building 13-slide leadership deck (v0.18.0)...")
+    print("Building 13-slide leadership deck (v0.19.0)...")
     slide_01_title(prs);                    print("  [1/13]  Title")
     slide_02_intro(prs);                    print("  [2/13]  What is web-modernize")
     slide_09_extensibility(prs);            print("  [3/13]  Natural language + pluggable framework library")

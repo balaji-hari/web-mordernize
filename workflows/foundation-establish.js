@@ -46,6 +46,7 @@ const results = (
       agent(
         `Establish the "${concern}" cross-cutting concern on the target stack (ui: ${targetStack.ui || 'unknown'}, api: ${targetStack.api || 'none'}).
 Discover its legacy implementation under ${sourceDir}, translate it to the target's idiomatic mechanism, and place it in the stack's conventional location (do NOT hard-code paths — infer them; honour the approved design).
+source_root: ${JSON.stringify(sourceDir)}
 Approved design for this concern (from the foundation design gate): ${JSON.stringify(designs[concern] || 'derive it yourself')}.
 Target roots: ${JSON.stringify(scaffoldPaths)}.
 Write only this concern's own files; return files_written + the root_wiring the skill must apply + a one-paragraph notes summary. If you cannot establish it (unknown stack, no recipe), return status:"blocked" with a blocked_reason rather than guessing.

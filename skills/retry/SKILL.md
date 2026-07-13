@@ -51,6 +51,8 @@ You are the **retry** skill. You re-attempt a failed unit migration with the sam
 
    Default to `no` on unclear input.
 
+6. **Resolve `SOURCE_ROOT`**: follow `${CLAUDE_PLUGIN_ROOT}/skills/_shared/source-root-resolve.md` — `agents/unit-migrator-caller.md` expects this already done before you run its procedure.
+
 ## Show the prior failure
 
 Before retrying, print the prior diagnostic and the retry count so the user remembers what they are getting into:

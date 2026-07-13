@@ -36,6 +36,8 @@ The translation work itself is shared with `/web-modernize:next` and `/web-moder
    ```
    Stop.
 
+4. **Resolve `SOURCE_ROOT`**: follow `${CLAUDE_PLUGIN_ROOT}/skills/_shared/source-root-resolve.md` — `agents/unit-migrator-caller.md` expects this already done before you run its procedure.
+
 ## Dependency check (block by default, --force overrides)
 
 Inspect `unit.depends_on`. For each dependency, determine its current status:

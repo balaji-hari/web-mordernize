@@ -25,6 +25,19 @@
 // So anything in a subdirectory that isn't one of the zones above is
 // treated as legacy source and denied; root-level config is not.
 //
+// CROSS-REPO SOURCE (.claude/modernize/source_root.local.json — gitignored,
+// per-developer, see skills/_shared/source-root-resolve.md): when the legacy
+// tree lives outside repoRoot, the target repo holds no legacy source at all
+// — the whole repo becomes new-app workspace (rule 2 below), and the external
+// source_root itself is protected instead (rule 1). No local file (the
+// common case) leaves everything above unchanged (rule 3). Note this is a
+// SEPARATE file from state.json, with its own fail-safe semantics: missing or
+// unparseable here means "no external source" (rule 3 still applies, guard
+// stays active) — NOT the same as state.json's fail-*all*-open contract below,
+// where an unparseable file allows the write outright. Getting these two
+// confused would silently disable this entire guard for every same-repo
+// developer whenever the (optional, usually-absent) local file has a typo.
+//
 // FAIL OPEN, deliberately (same posture as heartbeat.mjs): this is a
 // backstop, not a security gate. A missing .claude/modernize/state.json
 // (not a web-modernize repo, or pre-/init), an unparseable state.json, a
@@ -173,8 +186,63 @@ async function main() {
     if (typeof p === 'string' && p.trim()) zoneDirs.push(resolve(repoRoot, p));
   }
 
+  // Resolve the legacy source root from the gitignored, per-developer local file (NOT
+  // state.json — see skills/_shared/source-root-resolve.md). This read gets its OWN
+  // try/catch with its OWN fail-safe semantics: missing or unparseable here means "no
+  // external source configured" (srcAbs stays null, rule 3 below still applies) — this
+  // is deliberately NOT the state.json branch's "unparseable -> allow everything" contract.
+  // A typo'd or not-yet-created local file (the default state for most developers) must
+  // never disable the guard.
+  let srcAbs = null;
+  let externalSource = false;
+  try {
+    const localConfig = JSON.parse(readFileSync(join(modernizeDir, 'source_root.local.json'), 'utf8'));
+    const rawSrc = localConfig && localConfig.source_root;
+    if (typeof rawSrc === 'string' && rawSrc.trim()) {
+      const resolved = isAbsolute(rawSrc) ? resolve(rawSrc) : resolve(repoRoot, rawSrc);
+      // A source_root that IS the target repo root, or an ancestor containing it, is a
+      // degenerate/misconfigured value (mirrors /web-modernize:analyze's "resolves to
+      // exactly the target repo root -> harmless, treat as same-repo" rule, extended to
+      // the ancestor case too) — isInside(repoRoot, resolved) is true for both. Protecting
+      // a tree that contains the whole target repo would make rule 1 below deny every
+      // write in the repo, which is never the intent. Leave srcAbs null (same-repo,
+      // rule 3 applies) instead of engaging external-source handling.
+      if (!isInside(repoRoot, resolved)) {
+        srcAbs = resolved;
+        externalSource = !isInside(srcAbs, repoRoot);
+      }
+    }
+  } catch {
+    // Missing file (the common case) or unparseable JSON — same-repo, guard stays active.
+  }
+
   const targetAbs = resolve(targetPath);
 
+  // 1. Always protect the legacy tree wherever it resolves to — this also covers an
+  // absolute-path write into an external source_root that isn't under repoRoot at all.
+  if (srcAbs && isInside(targetAbs, srcAbs)) {
+    const reason = `web-modernize: refusing to edit legacy source ${targetPath} under source_root — it is read-only.`;
+    await writeStdout(
+      JSON.stringify({
+        hookSpecificOutput: {
+          hookEventName: 'PreToolUse',
+          permissionDecision: 'deny',
+          permissionDecisionReason: reason,
+        },
+        decision: 'block',
+        reason,
+      }),
+    );
+    return;
+  }
+
+  // 2. External-source mode: the target repo holds no legacy source at all (it lives at
+  // source_root, outside repoRoot), so the "deny non-zoned subdirectories" rule below would
+  // only false-block legitimate new-app writes. Treat the whole target repo as new-app
+  // workspace instead.
+  if (externalSource && isInside(targetAbs, repoRoot)) return;
+
+  // 3. Same-repo mode (source_root null, or absent): existing behaviour, unchanged.
   // Files sitting DIRECTLY at the repo root (depth-0 only) are allowed —
   // root package.json, tsconfig.json, .gitignore, vite.config.ts,
   // README.md, migration.md, etc. These are project-level config a

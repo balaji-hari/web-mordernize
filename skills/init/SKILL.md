@@ -5,7 +5,7 @@ disable-model-invocation: false
 
 # `/web-modernize:init`
 
-You are the **init** skill of the `web-modernize` plugin. Your job is to lay down the migration scaffolding in the team's legacy repository **without overwriting any existing files**.
+You are the **init** skill of the `web-modernize` plugin. Your job is to lay down the migration scaffolding in the team's working (target) repository **without overwriting any existing files**. The legacy source usually lives in this same repo, but may live in a separate folder/repo — the team records *that fact* in `migration.md §1`, while each developer's actual path lives only in the gitignored `.claude/modernize/source_root.local.json` (see `${CLAUDE_PLUGIN_ROOT}/skills/_shared/source-root-resolve.md`), created from the `.example` template this skill writes.
 
 ## Preflight checks
 
@@ -59,6 +59,7 @@ Write a minimal valid state.json. Use the current ISO-8601 UTC timestamp for `cr
     "root_commit": "<GIT_SHORT_SHA_OR_EMPTY>"
   },
   "status": "initialized",
+  "uses_external_source": false,
   "source_stack": null,
   "target_stack": null,
   "strategy": null,
@@ -83,7 +84,19 @@ Empty file so the directory is tracked in git.
 
 Copy `${CLAUDE_PLUGIN_ROOT}/templates/verify.config.json` verbatim. Tell the user they should edit it after running `/web-modernize:scaffold` so it points at their actual target directories.
 
-### 6. `.gitignore` patch
+### 6. `.claude/modernize/source_root.local.json.example`
+
+Write this git-tracked **template** verbatim (it is inert — never read by any skill/agent; it exists purely so the mechanism is discoverable):
+
+```json
+{
+  "source_root": "../legacy-app"
+}
+```
+
+If your legacy code lives in a separate repo/folder, copy this file to `.claude/modernize/source_root.local.json` (gitignored — see step 7) and set your own path. See `${CLAUDE_PLUGIN_ROOT}/skills/_shared/source-root-resolve.md` for the full resolution rule.
+
+### 7. `.gitignore` patch
 
 Open the team's existing `.gitignore` (create it if absent). Append the following block at the end, but **only if the block is not already present** (check by searching for the marker line):
 
@@ -94,9 +107,11 @@ CLAUDE.local.md
 # web-modernize plugin — quarantined secrets discovered in legacy code (never commit raw values)
 .claude/modernize/SECRETS.local.md
 .claude/modernize/**/SECRETS.local.md
+# web-modernize plugin — per-developer legacy source path (machine-specific, never shared)
+.claude/modernize/source_root.local.json
 ```
 
-The `SECRETS.local.md` lines keep raw credentials the agents discover in legacy source out of git. The agents (`legacy-analyzer`, `unit-migrator`, `parity-reviewer`, `migration-critic`) mask secret **values** in everything they write to tracked artifacts; if a raw value must be recorded for the team to rotate, it goes only to this gitignored file.
+The `SECRETS.local.md` lines keep raw credentials the agents discover in legacy source out of git. The agents (`legacy-analyzer`, `unit-migrator`, `parity-reviewer`, `migration-critic`) mask secret **values** in everything they write to tracked artifacts; if a raw value must be recorded for the team to rotate, it goes only to this gitignored file. The `source_root.local.json` line must be this **exact literal path** — never a glob like `source_root.local.*` — or it would also hide the tracked `.example` template from step 6 and defeat its whole purpose (discoverability).
 
 ## After writing
 
@@ -111,6 +126,9 @@ Created:
   - .claude/modernize/units/              (per-unit state will land here)
   - .claude/modernize/notes/              (per-unit design notes)
   - .claude/modernize/verify.config.json
+  - .claude/modernize/source_root.local.json.example
+    ← if your legacy code lives in a different repo/folder, copy this to
+      source_root.local.json (gitignored) and set your own path
 
 Next steps:
   1. Run /web-modernize:analyze — it auto-fills migration.md §2 (source stack) AND

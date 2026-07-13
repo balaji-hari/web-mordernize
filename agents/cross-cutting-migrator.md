@@ -23,6 +23,7 @@ You are establishing a single cross-cutting **concern** on the target stack. The
 - `scaffold_paths` — the target UI/API roots from `state.json.scaffold`.
 - `design` — the approved design for this concern from `/foundation`'s consolidated design gate (library, model, conventional location, etc.). If absent (sequential fallback without a gate), derive it yourself.
 - `legacy_map` — the discovered legacy implementation for this concern (or discover it yourself from the source tree).
+- `source_root` — the source root value supplied by the calling skill (may be `null`). When discovering the legacy implementation yourself, resolve it the same way `/web-modernize:analyze` does (see `skills/_shared/source-root-resolve.md`): `null` → the source tree is the working directory (unchanged, same-repo default); otherwise resolve `source_root` (absolute as-is, relative against the target repo root) and discover under that root instead.
 
 ## 0. Cross-cutting disciplines (always)
 

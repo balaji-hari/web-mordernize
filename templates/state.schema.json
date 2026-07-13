@@ -23,6 +23,19 @@
         "root_commit": { "type": "string" }
       }
     },
+    "uses_external_source": {
+      "description": "Team-wide fact (not a path): whether the legacy (source) tree lives outside this target/working repo. Set by /web-modernize:analyze from migration.md's 'Legacy source in a separate repo/folder?' toggle. The actual filesystem path is deliberately NOT stored here (it is machine-specific) — it lives only in the gitignored, per-developer .claude/modernize/source_root.local.json (see skills/_shared/source-root-resolve.md). false/absent means source and target are the same repo (the working directory) — the pre-existing behaviour, unchanged.",
+      "type": "boolean"
+    },
+    "source_repo": {
+      "description": "Optional provenance for the external legacy repo (mirrors `repo`) — a remote URL + commit SHA is the same for every teammate, unlike the local path, so it is safe to share via git. Populated by /web-modernize:analyze when the resolved external source_root (per the developer's local source_root.local.json) is itself a git repo; omitted otherwise.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "remote": { "type": "string" },
+        "root_commit": { "type": "string" }
+      }
+    },
     "status": {
       "description": "Top-level workflow phase. Drives which skill is eligible to run next.",
       "enum": [

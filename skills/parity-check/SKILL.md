@@ -32,6 +32,7 @@ Read `${CLAUDE_PLUGIN_ROOT}/skills/_shared/plugin-version-check.md` and perform 
      To see available units: /web-modernize:status
      ```
 3. For a named `<unit-id>`, read `.claude/modernize/units/<unit-id>.json`. If missing, list valid ids (`ls .claude/modernize/units/*.json`) and stop.
+4. **Resolve `SOURCE_ROOT`** (review mode only — acknowledge mode doesn't need it): follow `${CLAUDE_PLUGIN_ROOT}/skills/_shared/source-root-resolve.md`.
 
 Determine **current user identity**: `git config user.email`, falling back to hostname or `"unknown"`.
 
@@ -67,7 +68,7 @@ For each target unit (`<unit-id>`, or every `migrated`/`verified` unit under `--
    - `failed` → "migration failed — fix/retry before checking parity."
    - `skipped` / `blocked` → "unit is <status>."
 
-2. **Launch the `parity-reviewer` subagent** (Agent tool, `subagent_type: parity-reviewer`). Pass a prompt containing the unit's `id`, `kind`, `source_paths[]`, `target_paths[]`, the `notes_path` (`.claude/modernize/notes/<unit-id>.md`), and the relevant `migration.md §10` acceptance-criteria lines. It returns a single JSON block: `{ parity_findings[], summary, warnings }`.
+2. **Launch the `parity-reviewer` subagent** (Agent tool, `subagent_type: parity-reviewer`). Pass a prompt containing the unit's `id`, `kind`, `source_paths[]`, `source_root` (the resolved `SOURCE_ROOT` from Preflight step 4 — `null` in the common same-repo case), `target_paths[]`, the `notes_path` (`.claude/modernize/notes/<unit-id>.md`), and the relevant `migration.md §10` acceptance-criteria lines. It returns a single JSON block: `{ parity_findings[], summary, warnings }`.
 
 3. **Graceful degrade.** If the agent errors or returns malformed JSON, print a one-line warning and move on (don't mutate the unit). Never crash the skill on a bad agent run.
 

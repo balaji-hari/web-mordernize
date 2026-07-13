@@ -23,6 +23,7 @@ Read `${CLAUDE_PLUGIN_ROOT}/skills/_shared/plugin-version-check.md` and perform 
    - If earlier, redirect: "Run /web-modernize:<missing-skill> first."
    - If `complete`, tell user the migration is done; suggest `/web-modernize:status` for the recap.
 2. Read `migration.md` (for target stack + constraints) and `.claude/modernize/plan.md` (for context).
+3. **Resolve `SOURCE_ROOT`**: follow `${CLAUDE_PLUGIN_ROOT}/skills/_shared/source-root-resolve.md` — `agents/unit-migrator-caller.md` expects this already done before you run its procedure.
 
 ## Resume an in-flight unit (if any)
 
