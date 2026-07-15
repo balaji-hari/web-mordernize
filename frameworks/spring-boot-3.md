@@ -53,11 +53,15 @@ Test smoke: `./mvnw -q test` (fall back to `mvn -q test`).
 
 ## Verify commands
 
+**Working directory: the module root** (where `pom.xml`/`mvnw` live — run all `./mvnw` commands from there). Like the .NET stack and unlike the Node UI stacks, there is no `--prefix`/cwd shuffle, so these are not templated with a subsystem root.
+
+Maven's `-Dtest` takes a **test class name/pattern** (e.g. `LoginServiceTest`), never a file path — the plugin only knows a unit's `target_paths` (source files), so **do not substitute `${target_path}`** here; run the whole module suite for API units and let `/verify` count results across it.
+
 | Check | Command |
 |---|---|
 | lint | `./mvnw checkstyle:check` (or `./mvnw spotless:check` if Spotless is configured instead) |
 | typecheck | `./mvnw compile` (the Java compiler is the type checker — there's no separate typecheck step) |
-| test | `./mvnw test` (scope to one class with `-Dtest=${target_path}` when verifying a single unit) |
+| test | `./mvnw test` (whole module; no per-file scoping — see note above) |
 
 ## Auth notes
 

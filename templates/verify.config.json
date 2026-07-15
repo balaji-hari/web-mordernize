@@ -1,6 +1,6 @@
 {
   "$schema": "https://github.com/balaji-hari/web-mordernize/templates/verify.config.schema.json",
-  "description": "Default verification commands run by /web-modernize:verify. Edit per-project to match your target stack. The plugin substitutes ${target_path} with the unit's target_paths joined by space.",
+  "description": "Default verification commands run by /web-modernize:verify. Edit per-project to match your target stack. The plugin substitutes ${target_path} with the unit's target_paths made RELATIVE to the subsystem root (${ui_root}/${api_root}) they live under, then joined by space — because these commands run the test tool with its cwd already at that root (via --prefix), a repo-root-relative path would double the prefix. It substitutes ${ui_root}/${api_root} with the paths from state.json.scaffold.",
   "ui": {
     "lint":      "npm --prefix ${ui_root} run lint -- ${target_path}",
     "typecheck": "npm --prefix ${ui_root} run typecheck",

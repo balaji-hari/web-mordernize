@@ -107,6 +107,8 @@ CLAUDE.local.md
 # web-modernize plugin — quarantined secrets discovered in legacy code (never commit raw values)
 .claude/modernize/SECRETS.local.md
 .claude/modernize/**/SECRETS.local.md
+# web-modernize plugin — seeded dev-user credentials (never commit plaintext dev passwords)
+.claude/modernize/dev-credentials.local.md
 # web-modernize plugin — per-developer legacy source path (machine-specific, never shared)
 .claude/modernize/source_root.local.json
 ```

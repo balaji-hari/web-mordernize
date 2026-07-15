@@ -121,7 +121,16 @@
       ["Keep current (bridge)", "Wrap the legacy provider so existing sessions keep working. Lowest user impact."],
       ["OIDC (Azure AD / Okta / Auth0)", "Modern federated identity. Best if you can pick an IdP."],
       ["Custom JWT", "Roll your own. Only if you have a strong reason."]
-    ]
+    ],
+    "recommend_by_source": {
+      "aspnet-webforms": "OIDC (Azure AD / Okta / Auth0)",
+      "aspnet-mvc": "OIDC (Azure AD / Okta / Auth0)",
+      "aspnet-core-mvc": "OIDC (Azure AD / Okta / Auth0)",
+      "java-spring-mvc": "OIDC (Azure AD / Okta / Auth0)",
+      "java-spring-boot": "OIDC (Azure AD / Okta / Auth0)",
+      "*": "Keep current (bridge)"
+    },
+    "default": "Keep current (bridge)"
   },
   {
     "id": "ui_test_framework",
@@ -135,6 +144,21 @@
       ["vitest", "Recommended for Vite-based stacks (React/Vue/Svelte via Vite, SvelteKit, Astro, Nuxt)."],
       ["jest", "Default for Next.js and NestJS."],
       ["karma-jasmine", "Angular default."]
+    ]
+  },
+  {
+    "id": "api_test_framework",
+    "section_anchor": "## 12. Testing",
+    "field_label": "API test framework",
+    "question": "Which API test framework? (skip if the API target is 'none' or 'reuse-existing')",
+    "header": "API test framework",
+    "derive_from": "api_framework",
+    "derive_field": "test_framework",
+    "options_inline_fallback": [
+      ["xunit", "Default for .NET minimal API."],
+      ["junit5", "Default for Spring Boot."],
+      ["jest", "Default for NestJS / Express."],
+      ["pytest", "Default for FastAPI."]
     ]
   },
   {

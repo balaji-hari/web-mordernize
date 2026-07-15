@@ -58,7 +58,7 @@ Run `/web-modernize:integrate` to assemble the migrated units into the composed 
 
 | ID | Kind | Source path(s) | Target path(s) | Depends on | Phase | Effort |
 |----|------|----------------|----------------|------------|-------|--------|
-| __auth__ | auth | (see migration.md §7) | (target auth wiring) | — | 1 | M |
+| __auth__ | service | (see migration.md §7) | (target auth wiring) | — | 1 | M |
 | {{UNIT_ID}} | {{UNIT_KIND}} | {{SOURCE_PATHS}} | {{TARGET_PATHS}} | {{DEPENDS_ON}} | {{PHASE}} | {{EFFORT}} |
 <!-- One row per unit. /web-modernize:plan regenerates this table from migration.md + analysis.json. -->
 

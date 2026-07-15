@@ -42,6 +42,17 @@ Open migration.md, fix these, then re-run /web-modernize:plan.
 
 Be specific about which line is wrong. Do not summarize; list every issue.
 
+**Non-blocking placeholder scan (advisory).** The table above is the load-bearing hard gate. But `migration.md` marks whole *sections* `REQUIRED` in their headers (§3, §4, §6, §7, §10, §12), and those sections contain sub-bullets the table doesn't individually check (e.g. §3 State management / Styling, §4 Language / API style / Auth scheme, §6 Cutover plan, §7 Identity store / Sessions / Notable claims). After the hard gate passes, scan every section whose header says `REQUIRED` for lines still holding the template placeholder (`<!-- fill in -->`) or left blank, and **warn** about them — do **not** block:
+
+```
+⚠ These REQUIRED-section fields are still blank (not blocking, but the plan will be weaker without them):
+  - §3 "State management" — <!-- fill in -->
+  - §7 "Sessions" — blank
+Fill them in and re-run /web-modernize:plan for a more complete plan, or proceed as-is.
+```
+
+Then continue to planning. This catches half-filled required sections that the field-level gate lets through, without hard-failing on genuinely advisory bullets.
+
 ## Acquire advisory lock
 
 Before writing, set `state.json.lock`:

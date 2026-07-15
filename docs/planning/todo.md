@@ -332,4 +332,9 @@ target framework files + backfilled missing `## Integration` sections · a frame
 required-sections lint · the read-only `hooks/guard-legacy.mjs` legacy-tree guard · trimmed
 `unit-migrator-*` frontmatter · docs version/count resync (19 skills · 5 agents · 31 framework
 files) · the v0.17.4 VB.NET dry-run follow-ups (datastore-reachability preflight, SQL-injection
-detection, i18n false-positive guard, partial-foundation status visibility, and others).
+detection, i18n false-positive guard, partial-foundation status visibility, and others) ·
+**(v0.19.1)** the 2026-07-14 VB.NET dry-run follow-ups (central `${target_path}` subsystem-root
+relativization fixing `/verify`'s test step across all Node UI stacks, `dev-credentials.local.md`
+gitignore fix, .NET/Spring API verify working-dir + `--filter`/`-Dtest` corrections,
+react-vite-ts `typecheck` script, `templates/plan.md` `kind` fix, `api_test_framework`/`target_auth`
+interview coverage, `/plan` advisory placeholder scan, and `unit-migrator` enhance-in-place rule).

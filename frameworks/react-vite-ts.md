@@ -30,7 +30,7 @@ The migrator imports `API_URL` when porting fetch calls.
 
 ## Test framework
 
-`vitest` (default). Install: `npm i -D vitest @vitest/coverage-v8 jsdom @testing-library/react @testing-library/jest-dom`. Write `vitest.config.ts` with `test.environment = "jsdom"`, `test.globals = true`, `test.coverage = { provider: "v8", reporter: ["text","json","html"], include: ["src/**"] }`. Tests colocated as `*.test.ts(x)`. Scripts: `"test": "vitest run"`, `"test:coverage": "vitest run --coverage"`.
+`vitest` (default). Install: `npm i -D vitest @vitest/coverage-v8 jsdom @testing-library/react @testing-library/jest-dom`. Write `vitest.config.ts` with `test.environment = "jsdom"`, `test.globals = true`, `test.coverage = { provider: "v8", reporter: ["text","json","html"], include: ["src/**"] }`. Tests colocated as `*.test.ts(x)`. Scripts: `"test": "vitest run"`, `"test:coverage": "vitest run --coverage"`, `"typecheck": "tsc -b --noEmit"`.
 
 Test smoke: `npm run test -- --run`.
 

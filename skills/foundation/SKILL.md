@@ -131,7 +131,7 @@ Write an **idempotent** seed script (`INSERT … ON CONFLICT DO NOTHING` / `find
 **First action of the script** is a users-table existence check (`SELECT 1 FROM users LIMIT 1` in try/except). If missing → **exit code 2** with `USERS_TABLE_MISSING: run your DB migrations first, then re-run <command>`. Then refuse to overwrite a real account matching a dev email (`seed skipped: <email> already exists`, exit 0).
 
 Run the script once and branch on exit code:
-- **0** → write `.claude/modernize/dev-credentials.md` (the `.claude/modernize/` dir is gitignored) and include the credentials in the closing message.
+- **0** → write `.claude/modernize/dev-credentials.local.md` (gitignored — see `/init`'s `.gitignore` patch) and include the credentials in the closing message.
 - **2 (USERS_TABLE_MISSING)** → the users table is still missing **even though step 3 ran migrations** — the schema is genuinely not set up, so do **not** quietly finalize as if foundation were healthy. Treat it as a **loud, non-silent** outcome: print a prominent `⚠ AUTH SCHEMA NOT READY — dev-user seeding could not run (users table missing after migrations)` banner, record `tests.seed_blocked_reason = "<USERS_TABLE_MISSING tail>"` + `tests.seed_rerun_command` on `__auth__.json`, and **surface it in the foundation summary** (a top-line callout, not buried). If migrations were skipped because the stack has no recipe (unknown API), say so explicitly and tell the user to set up the schema and re-run `/web-modernize:foundation`. The auth *code* may be sound, but the foundation is not silently "done" — the user must act.
 - **other non-zero** → record `tests.seed_failed_reason` with the stderr tail; print a non-silent warning and advise investigation; surface it in the summary.
 
@@ -156,7 +156,7 @@ Print:
   Unit files: .claude/modernize/units/__*__.json
 ```
 
-If auth seeding succeeded, append the seeded dev users + the `curl` login example and the `⚠ DEV ONLY — credentials in .claude/modernize/dev-credentials.md` note. If seeding was blocked (exit 2) or failed (other non-zero), append the prominent `⚠ AUTH SCHEMA NOT READY` callout at the **top** of the summary with the schema-setup + re-run instruction — do not let it read as a clean, fully-finished foundation.
+If auth seeding succeeded, append the seeded dev users + the `curl` login example and the `⚠ DEV ONLY — credentials in .claude/modernize/dev-credentials.local.md` note. If seeding was blocked (exit 2) or failed (other non-zero), append the prominent `⚠ AUTH SCHEMA NOT READY` callout at the **top** of the summary with the schema-setup + re-run instruction — do not let it read as a clean, fully-finished foundation.
 
 Always close with:
 

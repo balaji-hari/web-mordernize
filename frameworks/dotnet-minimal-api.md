@@ -42,11 +42,15 @@ Test smoke: `dotnet test --no-build`.
 
 ## Verify commands
 
+**Working directory: the repo root** (where the `.sln`/`.slnx` lives, per `## Test framework` — all `dotnet` commands here operate on the solution, not a subdirectory). Unlike the Node UI stacks there is **no `--prefix`/cwd shuffle**, so these commands are *not* templated with a subsystem root; run them as-is from repo root.
+
+Also unlike vitest, `dotnet test` has **no per-source-file scoping** — its `--filter` takes a test-name expression (e.g. `FullyQualifiedName~Foo`), never a file path. The plugin only knows a unit's `target_paths` (source files, not test names), so **do not substitute `${target_path}` into `--filter`** — run the whole API suite for API units and let `/verify` count results across it.
+
 | Check | Command |
 |---|---|
 | lint | `dotnet format --verify-no-changes` |
 | typecheck | `dotnet build` (the C# compiler is the type checker — there's no separate typecheck step) |
-| test | `dotnet test --filter ${target_path}` (or `dotnet test` for the whole suite) |
+| test | `dotnet test` (whole solution; no per-file filter — see note above) |
 
 ## Auth notes
 

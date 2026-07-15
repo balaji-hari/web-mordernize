@@ -42,6 +42,8 @@ You write git-tracked artifacts — `notes/<unit.id>.md` (design decisions, sour
 
 5. **Create a feature branch** (recommended): `git checkout -b modernize/<unit.id>` — only if git is clean and the team allows. For `retry` mode, prefer a fresh branch name (e.g., suffix with `-retry-<retry_count>`) to keep failed-attempt history reviewable.
 6. **Write target files.** The heartbeat hook bumps `in_flight.last_heartbeat` automatically on every `Write`/`Edit` tool call in this session, regardless of which file you write — you do not need to (and must not) touch `units/<unit.id>.json` yourself to keep it fresh.
+
+   **Enhance existing files in place — do not recreate them.** Before writing any target file, check whether it already exists (a foundation concern or a migrated dependency may already own it — e.g. `/web-modernize:foundation`'s auth concern writes `apps/web-new/src/auth/LoginPage.tsx`, which a later `Login` **page** unit needs to *enhance*, not replace). Cross-reference the `target_paths[]` of your `depends_on` units (read in step 2) and the `foundation.concerns[]` files. If a file you were about to write already exists and belongs to another unit/concern, **Edit it in place** (add your fields/handlers/routes to the existing component), preserving that owner's wiring (reactive auth context, shared imports) rather than overwriting it — and note the shared ownership in `notes/<unit.id>.md`. Only `Write` a file fresh when nothing else owns it.
 7. **Translate semantics, not syntax** (data and logic):
    - WebForms event handlers → React event handlers + useState/useReducer.
    - Server-side controls (`<asp:GridView>`) → modern data table component.

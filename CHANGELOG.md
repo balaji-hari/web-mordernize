@@ -2,6 +2,27 @@
 
 All notable changes to the `web-modernize` plugin are documented here. Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.19.1] - 2026-07-15
+
+Fixes from a full end-to-end dry-run of v0.19.0 against a real VB.NET ASP.NET WebForms app (`/init` → `/verify`, with real `npm`/`dotnet` execution). Every finding was re-verified against the plugin source before acting.
+
+### Fixed
+- **`/verify`'s test step was broken by default on every Node UI stack (`--prefix` + repo-root-relative `${target_path}` don't compose).** `verify.config.json` combined `npm --prefix ${ui_root}` (which sets the test tool's cwd to `${ui_root}`) with a **repo-root-relative** `${target_path}`, so vitest looked for `apps/web-new/apps/web-new/src/...` and reported "No test files found" — failing every unit's test threshold, which in turn silently disabled the parity/quality reviewer fan-out (they only run when thresholds pass). Fixed centrally at the substitution rule: `skills/verify/SKILL.md` (steps 2 and 5c) now makes `${target_path}` **relative to the chosen subsystem root** before substituting; `templates/verify.config.json`'s description documents the new semantics. No per-framework-file edits needed — all 11 files funnel through the one rule.
+- **False "gitignored" claim risked committing plaintext dev passwords.** `skills/foundation/SKILL.md` told teams to write seeded dev credentials to `.claude/modernize/dev-credentials.md`, calling `.claude/modernize/` gitignored — but only `SECRETS.local.md`/`source_root.local.json` are exempted; the dir is git-shared team state. Renamed the target to `dev-credentials.local.md` (matching the `.local.` convention) and added it to `/init`'s `.gitignore` patch (`skills/init/SKILL.md`).
+- **`.NET` API verify block had no working-directory mechanism and misused `--filter`.** `frameworks/dotnet-minimal-api.md`'s `## Verify commands` now states the commands run from the repo root against the solution, and drops the invalid `dotnet test --filter ${target_path}` (a file path is not a test-name filter expression) in favor of a whole-suite `dotnet test` with an explanatory note.
+- **`Spring Boot` API verify block had the same class of defect** (surfaced while reviewing the F5 fix): `frameworks/spring-boot-3.md`'s test command misused `-Dtest=${target_path}` (Maven's `-Dtest` takes a test **class** name, not a file path). Same fix — working-dir statement + whole-module `./mvnw test`, no per-file substitution.
+- **`/verify --dynamic` Phase B (E2E) had the same double-prefix risk as the main test step** (F2): the Playwright command runs with cwd at `ui_root` via `--prefix`, but the authored spec path (`unit.e2e.spec_path`) and `${target_path}` were repo-root-relative. Phase B now applies the same subsystem-root-relative substitution rule (`skills/verify/SKILL.md` step 5c).
+- **`frameworks/react-vite-ts.md` referenced a `typecheck` npm script that was never created** (Vite's `react-ts` template has none). Added `"typecheck": "tsc -b --noEmit"` to the `## Test framework` scripts so the `## Verify commands` typecheck entry resolves.
+- **`templates/plan.md`'s `__auth__` example row used an invalid `kind` value** (`auth`, which is not in `unit.schema.json`'s enum). Corrected to `service`, matching `skills/plan/SKILL.md`.
+- **Two REQUIRED interview fields had no coverage in `templates/migration-interview.json`:** `api_test_framework` had **no catalog entry at all** (so a clean interview always hit a `/plan` validation stop it couldn't prevent) — added, mirroring `ui_test_framework`; and `target_auth` had no fallback/recommend — added `recommend_by_source` + a `default`.
+
+### Changed
+- **`/plan` now runs an advisory (non-blocking) placeholder scan** over sections `migration.md` marks `REQUIRED`, warning about sub-bullets left as `<!-- fill in -->`/blank that the field-level hard gate doesn't individually check. (Dry-run finding 7.)
+- **`unit-migrator` now enhances existing target files in place instead of recreating them.** Added an explicit rule to `agents/unit-migrator-subagent.md` step 6: when a file is already owned by a foundation concern or a migrated dependency (e.g. auth's `LoginPage.tsx`, later enhanced by the `Login` page unit), `Edit` it in place and preserve the owner's wiring rather than overwriting. (Dry-run finding 8.)
+
+### Schema
+- **No change — `schema_version` stays at 4.** All edits are prompt/template/framework-file fixes; no state shape changed.
+
 ## [0.19.0] - 2026-07-13
 
 ### Added
