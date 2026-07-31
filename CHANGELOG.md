@@ -2,6 +2,14 @@
 
 All notable changes to the `web-modernize` plugin are documented here. Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.19.2] - 2026-08-01
+
+### Fixed
+- **`hooks/guard-legacy.mjs` false-blocked writes to any file outside the repo — including plan-mode plan files.** The same-repo decision (rule 3) only allowed a repo-root file or a file inside a known new-app zone; it had no clause for a target that resolves entirely **outside** `repoRoot`. Because the decision anchors on `input.cwd` (not the target path), a write to a plan-mode plan file under `~/.claude/plans/` (or a scratchpad/temp file, or any unrelated absolute path) was mis-attributed to the repo found from cwd and denied with "refusing to edit legacy source … migrate into the new app instead" — stalling any plan-mode session while the plugin is installed, and contradicting the hook's own fail-open charter. Added rule 2b: any target outside `repoRoot` is allowed (it is never this repo's legacy source, which always lives inside the repo). A configured external `source_root` is still protected — rule 1 runs first — and in-repo legacy-source protection is unchanged (in-repo subdirectory files remain `isInside(target, repoRoot)` and fall through to rule 3 exactly as before).
+
+### Schema
+- **No change — `schema_version` stays at 4.** Hook-only fix; no state shape changed.
+
 ## [0.19.1] - 2026-07-15
 
 Fixes from a full end-to-end dry-run of v0.19.0 against a real VB.NET ASP.NET WebForms app (`/init` → `/verify`, with real `npm`/`dotnet` execution). Every finding was re-verified against the plugin source before acting.

@@ -24,6 +24,12 @@
 // a subdirectory (Controllers/, src/, WebForms .aspx, JSP folders, ...).
 // So anything in a subdirectory that isn't one of the zones above is
 // treated as legacy source and denied; root-level config is not.
+//   - any target that resolves ENTIRELY OUTSIDE the repo root — plan-mode
+//     plan files (~/.claude/plans/), scratchpad/temp files, unrelated
+//     absolute-path writes. These are never this repo's legacy source (that
+//     always lives inside the repo), so they are allowed (rule 2b below). The
+//     one out-of-repo path that IS protected is a configured external
+//     source_root, handled first by rule 1.
 //
 // CROSS-REPO SOURCE (.claude/modernize/source_root.local.json — gitignored,
 // per-developer, see skills/_shared/source-root-resolve.md): when the legacy
@@ -241,6 +247,16 @@ async function main() {
   // only false-block legitimate new-app writes. Treat the whole target repo as new-app
   // workspace instead.
   if (externalSource && isInside(targetAbs, repoRoot)) return;
+
+  // 2b. A target that resolves entirely outside this repo is never this repo's
+  // legacy source: plan-mode plan files under ~/.claude/plans/, scratchpad/temp
+  // files, or unrelated absolute-path writes. Rule 1 has already protected any
+  // configured external source_root, so anything reaching here is genuinely
+  // unrelated. The guard's charter is legacy source *inside* the repo, and the
+  // decision anchors on cwd (not the target) — without this, an out-of-repo
+  // write is mis-attributed to the repo found from cwd and false-blocked.
+  // Fail open, per this hook's contract.
+  if (!isInside(targetAbs, repoRoot)) return;
 
   // 3. Same-repo mode (source_root null, or absent): existing behaviour, unchanged.
   // Files sitting DIRECTLY at the repo root (depth-0 only) are allowed —
